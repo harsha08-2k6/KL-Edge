@@ -1,117 +1,82 @@
-# KL Edge
+KL Edge
 
-A modern student utility platform for KL University ERP students.
+KL Edge is a smart student utility platform built for K L University students to simplify the ERP experience with a cleaner interface, faster access, and useful academic tools.
 
-## Features
+---
 
-- Attendance calculator based on KL ERP system
+Features
+
 - Live ERP attendance sync
-- Faculty cabin search
 - Subject-wise attendance tracking
-- Mobile + desktop responsive UI
-- Local storage credential saving
-- Captcha-based secure syncing
-- Academic year & semester selection
-- Offline-friendly experience
+- KL attendance percentage calculator
+- Faculty cabin search
+- Mobile and desktop responsive design
+- Local storage based credential saving
+- Captcha-based secure ERP verification
+- Offline-friendly experience after sync
+- Simple and fast dashboard UI
 
 ---
 
-## How It Works
+Why KL Edge?
 
-1. Student enters:
-   - ERP ID
-   - Password
-   - Captcha
+The official ERP system is often slow and difficult to navigate on mobile devices. KL Edge improves the experience by providing:
 
-2. Credentials are stored only in browser local storage.
-
-3. App fetches latest ERP data from KL ERP.
-
-4. Every resync requires:
-   - Fresh captcha
-   - ERP verification
+- Faster access to attendance data
+- Cleaner student-focused interface
+- Easy navigation
+- Smart attendance utilities
+- Better usability on all devices
 
 ---
 
-## Tech Stack
+Security & Privacy
 
-- React
+- No external credential storage
+- No backend password saving
+- User data stays on the device
+- Captcha required during every sync
+- Secure local storage based access
+
+---
+
+Tech Stack
+
+- React.js
+- Vite
 - JavaScript
-- Next.js / Vite
-- Local Storage
-- ERP Sync APIs
-
----
-
-## Attendance Formula
-
-KL ERP uses weighted attendance calculations.
-
-Formula:
-
-```math
-Attendance % = (Present Weightage / Total Weightage) × 100
-
-Theory and lab classes may have different weightages.
-
-
----
-
-Security
-
-No external credential storage
-
-No backend password saving
-
-Data stays on user's device
-
-Captcha required for every sync
-
-
-
----
-
-Future Features
-
-Timetable integration
-
-Attendance prediction
-
-Smart bunk calculator
-
-Internal marks tracker
-
-Faculty rating system
-
-Notifications & reminders
-
-
+- React Router
+- Local Storage APIs
 
 ---
 
 Installation
 
 git clone https://github.com/harsha08-2k6/KL-Edge.git
-cd KL-Edge
-npm install
-npm run dev
 
+cd KL-Edge
+
+npm install
+
+npm run dev
 
 ---
 
-Goal
+Future Plans
 
-KL Edge simplifies the ERP experience with:
+- Timetable integration
+- Smart bunk calculator
+- Attendance prediction
+- Internal marks tracking
+- Faculty review system
+- Push notifications
+- PWA mobile app support
 
-Better UI
+---
 
-Faster access
+Project Goal
 
-Smart attendance insights
-
-Student-focused tools
-
-
+KL Edge aims to create a modern and student-friendly ERP companion platform that makes academic tracking easier, faster, and more efficient for K L University students.
 
 ---
 
