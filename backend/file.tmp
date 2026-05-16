@@ -1,0 +1,631 @@
+import base64
+import json
+import os
+import re
+import time
+import uuid
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Optional
+from urllib.parse import urljoin
+
+import requests
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def selector_to_id(selector: str) -> str:
+    if not selector:
+        return ""
+    selector = selector.strip()
+    if selector.startswith("#"):
+        return selector[1:]
+    return ""
+
+
+def extract_keywords(value: str) -> List[str]:
+    tokens = re.findall(r"[A-Za-z0-9]+", value or "")
+    ignored = {"select", "name", "id", "value", "option"}
+    results = []
+    for token in tokens:
+        lowered = token.lower()
+        if len(lowered) < 3 or lowered in ignored:
+            continue
+        results.append(lowered)
+    return results
+
+
+def merge_keywords(base: List[str], selector_value: str) -> List[str]:
+    keywords = list(base)
+    extra = extract_keywords(selector_value)
+    for entry in extra:
+        if entry not in keywords:
+            keywords.append(entry)
+    return keywords
+
+DEFAULT_USER_AGENT = os.getenv(
+    "ERP_USER_AGENT",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
+
+LOGIN_URL = os.getenv("ERP_LOGIN_URL")
+ATTENDANCE_URL = os.getenv("ERP_ATTENDANCE_URL")
+
+ALLOW_INSECURE = os.getenv("ERP_ALLOW_INSECURE", "").lower() in {"1", "true", "yes"}
+DEBUG_ENABLED = os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}
+
+CAPTCHA_SESSION_TTL_MS = int(os.getenv("ERP_CAPTCHA_SESSION_TTL_MS", "600000"))
+MAX_CAPTCHA_SESSIONS = int(os.getenv("ERP_MAX_CAPTCHA_SESSIONS", "5"))
+DEFAULT_TIMEOUT_MS = int(os.getenv("ERP_TIMEOUT_MS", "30000"))
+
+LOGIN_FIELD_IDS = {
+    "erp_id": selector_to_id(os.getenv("ERP_ID_SELECTOR", "#loginFormUserNameID")),
+    "password": selector_to_id(os.getenv("ERP_PASSWORD_SELECTOR", "#loginFormPasswordID")),
+    "captcha": selector_to_id(os.getenv("ERP_CAPTCHA_SELECTOR", "#loginFormCaptcha"))
+}
+
+ACADEMIC_KEYWORDS = merge_keywords(
+    ["academicyear", "academic", "year"],
+    os.getenv("ERP_ACADEMIC_YEAR_SELECTOR", "")
+)
+SEMESTER_KEYWORDS = merge_keywords(
+    ["semesterid", "semester", "term"],
+    os.getenv("ERP_SEMESTER_SELECTOR", "")
+)
+
+FACULTY_PATH = Path(__file__).resolve().parents[1] / "shared" / "faculty.json"
+
+
+class AppError(Exception):
+    def __init__(self, message: str, status_code: int = 500):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+
+
+@dataclass
+class CaptchaSession:
+    session: requests.Session
+    login_html: str
+    created_at: float
+
+
+captcha_sessions: Dict[str, CaptchaSession] = {}
+
+
+def build_headers(base_url: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    headers = {
+        "User-Agent": DEFAULT_USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": base_url
+    }
+
+    try:
+        origin = urljoin(base_url, "/").rstrip("/")
+        headers["Origin"] = origin
+    except Exception:
+        pass
+
+    if extra:
+        headers.update(extra)
+
+    return headers
+
+
+def create_session() -> requests.Session:
+    session = requests.Session()
+    session.headers.update({"User-Agent": DEFAULT_USER_AGENT})
+    return session
+
+
+def get_timeout() -> float:
+    return max(5.0, DEFAULT_TIMEOUT_MS / 1000.0)
+
+
+def create_captcha_session() -> Dict[str, str]:
+    prune_captcha_sessions()
+
+    session = create_session()
+    login_response = request_page(session, LOGIN_URL, headers=build_headers(LOGIN_URL))
+    login_html = login_response.text or ""
+
+    captcha_url = extract_captcha_url(login_html, LOGIN_URL)
+    if not captcha_url:
+        raise AppError("Captcha not found on ERP login page.", 502)
+
+    captcha_response = request_page(
+        session,
+        captcha_url,
+        headers=build_headers(LOGIN_URL),
+        stream=True
+    )
+
+    image_bytes = captcha_response.content or b""
+    if not image_bytes:
+        raise AppError("Captcha image was empty.", 502)
+
+    image_base64 = base64.b64encode(image_bytes).decode("ascii")
+    session_id = str(uuid.uuid4())
+
+    captcha_sessions[session_id] = CaptchaSession(
+        session=session,
+        login_html=login_html,
+        created_at=time.time()
+    )
+
+    return {
+        "sessionId": session_id,
+        "image": f"data:image/png;base64,{image_base64}",
+        "expiresAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + CAPTCHA_SESSION_TTL_MS / 1000))
+    }
+
+
+def sync_attendance(payload: Dict[str, str]) -> List[Dict[str, object]]:
+    if not LOGIN_URL or not ATTENDANCE_URL:
+        raise AppError("ERP_LOGIN_URL and ERP_ATTENDANCE_URL must be configured before real sync.", 501)
+
+    session_id = payload.get("captchaSessionId") or ""
+    captcha_session = captcha_sessions.get(session_id)
+    if not captcha_session:
+        raise AppError("Captcha session expired. Refresh captcha and try again.", 410)
+
+    try:
+        login_form = extract_login_form(captcha_session.login_html, LOGIN_URL)
+        login_data = build_login_form_data(login_form, payload)
+
+        login_response = submit_form(
+            captcha_session.session,
+            login_form,
+            login_data,
+            referer=LOGIN_URL
+        )
+
+        login_html = login_response.text or ""
+        if looks_like_login_failure(login_html, login_form):
+            message = extract_login_error_message(login_html)
+            clean_message = message or "ERP login failed. Refresh captcha and check ERP ID, password, and captcha."
+            if DEBUG_ENABLED:
+                print("[erp:login] failed", {"message": clean_message})
+            raise AppError(clean_message, 401)
+
+        attendance_response = request_page(
+            captcha_session.session,
+            ATTENDANCE_URL,
+            headers=build_headers(ATTENDANCE_URL)
+        )
+        attendance_html = attendance_response.text or ""
+        attendance_form = extract_attendance_form(attendance_html, ATTENDANCE_URL)
+        attendance_data = build_attendance_form_data(attendance_form, payload)
+
+        result_response = submit_form(
+            captcha_session.session,
+            attendance_form,
+            attendance_data,
+            referer=ATTENDANCE_URL
+        )
+        result_html = result_response.text or ""
+
+        table_html = extract_attendance_table(result_html)
+        if not table_html:
+            raise AppError("Could not find attendance table in ERP response.", 502)
+
+        return parse_attendance_table(table_html)
+    finally:
+        close_captcha_session(session_id)
+
+
+def load_faculty() -> List[Dict[str, object]]:
+    if not FACULTY_PATH.exists():
+        return []
+
+    return json.loads(FACULTY_PATH.read_text(encoding="utf8"))
+
+
+def request_page(session: requests.Session, url: str, headers: Optional[Dict[str, str]] = None, stream: bool = False) -> requests.Response:
+    try:
+        response = session.get(
+            url,
+            headers=headers,
+            timeout=get_timeout(),
+            verify=not ALLOW_INSECURE,
+            stream=stream
+        )
+        response.raise_for_status()
+        return response
+    except requests.RequestException as exc:
+        if DEBUG_ENABLED:
+            print(f"[erp:http] request_page failed for {url}: {exc}")
+        raise AppError(f"ERP request failed: {exc}", 502) from exc
+
+
+def submit_form(session: requests.Session, form: Dict[str, object], data: Dict[str, str], referer: str) -> requests.Response:
+    url = form.get("actionUrl")
+    method = form.get("method", "post")
+    headers = build_headers(referer, {"Content-Type": "application/x-www-form-urlencoded"})
+
+    try:
+        if method == "get":
+            response = session.get(
+                url,
+                params=data,
+                headers=build_headers(referer),
+                timeout=get_timeout(),
+                verify=not ALLOW_INSECURE
+            )
+        else:
+            response = session.post(
+                url,
+                data=data,
+                headers=headers,
+                timeout=get_timeout(),
+                verify=not ALLOW_INSECURE
+            )
+
+        response.raise_for_status()
+        return response
+    except requests.RequestException as exc:
+        if DEBUG_ENABLED:
+            print(f"[erp:http] submit_form failed for {url}: {exc}")
+        raise AppError(f"ERP request failed: {exc}", 502) from exc
+
+
+def extract_captcha_url(html: str, base_url: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    for image in soup.find_all("img"):
+        src = image.get("src") or image.get("data-src") or image.get("data-original")
+        if not src:
+            continue
+        hint = " ".join(
+            [
+                str(image.get("id") or ""),
+                " ".join(image.get("class") or []),
+                str(image.get("alt") or ""),
+                src
+            ]
+        ).lower()
+        if "captcha" in hint:
+            return urljoin(base_url, src)
+
+    return ""
+
+
+def extract_login_form(html: str, base_url: str) -> Dict[str, object]:
+    soup = BeautifulSoup(html, "html.parser")
+    forms = soup.find_all("form")
+
+    candidate = None
+    for form in forms:
+        if has_login_fields(form):
+            candidate = form
+            break
+
+    form = candidate or (forms[0] if forms else None)
+    if not form:
+        return {
+            "actionUrl": base_url,
+            "method": "post",
+            "usernameField": "username",
+            "passwordField": "password",
+            "captchaField": "captcha",
+            "hiddenFields": {}
+        }
+
+    action = form.get("action") or base_url
+    method = (form.get("method") or "post").lower()
+
+    username_field = find_input_name_by_id(form, LOGIN_FIELD_IDS["erp_id"]) or find_input_name_by_pattern(form, r"user|login|erp") or "username"
+    password_field = find_input_name_by_id(form, LOGIN_FIELD_IDS["password"]) or find_input_name_by_pattern(form, r"pass") or "password"
+    captcha_field = find_input_name_by_id(form, LOGIN_FIELD_IDS["captcha"]) or find_input_name_by_pattern(form, r"captcha") or "captcha"
+    hidden_fields = extract_hidden_inputs(form)
+
+    if DEBUG_ENABLED:
+        print("[erp:http] login form", {
+            "action": action,
+            "method": method,
+            "usernameField": username_field,
+            "passwordField": password_field,
+            "captchaField": captcha_field,
+            "hiddenFields": list(hidden_fields.keys())
+        })
+
+    return {
+        "actionUrl": urljoin(base_url, action),
+        "method": method,
+        "usernameField": username_field,
+        "passwordField": password_field,
+        "captchaField": captcha_field,
+        "hiddenFields": hidden_fields
+    }
+
+
+def build_login_form_data(form: Dict[str, object], payload: Dict[str, str]) -> Dict[str, str]:
+    return {
+        **form.get("hiddenFields", {}),
+        form.get("usernameField"): payload.get("erpId", ""),
+        form.get("passwordField"): payload.get("password", ""),
+        form.get("captchaField"): payload.get("captcha", "")
+    }
+
+
+def looks_like_login_failure(html: str, form: Dict[str, object]) -> bool:
+    if not html:
+        return True
+
+    lowered = html.lower()
+    if "captcha" in lowered and "invalid" in lowered:
+        return True
+    if "login" in lowered and "failed" in lowered:
+        return True
+    if re.search(r"type=['\"]password['\"]", html, re.IGNORECASE):
+        return True
+    if contains_login_fields(html, form):
+        return True
+
+    return False
+
+
+def extract_login_error_message(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    selectors = [
+        ".help-block",
+        ".invalid-feedback",
+        ".alert",
+        ".alert-danger",
+        ".error",
+        ".error-message",
+        ".error-msg",
+        "[role='alert']",
+        ".error-summary",
+        ".text-danger"
+    ]
+
+    messages: List[str] = []
+    for selector in selectors:
+        for element in soup.select(selector):
+            text = clean_text(element.get_text(" "))
+            if text:
+                messages.append(text)
+
+    if messages:
+        return " ".join(list(dict.fromkeys(messages)))[:240]
+
+    body_text = clean_text(soup.get_text(" "))
+    candidates = [
+        line for line in body_text.split(" ")
+        if re.search(r"captcha|password|invalid|incorrect|failed|login|credential|user", line, re.IGNORECASE)
+    ]
+    return " ".join(candidates[:2])[:240]
+
+
+def contains_login_fields(html: str, form: Dict[str, object]) -> bool:
+    fields = [form.get("usernameField"), form.get("passwordField"), form.get("captchaField")]
+    for field in fields:
+        if not field:
+            continue
+        if has_input_field(html, str(field)):
+            return True
+    return False
+
+
+def has_input_field(html: str, name_or_id: str) -> bool:
+    soup = BeautifulSoup(html, "html.parser")
+    return soup.find("input", {"name": name_or_id}) is not None or soup.find("input", {"id": name_or_id}) is not None
+
+
+def has_login_fields(form) -> bool:
+    if find_input_name_by_id(form, LOGIN_FIELD_IDS["erp_id"]):
+        return True
+    return bool(find_input_name_by_pattern(form, r"user|login|erp"))
+
+
+def extract_hidden_inputs(form) -> Dict[str, str]:
+    hidden_fields: Dict[str, str] = {}
+    for input_tag in form.find_all("input"):
+        input_type = (input_tag.get("type") or "").lower()
+        if input_type and input_type != "hidden":
+            continue
+        name = input_tag.get("name")
+        if not name:
+            continue
+        hidden_fields[name] = input_tag.get("value") or ""
+    return hidden_fields
+
+
+def find_input_name_by_id(form, input_id: Optional[str]) -> str:
+    if not input_id:
+        return ""
+
+    input_tag = form.find("input", {"id": input_id})
+    if not input_tag:
+        input_tag = form.find("input", {"name": input_id})
+
+    if not input_tag:
+        return ""
+
+    return input_tag.get("name") or input_tag.get("id") or ""
+
+
+def find_input_name_by_pattern(form, pattern: str) -> str:
+    regex = re.compile(pattern, re.IGNORECASE)
+    for input_tag in form.find_all("input"):
+        name = input_tag.get("name") or ""
+        input_id = input_tag.get("id") or ""
+        combined = f"{name} {input_id}".strip()
+        if regex.search(combined):
+            return name or input_id
+    return ""
+
+
+def extract_attendance_form(html: str, base_url: str) -> Dict[str, object]:
+    soup = BeautifulSoup(html, "html.parser")
+    forms = soup.find_all("form")
+    academic_select = find_select_name(soup, ACADEMIC_KEYWORDS)
+    semester_select = find_select_name(soup, SEMESTER_KEYWORDS)
+
+    selected_form = None
+    for form in forms:
+        if academic_select and has_select(form, academic_select):
+            selected_form = form
+            break
+        if semester_select and has_select(form, semester_select):
+            selected_form = form
+            break
+
+    form = selected_form or (forms[0] if forms else None)
+    if not form:
+        return {
+            "html": "",
+            "actionUrl": base_url,
+            "method": "post",
+            "academicSelect": academic_select,
+            "semesterSelect": semester_select
+        }
+
+    action = form.get("action") or base_url
+    method = (form.get("method") or "post").lower()
+
+    return {
+        "html": str(form),
+        "actionUrl": urljoin(base_url, action),
+        "method": method,
+        "academicSelect": academic_select,
+        "semesterSelect": semester_select
+    }
+
+
+def build_attendance_form_data(form: Dict[str, object], payload: Dict[str, str]) -> Dict[str, str]:
+    html = form.get("html") or ""
+    soup = BeautifulSoup(html, "html.parser")
+
+    data = extract_hidden_inputs(soup) if soup else {}
+
+    academic_select = form.get("academicSelect")
+    if academic_select:
+        select_tag = soup.find("select", {"name": academic_select}) or soup.find("select", {"id": academic_select})
+        data[academic_select] = find_option_value(select_tag, payload.get("academicYear", "")) or payload.get("academicYear", "")
+
+    semester_select = form.get("semesterSelect")
+    if semester_select:
+        select_tag = soup.find("select", {"name": semester_select}) or soup.find("select", {"id": semester_select})
+        data[semester_select] = find_option_value(select_tag, payload.get("semesterId", "")) or payload.get("semesterId", "")
+
+    return data
+
+
+def find_select_name(soup, keywords: List[str]) -> str:
+    for select_tag in soup.find_all("select"):
+        name = select_tag.get("name") or select_tag.get("id") or ""
+        lowered = name.lower()
+        if any(keyword in lowered for keyword in keywords):
+            return name
+    return ""
+
+
+def has_select(form, select_name: str) -> bool:
+    return form.find("select", {"name": select_name}) is not None or form.find("select", {"id": select_name}) is not None
+
+
+def find_option_value(select_tag, label: str) -> str:
+    if not select_tag or not label:
+        return ""
+
+    target = label.strip().lower()
+    for option in select_tag.find_all("option"):
+        value = (option.get("value") or "").strip()
+        text = clean_text(option.get_text(" "))
+        if text.lower() == target or value.lower() == target:
+            return value or text
+    return ""
+
+
+def extract_attendance_table(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    tables = soup.find_all("table")
+    for table in tables:
+        parsed = parse_attendance_table(str(table))
+        if parsed:
+            return str(table)
+    return str(tables[0]) if tables else ""
+
+
+def parse_attendance_table(table_html: str) -> List[Dict[str, object]]:
+    soup = BeautifulSoup(table_html, "html.parser")
+    rows = soup.find_all("tr")
+    if len(rows) < 2:
+        return []
+
+    header_cells = rows[0].find_all(["th", "td"])
+    headers = [clean_text(cell.get_text(" ")).lower() for cell in header_cells]
+
+    subject_index = find_index(headers, ["subject", "course", "name"])
+    type_keys = ["L", "T", "P", "S"]
+    indexes = {key: find_index(headers, [key.lower(), f"{key.lower()}%" ]) for key in type_keys}
+
+    results: List[Dict[str, object]] = []
+    for row in rows[1:]:
+        cells = row.find_all(["td", "th"])
+        if not cells:
+            continue
+        values = [clean_text(cell.get_text(" ")) for cell in cells]
+        subject = values[subject_index] if subject_index >= 0 and subject_index < len(values) else values[0]
+        if not subject:
+            continue
+
+        entry: Dict[str, object] = {"subject": subject}
+        for key in type_keys:
+            index = indexes.get(key, -1)
+            if index is not None and index >= 0 and index < len(values):
+                number = to_number(values[index])
+                if number is not None:
+                    entry[key] = number
+
+        results.append(entry)
+
+    return results
+
+
+def find_index(headers: List[str], candidates: List[str]) -> int:
+    for index, header in enumerate(headers):
+        if any(header == candidate for candidate in candidates):
+            return index
+
+    for index, header in enumerate(headers):
+        normalized = re.sub(r"[^a-z0-9%]+", " ", header).strip()
+        tokens = normalized.split()
+        if any(candidate in tokens for candidate in candidates if len(candidate) > 1):
+            return index
+
+    return -1
+
+
+def to_number(value: str) -> Optional[float]:
+    match = re.search(r"\d+(?:\.\d+)?", value or "")
+    return float(match.group(0)) if match else None
+
+
+def clean_text(value: str) -> str:
+    return re.sub(r"\s+", " ", value or "").strip()
+
+
+def close_captcha_session(session_id: str) -> None:
+    if session_id in captcha_sessions:
+        del captcha_sessions[session_id]
+
+
+def prune_captcha_sessions() -> None:
+    now = time.time()
+    expired = [
+        session_id
+        for session_id, entry in captcha_sessions.items()
+        if now - entry.created_at >= CAPTCHA_SESSION_TTL_MS / 1000
+    ]
+    for session_id in expired:
+        close_captcha_session(session_id)
+
+    while len(captcha_sessions) >= MAX_CAPTCHA_SESSIONS:
+        oldest = min(captcha_sessions.items(), key=lambda item: item[1].created_at)
+        close_captcha_session(oldest[0])

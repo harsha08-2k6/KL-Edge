@@ -1,0 +1,3418 @@
+[
+  {
+    "faculty": "Dr. Ch. Radhika Rani",
+    "cabin": "C215A",
+    "department": "CSE-1",
+    "empId": "1177",
+    "roomNo": "C215A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Ms. M V B T Santhi",
+    "cabin": "C321A (11)",
+    "department": "CSE-1",
+    "empId": "1323",
+    "roomNo": "C321A",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "Mrs. K. Swetha",
+    "cabin": "C305 (2)",
+    "department": "CSE-1",
+    "empId": "3841",
+    "roomNo": "C305",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Dr. CHM SAIBABA",
+    "cabin": "C305 (22)",
+    "department": "CSE-1",
+    "empId": "3909",
+    "roomNo": "C305",
+    "cabinSeq": "22"
+  },
+  {
+    "faculty": "Mr.S. SANDEEP KUMAR",
+    "cabin": "C305 (24)",
+    "department": "CSE-1",
+    "empId": "3915",
+    "roomNo": "C305",
+    "cabinSeq": "24"
+  },
+  {
+    "faculty": "Dr K Rajyalakshmi",
+    "cabin": "C305 (15)",
+    "department": "CSE-1",
+    "empId": "3948",
+    "roomNo": "C305",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "Prof.V HARI KIRAN",
+    "cabin": "C101",
+    "department": "CSE-1",
+    "empId": "4414",
+    "roomNo": "C101",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr M Kavitha",
+    "cabin": "C321A2",
+    "department": "CSE-1",
+    "empId": "4707",
+    "roomNo": "C321A2",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. R. Venu Babu",
+    "cabin": "C216",
+    "department": "CSE-1",
+    "empId": "4750",
+    "roomNo": "C216",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. S Anjali Devi",
+    "cabin": "C321A2 (2)",
+    "department": "CSE-1",
+    "empId": "4863",
+    "roomNo": "C321A2",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Dr. K. SWARNA",
+    "cabin": "C221A2",
+    "department": "CSE-1",
+    "empId": "4935",
+    "roomNo": "C221A2",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. Moulana Mohammed",
+    "cabin": "C312",
+    "department": "CSE-1",
+    "empId": "5046",
+    "roomNo": "C312",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. K Amarendra",
+    "cabin": "C316",
+    "department": "CSE-1",
+    "empId": "5291",
+    "roomNo": "C316",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. T SANTHI SRI",
+    "cabin": "C215A",
+    "department": "CSE-1",
+    "empId": "5394",
+    "roomNo": "C215A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr B Venkateswarlu",
+    "cabin": "C305B",
+    "department": "CSE-1",
+    "empId": "5420",
+    "roomNo": "C305B",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. Maganti Syamala",
+    "cabin": "C305 (13)",
+    "department": "CSE-1",
+    "empId": "5427",
+    "roomNo": "C305",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "Mr. ANDE PAVAN KUMAR",
+    "cabin": "C305 (21)",
+    "department": "CSE-1",
+    "empId": "6283",
+    "roomNo": "C305",
+    "cabinSeq": "21"
+  },
+  {
+    "faculty": "Mrs. Ch N Lakshmi Sowjanya",
+    "cabin": "C305 (11)",
+    "department": "CSE-1",
+    "empId": "6617",
+    "roomNo": "C305",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "Arepalli Gopi",
+    "cabin": "C106",
+    "department": "CSE-1",
+    "empId": "6620",
+    "roomNo": "C106",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.G.Raja",
+    "cabin": "C321A (9)",
+    "department": "CSE-1",
+    "empId": "6665",
+    "roomNo": "C321A",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "Dr. b Sreedhar",
+    "cabin": "C321A (3)",
+    "department": "CSE-1",
+    "empId": "6686",
+    "roomNo": "C321A",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Dr. T. Anuradha",
+    "cabin": "C305 (8)",
+    "department": "CSE-1",
+    "empId": "6728",
+    "roomNo": "C305",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "Dr. Asesh Kumar Tripathy",
+    "cabin": "C321A (8)",
+    "department": "CSE-1",
+    "empId": "6860",
+    "roomNo": "C321A",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "Dr. YOGESH KUMAR SHARMA",
+    "cabin": "M110 (1)",
+    "department": "CSE-1",
+    "empId": "7273",
+    "roomNo": "M110",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr. A. Veera Swamy",
+    "cabin": "C321A (5)",
+    "department": "CSE-1",
+    "empId": "7347",
+    "roomNo": "C321A",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "K Sreekanth",
+    "cabin": "C305 (4)",
+    "department": "CSE-1",
+    "empId": "7385",
+    "roomNo": "C305",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Mr. G Dineshnath",
+    "cabin": "C305 (18)",
+    "department": "CSE-1",
+    "empId": "7633",
+    "roomNo": "C305",
+    "cabinSeq": "18"
+  },
+  {
+    "faculty": "Mr. THAMODHARAN ARUMUGAM",
+    "cabin": "R502 (1)",
+    "department": "CSE-1",
+    "empId": "7651",
+    "roomNo": "R502",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr P V Sivarambabu",
+    "cabin": "C321A (4)",
+    "department": "CSE-1",
+    "empId": "7809",
+    "roomNo": "C321A",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Dr.Smitha Chowdary Ch",
+    "cabin": "M309 (I)",
+    "department": "CSE-1",
+    "empId": "7958",
+    "roomNo": "M309",
+    "cabinSeq": "I"
+  },
+  {
+    "faculty": "Mrs. M. Uma Maheswari",
+    "cabin": "C305 (5)",
+    "department": "CSE-1",
+    "empId": "7991",
+    "roomNo": "C305",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "Mr. R. Seetharam",
+    "cabin": "C305B",
+    "department": "CSE-1",
+    "empId": "8051",
+    "roomNo": "C305B",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. T. Preethi Priyanka",
+    "cabin": "C305 (7)",
+    "department": "CSE-1",
+    "empId": "8054",
+    "roomNo": "C305",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "Mr. Syed Mohammed Azmal",
+    "cabin": "C305 (3)",
+    "department": "CSE-1",
+    "empId": "8075",
+    "roomNo": "C305",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Mrs. A Thanuja",
+    "cabin": "C305 (12)",
+    "department": "CSE-1",
+    "empId": "8076",
+    "roomNo": "C305",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Mr. D Mani Mohan",
+    "cabin": "C305 (10)",
+    "department": "CSE-1",
+    "empId": "8077",
+    "roomNo": "C305",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "Dr.Y.MadhaviLatha",
+    "cabin": "C321A (10)",
+    "department": "CSE-1",
+    "empId": "8078",
+    "roomNo": "C321A",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "SETTI RAJESWARI",
+    "cabin": "C305 (14)",
+    "department": "CSE-1",
+    "empId": "8087",
+    "roomNo": "C305",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "Dr. Munish Kumar",
+    "cabin": "C321A (1)",
+    "department": "CSE-1",
+    "empId": "8097",
+    "roomNo": "C321A",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr. S. PHANI KUMAR",
+    "cabin": "C305 (23)",
+    "department": "CSE-1",
+    "empId": "8188",
+    "roomNo": "C305",
+    "cabinSeq": "23"
+  },
+  {
+    "faculty": "Dr.B Lakshmi Ramani",
+    "cabin": "C321A (12)",
+    "department": "CSE-1",
+    "empId": "8194",
+    "roomNo": "C321A",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Mrs.B .Mery Sowjanya",
+    "cabin": "C306B (1)",
+    "department": "CSE-1",
+    "empId": "8195",
+    "roomNo": "C306B",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr. Balasubramani S",
+    "cabin": "C321A (7)",
+    "department": "CSE-1",
+    "empId": "8226",
+    "roomNo": "C321A",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "Mr. G. Anjaneyulu",
+    "cabin": "C305 (20)",
+    "department": "CSE-1",
+    "empId": "8227",
+    "roomNo": "C305",
+    "cabinSeq": "20"
+  },
+  {
+    "faculty": "Dr K. Vijaya Kumar",
+    "cabin": "C321A (6)",
+    "department": "CSE-1",
+    "empId": "8232",
+    "roomNo": "C321A",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Mr. B. Elangovan",
+    "cabin": "C305 (9)",
+    "department": "CSE-1",
+    "empId": "8369",
+    "roomNo": "C305",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "Dr P Anusha",
+    "cabin": "C305 (1)",
+    "department": "CSE-1",
+    "empId": "8607",
+    "roomNo": "C305",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Ms. B Kavya",
+    "cabin": "C305 (16)",
+    "department": "CSE-1",
+    "empId": "8865",
+    "roomNo": "C305",
+    "cabinSeq": "16"
+  },
+  {
+    "faculty": "Dr. L. Prasanna Kumar",
+    "cabin": "C305 (17)",
+    "department": "CSE-1",
+    "empId": "8982",
+    "roomNo": "C305",
+    "cabinSeq": "17"
+  },
+  {
+    "faculty": "Dr. M V Praveen Kumar",
+    "cabin": "C305 (19)",
+    "department": "CSE-1",
+    "empId": "9128",
+    "roomNo": "C305",
+    "cabinSeq": "19"
+  },
+  {
+    "faculty": "ALURI SANJEEV KUMAR",
+    "cabin": "R502 (2)",
+    "department": "CSE-1",
+    "empId": "9152",
+    "roomNo": "R502",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Dr. Bijay KSS Pattanaik",
+    "cabin": "C306B (4)",
+    "department": "CSE-1",
+    "empId": "9582",
+    "roomNo": "C306B",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Dr. Gurudatta Verma",
+    "cabin": "C306B (3)",
+    "department": "CSE-1",
+    "empId": "9596",
+    "roomNo": "C306B",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Dr. M. Rama Rajeswari",
+    "cabin": "C306B (2)",
+    "department": "CSE-1",
+    "empId": "9602",
+    "roomNo": "C306B",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Dr. K.V.DURGA KIRAN",
+    "cabin": "C215B",
+    "department": "CSE-2",
+    "empId": "1379",
+    "roomNo": "C215B",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. P. V. VARA PRASAD",
+    "cabin": "M109 (1)",
+    "department": "CSE-2",
+    "empId": "1498",
+    "roomNo": "M109",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Mr.M.VISHNUVARDHAN",
+    "cabin": "M116 (2)",
+    "department": "CSE-2",
+    "empId": "1834",
+    "roomNo": "M116",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Dr.PEDDADA VENKATESWARA RAO",
+    "cabin": "M116 (1)",
+    "department": "CSE-2",
+    "empId": "2496",
+    "roomNo": "M116",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr.B.VIJAYA BABU",
+    "cabin": "C221A3",
+    "department": "CSE-2",
+    "empId": "2843",
+    "roomNo": "C221A3",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.G.PRADEEPINI",
+    "cabin": "C214",
+    "department": "CSE-2",
+    "empId": "3658",
+    "roomNo": "C214",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. NICHENAMETLA RAJESH",
+    "cabin": "C213",
+    "department": "CSE-2",
+    "empId": "3908",
+    "roomNo": "C213",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Mr.M.CHANDAN",
+    "cabin": "M109 (2)",
+    "department": "CSE-2",
+    "empId": "4056",
+    "roomNo": "M109",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Dr.DASARI RAMESH",
+    "cabin": "C205 (1)",
+    "department": "CSE-2",
+    "empId": "4821",
+    "roomNo": "C205",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Mr. SHAIKSHAVALI SHAIK",
+    "cabin": "C105 (14)",
+    "department": "CSE-2",
+    "empId": "5372",
+    "roomNo": "C105",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "Dr.MOTHUKURI RADHA",
+    "cabin": "M115 (1)",
+    "department": "CSE-2",
+    "empId": "5422",
+    "roomNo": "M115",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr. T. PRAVEEN",
+    "cabin": "M116 (3)",
+    "department": "CSE-2",
+    "empId": "5495",
+    "roomNo": "M116",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Dr. PVVS SRINIVAS",
+    "cabin": "C312",
+    "department": "CSE-2",
+    "empId": "5659",
+    "roomNo": "C312",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.KUNDA VENKATA PRASAD",
+    "cabin": "C205A",
+    "department": "CSE-2",
+    "empId": "5886",
+    "roomNo": "C205A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.VIJAY KUMAR BURUGARI",
+    "cabin": "C321A1",
+    "department": "CSE-2",
+    "empId": "5900",
+    "roomNo": "C321A1",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.N RAGHAVENDRA SAI",
+    "cabin": "M107 (3)",
+    "department": "CSE-2",
+    "empId": "5908",
+    "roomNo": "M107",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Dr. G P SARADHI VARMA",
+    "cabin": "C001",
+    "department": "CSE-2",
+    "empId": "6040",
+    "roomNo": "C001",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Mr.J.V.N.RAMESH",
+    "cabin": "C205 (18)",
+    "department": "CSE-2",
+    "empId": "6096",
+    "roomNo": "C205",
+    "cabinSeq": "18"
+  },
+  {
+    "faculty": "Mr. GARIGIPATI RAMA KRISHNA",
+    "cabin": "C205 (15)",
+    "department": "CSE-2",
+    "empId": "6584",
+    "roomNo": "C205",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "Mr. DODDI SURESH KUMAR",
+    "cabin": "C221A (11)",
+    "department": "CSE-2",
+    "empId": "6616",
+    "roomNo": "C221A",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "Dr. B BIKRAM KUMAR",
+    "cabin": "C223 (1)",
+    "department": "CSE-2",
+    "empId": "6618",
+    "roomNo": "C223",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr. S ARAVINTH SESHADRI",
+    "cabin": "C206 (10)",
+    "department": "CSE-2",
+    "empId": "6619",
+    "roomNo": "C206",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "Dr. K SWATHI",
+    "cabin": "C214",
+    "department": "CSE-2",
+    "empId": "6786",
+    "roomNo": "C214",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. YAMUNA DEVI",
+    "cabin": "M103 (1)",
+    "department": "CSE-2",
+    "empId": "6874",
+    "roomNo": "M103",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr. NESARANI",
+    "cabin": "M103 (2)",
+    "department": "CSE-2",
+    "empId": "6922",
+    "roomNo": "M103",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Dr.VEERA ANKALU",
+    "cabin": "C206 (11)",
+    "department": "CSE-2",
+    "empId": "6931",
+    "roomNo": "C206",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "Dr.RENUKA KOLANDASAMY",
+    "cabin": "C221A (8)",
+    "department": "CSE-2",
+    "empId": "6932",
+    "roomNo": "C221A",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "Ms. CH. SABITHA",
+    "cabin": "L606 (10)",
+    "department": "CSE-2",
+    "empId": "6934",
+    "roomNo": "L606",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "Mr. CHITTIBABU RAVELA",
+    "cabin": "C205 (16)",
+    "department": "CSE-2",
+    "empId": "7004",
+    "roomNo": "C205",
+    "cabinSeq": "16"
+  },
+  {
+    "faculty": "Mr. P ANANTHA RAO",
+    "cabin": "M119 (1)",
+    "department": "CSE-2",
+    "empId": "7029",
+    "roomNo": "M119",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Mr. B NAMA SIVAYAM",
+    "cabin": "C105 (4)",
+    "department": "CSE-2",
+    "empId": "7152",
+    "roomNo": "C105",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Dr. ELANGOVAN GURUVA REDDY",
+    "cabin": "C205A",
+    "department": "CSE-2",
+    "empId": "7190",
+    "roomNo": "C205A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. KANDEPU BALA VENKATA BRAHMARAO",
+    "cabin": "L401",
+    "department": "CSE-2",
+    "empId": "7239",
+    "roomNo": "L401",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. T K RAMA KRISHNA RAO",
+    "cabin": "F009",
+    "department": "CSE-2",
+    "empId": "7255",
+    "roomNo": "F009",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Mr. VUYYURU LAKSHMA REDDY",
+    "cabin": "C205 (17)",
+    "department": "CSE-2",
+    "empId": "7366",
+    "roomNo": "C205",
+    "cabinSeq": "17"
+  },
+  {
+    "faculty": "Dr. ARPIT JAIN",
+    "cabin": "M110 (2)",
+    "department": "CSE-2",
+    "empId": "7391",
+    "roomNo": "M110",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Mr. RAJESH TULASI",
+    "cabin": "C205 (2)",
+    "department": "CSE-2",
+    "empId": "7401",
+    "roomNo": "C205",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Dr. ADAPA GOPI",
+    "cabin": "M107 (1)",
+    "department": "CSE-2",
+    "empId": "7414",
+    "roomNo": "M107",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr. LEENA ARYA",
+    "cabin": "M104 (1)",
+    "department": "CSE-2",
+    "empId": "7419",
+    "roomNo": "M104",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Mr. DAYANIDHI MOHAPATRA",
+    "cabin": "C223 (10)",
+    "department": "CSE-2",
+    "empId": "7510",
+    "roomNo": "C223",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "Dr.NAGAMANI CHIPPADA",
+    "cabin": "C206 (16)",
+    "department": "CSE-2",
+    "empId": "7792",
+    "roomNo": "C206",
+    "cabinSeq": "16"
+  },
+  {
+    "faculty": "Dr. K GURNADH GUPTA",
+    "cabin": "C205 (3)",
+    "department": "CSE-2",
+    "empId": "7814",
+    "roomNo": "C205",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Mr. RAJESH BINGU",
+    "cabin": "C221A (3)",
+    "department": "CSE-2",
+    "empId": "7822",
+    "roomNo": "C221A",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Ms. V PRASANTHI",
+    "cabin": "C221A (4)",
+    "department": "CSE-2",
+    "empId": "7936",
+    "roomNo": "C221A",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Dr. RAVEENDRA REDDY E",
+    "cabin": "C221A (9)",
+    "department": "CSE-2",
+    "empId": "7960",
+    "roomNo": "C221A",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "Mr. PANDIANATHAN MURUGESAN",
+    "cabin": "C223 (16)",
+    "department": "CSE-2",
+    "empId": "7984",
+    "roomNo": "C223",
+    "cabinSeq": "16"
+  },
+  {
+    "faculty": "Dr. MURALI KRISHNA PUTTAGUNTA",
+    "cabin": "C205 (19)",
+    "department": "CSE-2",
+    "empId": "7985",
+    "roomNo": "C205",
+    "cabinSeq": "19"
+  },
+  {
+    "faculty": "Mr. DINESH CHANDRA PANCHARIA",
+    "cabin": "R305 (27)",
+    "department": "CSE-2",
+    "empId": "7986",
+    "roomNo": "R305",
+    "cabinSeq": "27"
+  },
+  {
+    "faculty": "Dr. V V JAYA RAMA KRISHNAIAH",
+    "cabin": "C321A1",
+    "department": "CSE-2",
+    "empId": "7999",
+    "roomNo": "C321A1",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. SNV Jyotshna Devi K",
+    "cabin": "C206 (20)",
+    "department": "CSE-2",
+    "empId": "8000",
+    "roomNo": "C206",
+    "cabinSeq": "20"
+  },
+  {
+    "faculty": "Ms.. NATHA PRIYA",
+    "cabin": "C205 (4)",
+    "department": "CSE-2",
+    "empId": "8020",
+    "roomNo": "C205",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Ms. DEEPTHI NATHA",
+    "cabin": "C206 (4)",
+    "department": "CSE-2",
+    "empId": "8021",
+    "roomNo": "C206",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Mr. B ARUN KUMAR",
+    "cabin": "C205 (5)",
+    "department": "CSE-2",
+    "empId": "8055",
+    "roomNo": "C205",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "Ms. PUNYALA RAMADEVI",
+    "cabin": "C205 (6)",
+    "department": "CSE-2",
+    "empId": "8059",
+    "roomNo": "C205",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Ms. KAVITHA SARIHADDU",
+    "cabin": "C223 (2)",
+    "department": "CSE-2",
+    "empId": "8080",
+    "roomNo": "C223",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Ms. ALUR PRANEETHA",
+    "cabin": "C205 (7)",
+    "department": "CSE-2",
+    "empId": "8084",
+    "roomNo": "C205",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "Dr. MOHD SHAMSH TABAREJ",
+    "cabin": "C223 (3)",
+    "department": "CSE-2",
+    "empId": "8088",
+    "roomNo": "C223",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Dr. SATRUGHAN KUMAR",
+    "cabin": "C223 (4)",
+    "department": "CSE-2",
+    "empId": "8104",
+    "roomNo": "C223",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Ms. ANUMULA SRUTHI",
+    "cabin": "C205 (8)",
+    "department": "CSE-2",
+    "empId": "8110",
+    "roomNo": "C205",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "Mr. S JAGAN MOHAN",
+    "cabin": "L606 (7)",
+    "department": "CSE-2",
+    "empId": "8120",
+    "roomNo": "L606",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "Dr. PENUBAKA BALAJI",
+    "cabin": "C223 (5)",
+    "department": "CSE-2",
+    "empId": "8129",
+    "roomNo": "C223",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "Mr. RUDRAMANI BHUTIA",
+    "cabin": "C223 (6)",
+    "department": "CSE-2",
+    "empId": "8130",
+    "roomNo": "C223",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Dr. P V ANUSHA",
+    "cabin": "C206 (18)",
+    "department": "CSE-2",
+    "empId": "8137",
+    "roomNo": "C206",
+    "cabinSeq": "18"
+  },
+  {
+    "faculty": "Ms. POTHUMARTHI SRIDEVI",
+    "cabin": "C223 (12)",
+    "department": "CSE-2",
+    "empId": "8146",
+    "roomNo": "C223",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Dr. KODALI SADHANA",
+    "cabin": "C223 (20)",
+    "department": "CSE-2",
+    "empId": "8147",
+    "roomNo": "C223",
+    "cabinSeq": "20"
+  },
+  {
+    "faculty": "Ms. KADIYAM NASARAMMA",
+    "cabin": "C223 (7)",
+    "department": "CSE-2",
+    "empId": "8148",
+    "roomNo": "C223",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "Mr. BANGARU BALAKRISHNA",
+    "cabin": "C205 (9)",
+    "department": "CSE-2",
+    "empId": "8154",
+    "roomNo": "C205",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "Mr. LAVUDIYA NARASIMHA SWAMY",
+    "cabin": "R305 (26)",
+    "department": "CSE-2",
+    "empId": "8163",
+    "roomNo": "R305",
+    "cabinSeq": "26"
+  },
+  {
+    "faculty": "Ms. GNANADEEPTHI BITRA",
+    "cabin": "C206 (1)",
+    "department": "CSE-2",
+    "empId": "8164",
+    "roomNo": "C206",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Ms. K ANJU ARAVIND",
+    "cabin": "C205 (10)",
+    "department": "CSE-2",
+    "empId": "8168",
+    "roomNo": "C205",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "Dr. S V SURESH BABU MATLA",
+    "cabin": "C221A (1)",
+    "department": "CSE-2",
+    "empId": "8171",
+    "roomNo": "C221A",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr. B ANNAPURNA",
+    "cabin": "C205 (24)",
+    "department": "CSE-2",
+    "empId": "8172",
+    "roomNo": "C205",
+    "cabinSeq": "24"
+  },
+  {
+    "faculty": "Mr. MACHARLA SIVUDU",
+    "cabin": "C206 (9)",
+    "department": "CSE-2",
+    "empId": "8175",
+    "roomNo": "C206",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "Mr. YENUGU SIVARAMAIAH",
+    "cabin": "C223 (8)",
+    "department": "CSE-2",
+    "empId": "8176",
+    "roomNo": "C223",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "Dr. KATAKAM VENKATESWARA RAO",
+    "cabin": "C206 (2)",
+    "department": "CSE-2",
+    "empId": "8177",
+    "roomNo": "C206",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Ms. M TEJO LAKSHMI",
+    "cabin": "C221A (5)",
+    "department": "CSE-2",
+    "empId": "8190",
+    "roomNo": "C221A",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "Ms. DASARI SAILAJA",
+    "cabin": "C105 (9)",
+    "department": "CSE-2",
+    "empId": "8193",
+    "roomNo": "C105",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "Dr. VENKATA RAO MADDUMALA",
+    "cabin": "C105 (6)",
+    "department": "CSE-2",
+    "empId": "8196",
+    "roomNo": "C105",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Mr. RAMBABU KALATHOTI",
+    "cabin": "C223 (9)",
+    "department": "CSE-2",
+    "empId": "8199",
+    "roomNo": "C223",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "Ms. KHADI LALITHA VANISREE",
+    "cabin": "C223 (11)",
+    "department": "CSE-2",
+    "empId": "8200",
+    "roomNo": "C223",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "Dr. UPPULURI LAKSHMI SOUNDHARYA",
+    "cabin": "C206 (15)",
+    "department": "CSE-2",
+    "empId": "8282",
+    "roomNo": "C206",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "Dr. VANDOTH SRINIVASA RAO",
+    "cabin": "C206 (12)",
+    "department": "CSE-2",
+    "empId": "8296",
+    "roomNo": "C206",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Dr. MALLADI RAVISANKAR",
+    "cabin": "M107 (2)",
+    "department": "CSE-2",
+    "empId": "8297",
+    "roomNo": "M107",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Dr. BADUGU SAMATHA",
+    "cabin": "M104 (2)",
+    "department": "CSE-2",
+    "empId": "8323",
+    "roomNo": "M104",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Mr. PINAPATI LAKSHMANA RAO",
+    "cabin": "L606 (8)",
+    "department": "CSE-2",
+    "empId": "8335",
+    "roomNo": "L606",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "Dr. R S M LAKSHMI PATIBANDLA",
+    "cabin": "C221A (10)",
+    "department": "CSE-2",
+    "empId": "8339",
+    "roomNo": "C221A",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "Ms.. DRAKSHAYANI SRIRAMSETTI",
+    "cabin": "L606 (2)",
+    "department": "CSE-2",
+    "empId": "8353",
+    "roomNo": "L606",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Ms. BANDI PRAMEELARANI",
+    "cabin": "C321A (15)",
+    "department": "CSE-2",
+    "empId": "8382",
+    "roomNo": "C321A",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "Dr. D PRAMODH KRISHNA",
+    "cabin": "C105 (10)",
+    "department": "CSE-2",
+    "empId": "8416",
+    "roomNo": "C105",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "Dr. ADDANKI MOUNIKA",
+    "cabin": "C223 (13)",
+    "department": "CSE-2",
+    "empId": "8428",
+    "roomNo": "C223",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "Dr. MADABATTULA P J SANTOSH KUMAR",
+    "cabin": "C206 (3)",
+    "department": "CSE-2",
+    "empId": "8435",
+    "roomNo": "C206",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Dr. CHALLAPALLI JHANSI RANI",
+    "cabin": "C206 (17)",
+    "department": "CSE-2",
+    "empId": "8440",
+    "roomNo": "C206",
+    "cabinSeq": "17"
+  },
+  {
+    "faculty": "Mr. JITU GOPAIAH",
+    "cabin": "C105 (11)",
+    "department": "CSE-2",
+    "empId": "8490",
+    "roomNo": "C105",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "Dr. P L KISHAN KUMAR REDDY",
+    "cabin": "C421A2 (3)",
+    "department": "CSE-2",
+    "empId": "8533",
+    "roomNo": "C421A2",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Dr. MOHAMMAD SHAHID",
+    "cabin": "C206 (13)",
+    "department": "CSE-2",
+    "empId": "8565",
+    "roomNo": "C206",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "Dr. YELISELA RAJESH",
+    "cabin": "C205 (21)",
+    "department": "CSE-2",
+    "empId": "8592",
+    "roomNo": "C205",
+    "cabinSeq": "21"
+  },
+  {
+    "faculty": "Dr. P. PRAVEEN KUMAR",
+    "cabin": "C216",
+    "department": "CSE-2",
+    "empId": "8635",
+    "roomNo": "C216",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Mr.MOHAMMAD ASHIQUE AZAD",
+    "cabin": "C105 (12)",
+    "department": "CSE-2",
+    "empId": "8701",
+    "roomNo": "C105",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Mr.ARAVIND NALAMOTHU",
+    "cabin": "C205 (23)",
+    "department": "CSE-2",
+    "empId": "8707",
+    "roomNo": "C205",
+    "cabinSeq": "23"
+  },
+  {
+    "faculty": "Mr. JONATHAN BATHULA",
+    "cabin": "C206 (14)",
+    "department": "CSE-2",
+    "empId": "8800",
+    "roomNo": "C206",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "Dr. T CHITHRAKUMAR",
+    "cabin": "C205 (11)",
+    "department": "CSE-2",
+    "empId": "8806",
+    "roomNo": "C205",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "Dr. P PRABAKARAN",
+    "cabin": "C205 (12)",
+    "department": "CSE-2",
+    "empId": "8814",
+    "roomNo": "C205",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Mr.FAIZAL NUJUMUDEEN",
+    "cabin": "R305 (25)",
+    "department": "CSE-2",
+    "empId": "8818",
+    "roomNo": "R305",
+    "cabinSeq": "25"
+  },
+  {
+    "faculty": "Mrs. BOBBA SAHITHI",
+    "cabin": "C105 (8)",
+    "department": "CSE-2",
+    "empId": "8820",
+    "roomNo": "C105",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "Mr. MUPPIDI SOMA SUNDARA RAO",
+    "cabin": "L606 (9)",
+    "department": "CSE-2",
+    "empId": "8823",
+    "roomNo": "L606",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "Ms. DUDIGAM RAMYA",
+    "cabin": "L606 (3)",
+    "department": "CSE-2",
+    "empId": "8836",
+    "roomNo": "L606",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Mr. KRISHNA KISHORE THOTA",
+    "cabin": "C105 (13)",
+    "department": "CSE-2",
+    "empId": "8853",
+    "roomNo": "C105",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "Mr. VADDE SUJAN BABU",
+    "cabin": "C223 (14)",
+    "department": "CSE-2",
+    "empId": "8864",
+    "roomNo": "C223",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "Ms. T. SAI LAKSHMI",
+    "cabin": "C205 (13)",
+    "department": "CSE-2",
+    "empId": "8873",
+    "roomNo": "C205",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "Dr. TARAK HUSSAIN",
+    "cabin": "L606 (4)",
+    "department": "CSE-2",
+    "empId": "8874",
+    "roomNo": "L606",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Dr. V. KRISHNA REDDY",
+    "cabin": "F101",
+    "department": "CSE-2",
+    "empId": "8899",
+    "roomNo": "F101",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. K. ANU RADHA",
+    "cabin": "M103 (3)",
+    "department": "CSE-2",
+    "empId": "8905",
+    "roomNo": "M103",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Mr. SHAIK JILANI BASHA",
+    "cabin": "R305 (23)",
+    "department": "CSE-2",
+    "empId": "8906",
+    "roomNo": "R305",
+    "cabinSeq": "23"
+  },
+  {
+    "faculty": "Dr. MANIKYA PRASUNA",
+    "cabin": "C214",
+    "department": "CSE-2",
+    "empId": "8909",
+    "roomNo": "C214",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. G RAVIKANTH",
+    "cabin": "C221A2",
+    "department": "CSE-2",
+    "empId": "8913",
+    "roomNo": "C221A2",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. V SIVARAMARAJU VETUKURI",
+    "cabin": "C205 (22)",
+    "department": "CSE-2",
+    "empId": "8916",
+    "roomNo": "C205",
+    "cabinSeq": "22"
+  },
+  {
+    "faculty": "Ms. ELISABETH SUSAN DEVARAPALLI",
+    "cabin": "L606 (1)",
+    "department": "CSE-2",
+    "empId": "8922",
+    "roomNo": "L606",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr. B. TIRAPATHI REDDY (HOD)",
+    "cabin": "C203",
+    "department": "CSE-2",
+    "empId": "8964",
+    "roomNo": "C203",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Ms. SATHYAVANI ADDANKI",
+    "cabin": "C221A (6)",
+    "department": "CSE-2",
+    "empId": "8969",
+    "roomNo": "C221A",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Dr. KURAGANTI SANTHI",
+    "cabin": "C206 (5)",
+    "department": "CSE-2",
+    "empId": "8978",
+    "roomNo": "C206",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "Ms. BADIPATI SIVAGANGA",
+    "cabin": "C223 (15)",
+    "department": "CSE-2",
+    "empId": "8979",
+    "roomNo": "C223",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "Ms. SAMPATHIRAO SUNEETHA",
+    "cabin": "C105 (1)",
+    "department": "CSE-2",
+    "empId": "8981",
+    "roomNo": "C105",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Dr. AMIT KUMAR KAR",
+    "cabin": "C221A (7)",
+    "department": "CSE-2",
+    "empId": "8995",
+    "roomNo": "C221A",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "Mr. SHIYAM V",
+    "cabin": "L606 (5)",
+    "department": "CSE-2",
+    "empId": "8996",
+    "roomNo": "L606",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "Ms. MAHESWARI BANDI",
+    "cabin": "C205 (20)",
+    "department": "CSE-2",
+    "empId": "8997",
+    "roomNo": "C205",
+    "cabinSeq": "20"
+  },
+  {
+    "faculty": "Ms. EDUPUGANTI MOUNIKA",
+    "cabin": "C105 (2)",
+    "department": "CSE-2",
+    "empId": "9020",
+    "roomNo": "C105",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Mr. VENKATA RAO JAVVAJI",
+    "cabin": "C105 (3)",
+    "department": "CSE-2",
+    "empId": "9028",
+    "roomNo": "C105",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Mr. VELCHURI BALAJI",
+    "cabin": "C206 (6)",
+    "department": "CSE-2",
+    "empId": "9033",
+    "roomNo": "C206",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Mr. SANDEEP NANDA",
+    "cabin": "C206 (7)",
+    "department": "CSE-2",
+    "empId": "9034",
+    "roomNo": "C206",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "Mr. SINGARAJU SRINIVASULU",
+    "cabin": "C105 (5)",
+    "department": "CSE-2",
+    "empId": "9035",
+    "roomNo": "C105",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "Ms. SHAIK SANHEERA",
+    "cabin": "C105 (15)",
+    "department": "CSE-2",
+    "empId": "9037",
+    "roomNo": "C105",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "Ms. C V K SIRISHA",
+    "cabin": "C105 (16)",
+    "department": "CSE-2",
+    "empId": "9038",
+    "roomNo": "C105",
+    "cabinSeq": "16"
+  },
+  {
+    "faculty": "Dr. M GEETHA",
+    "cabin": "C205 (14)",
+    "department": "CSE-2",
+    "empId": "9101",
+    "roomNo": "C205",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "Ms. SUROJU LEKHANA SRILAKSHMI",
+    "cabin": "C223 (17)",
+    "department": "CSE-2",
+    "empId": "9131",
+    "roomNo": "C223",
+    "cabinSeq": "17"
+  },
+  {
+    "faculty": "Ms. PRAVALLIKA K.",
+    "cabin": "L606 (6)",
+    "department": "CSE-2",
+    "empId": "9255",
+    "roomNo": "L606",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Mr.NIMMAGADDA YASWANTH SAI",
+    "cabin": "R305 (24)",
+    "department": "CSE-2",
+    "empId": "9377",
+    "roomNo": "R305",
+    "cabinSeq": "24"
+  },
+  {
+    "faculty": "Ms. T.SAILAJA",
+    "cabin": "C105 (7)",
+    "department": "CSE-2",
+    "empId": "9391",
+    "roomNo": "C105",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "Dr. CHAPPALA RAMADEVI",
+    "cabin": "C321A (14)",
+    "department": "CSE-2",
+    "empId": "9413",
+    "roomNo": "C321A",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "Mr.CHANDU DELHI POLICE",
+    "cabin": "C206 (8)",
+    "department": "CSE-2",
+    "empId": "9427",
+    "roomNo": "C206",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "Dr. SUJITH ARIYAPADATH",
+    "cabin": "L606 (11)",
+    "department": "CSE-2",
+    "empId": "9452",
+    "roomNo": "L606",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "NALLURI VENKATA MADHU BINDU",
+    "cabin": "C221A (2)",
+    "department": "CSE-2",
+    "empId": "9484",
+    "roomNo": "C221A",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Mr. N Vijay Gopal",
+    "cabin": "L606 (12)",
+    "department": "CSE-2",
+    "empId": "9634",
+    "roomNo": "L606",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Dr. B. CHAITANYA KRISHNA",
+    "cabin": "C104",
+    "department": "CSE-3",
+    "empId": "2486",
+    "roomNo": "C104",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.TATA RAVI KUMAR",
+    "cabin": "C221A3",
+    "department": "CSE-3",
+    "empId": "2499",
+    "roomNo": "C221A3",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. G. SIVANAGESWARA RAO",
+    "cabin": "C521A1",
+    "department": "CSE-3",
+    "empId": "2934",
+    "roomNo": "C521A1",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.K.V.V.SATYANARAYANA",
+    "cabin": "C221A4",
+    "department": "CSE-3",
+    "empId": "2940",
+    "roomNo": "C221A4",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.N. SRINIVASU",
+    "cabin": "C215B",
+    "department": "CSE-3",
+    "empId": "3173",
+    "roomNo": "C215B",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.T.VAMSIDHAR",
+    "cabin": "C405 (21)",
+    "department": "CSE-3",
+    "empId": "3849",
+    "roomNo": "C405",
+    "cabinSeq": "21"
+  },
+  {
+    "faculty": "Dr.RAJARAJESWARI POTHURAJU",
+    "cabin": "C513",
+    "department": "CSE-3",
+    "empId": "4242",
+    "roomNo": "C513",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. P. NAGESH",
+    "cabin": "C521A1",
+    "department": "CSE-3",
+    "empId": "4826",
+    "roomNo": "C521A1",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. P. VIDYULLATHA",
+    "cabin": "C509A",
+    "department": "CSE-3",
+    "empId": "5237",
+    "roomNo": "C509A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. S. SRI HARSHA",
+    "cabin": "C515B",
+    "department": "CSE-3",
+    "empId": "5887",
+    "roomNo": "C515B",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Mr. TIRANDASU RAVI KUMAR",
+    "cabin": "C405 (20)",
+    "department": "CSE-3",
+    "empId": "6216",
+    "roomNo": "C405",
+    "cabinSeq": "20"
+  },
+  {
+    "faculty": "Dr. G. VEERRAJU",
+    "cabin": "C405 (19)",
+    "department": "CSE-3",
+    "empId": "6280",
+    "roomNo": "C405",
+    "cabinSeq": "19"
+  },
+  {
+    "faculty": "Dr. A SENTHIL (HOD)",
+    "cabin": "C503",
+    "department": "CSE-3",
+    "empId": "6799",
+    "roomNo": "C503",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Mr. R RANJITH KUMAR",
+    "cabin": "C223 (18)",
+    "department": "CSE-3",
+    "empId": "7026",
+    "roomNo": "C223",
+    "cabinSeq": "18"
+  },
+  {
+    "faculty": "Ms. B. YAMINI SUPRIYA",
+    "cabin": "C405 (18)",
+    "department": "CSE-3",
+    "empId": "7097",
+    "roomNo": "C405",
+    "cabinSeq": "18"
+  },
+  {
+    "faculty": "Mr. P. CHANDRA MOHAN RAI",
+    "cabin": "R605 (1)",
+    "department": "CSE-3",
+    "empId": "7140",
+    "roomNo": "R605",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Ms. P. SUPRIYA",
+    "cabin": "C505 (3)",
+    "department": "CSE-3",
+    "empId": "7145",
+    "roomNo": "C505",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Dr. R. VIJAYA KUMAR REDDY",
+    "cabin": "R605 (2)",
+    "department": "CSE-3",
+    "empId": "7265",
+    "roomNo": "R605",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "PBVN Prasad",
+    "cabin": "C505 (6)",
+    "department": "CSE-3",
+    "empId": "7957",
+    "roomNo": "C505",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Mr. S. MAHESH NAIDU",
+    "cabin": "C521A1",
+    "department": "CSE-3",
+    "empId": "8028",
+    "roomNo": "C521A1",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. MUKKAPATI NAVEEN",
+    "cabin": "C321A (16)",
+    "department": "CSE-3",
+    "empId": "8069",
+    "roomNo": "C321A",
+    "cabinSeq": "16"
+  },
+  {
+    "faculty": "Ms. THOTA LAKSHMI DEEPIKA ROY",
+    "cabin": "M119 (2)",
+    "department": "CSE-3",
+    "empId": "8241",
+    "roomNo": "M119",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "Mr. M. SUBBA RAO",
+    "cabin": "C405 (22)",
+    "department": "CSE-3",
+    "empId": "8547",
+    "roomNo": "C405",
+    "cabinSeq": "22"
+  },
+  {
+    "faculty": "Mr. N. RAMARAO",
+    "cabin": "C221A (13)",
+    "department": "CSE-3",
+    "empId": "8560",
+    "roomNo": "C221A",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "Dr. PANGULURI PADMAVATHI",
+    "cabin": "C505 (18)",
+    "department": "CSE-3",
+    "empId": "8563",
+    "roomNo": "C505",
+    "cabinSeq": "18"
+  },
+  {
+    "faculty": "Ms. T JYOTHI",
+    "cabin": "C601 (5)",
+    "department": "CSE-3",
+    "empId": "8708",
+    "roomNo": "C601",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "Mr. N MALLIKHARJUNA RAO",
+    "cabin": "C206 (19)",
+    "department": "CSE-3",
+    "empId": "8901",
+    "roomNo": "C206",
+    "cabinSeq": "19"
+  },
+  {
+    "faculty": "Dr. SAIYED FAIAYAZ WARIS",
+    "cabin": "C405 (17)",
+    "department": "CSE-3",
+    "empId": "8902",
+    "roomNo": "C405",
+    "cabinSeq": "17"
+  },
+  {
+    "faculty": "Ms. SRILAKSHMI RAMAYA SAKAMUDI",
+    "cabin": "C405 (16)",
+    "department": "CSE-3",
+    "empId": "9009",
+    "roomNo": "C405",
+    "cabinSeq": "16"
+  },
+  {
+    "faculty": "Ms. MANDE SPANDANA",
+    "cabin": "M119 (3)",
+    "department": "CSE-3",
+    "empId": "9154",
+    "roomNo": "M119",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Ms. THUMMALA PURNIMA",
+    "cabin": "C405 (23)",
+    "department": "CSE-3",
+    "empId": "9171",
+    "roomNo": "C405",
+    "cabinSeq": "23"
+  },
+  {
+    "faculty": "Ms.T. ASWINI DEVI",
+    "cabin": "L508 (3)",
+    "department": "CSE-3",
+    "empId": "9174",
+    "roomNo": "L508",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Mr. KARI VENKATA SUMANTH",
+    "cabin": "L508 (4)",
+    "department": "CSE-3",
+    "empId": "9177",
+    "roomNo": "L508",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Dr. LOBSANG DARGE",
+    "cabin": "C405 (15)",
+    "department": "CSE-3",
+    "empId": "9194",
+    "roomNo": "C405",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "Ms. VADDURI MANEESHA",
+    "cabin": "L508 (5)",
+    "department": "CSE-3",
+    "empId": "9196",
+    "roomNo": "L508",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "Dr. A. SUDHIR BABU",
+    "cabin": "M309 (B)",
+    "department": "CSE-3",
+    "empId": "9213",
+    "roomNo": "M309",
+    "cabinSeq": "B"
+  },
+  {
+    "faculty": "Dr. CH. KIRAN KUMAR",
+    "cabin": "L508 (6)",
+    "department": "CSE-3",
+    "empId": "9218",
+    "roomNo": "L508",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Ms. A. SASI HIMA BINDU",
+    "cabin": "L508 (7)",
+    "department": "CSE-3",
+    "empId": "9247",
+    "roomNo": "L508",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "Dr. K. MALLIKARJUNAMALLU",
+    "cabin": "L508 (8)",
+    "department": "CSE-3",
+    "empId": "9278",
+    "roomNo": "L508",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "Ms. CHERUKUPALLI PRABHAVATHI",
+    "cabin": "L508 (9)",
+    "department": "CSE-3",
+    "empId": "9281",
+    "roomNo": "L508",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "Ms. Y. SAROJA",
+    "cabin": "L508 (10)",
+    "department": "CSE-3",
+    "empId": "9295",
+    "roomNo": "L508",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "Dr. PRERNA MOHIT",
+    "cabin": "C405 (12)",
+    "department": "CSE-3",
+    "empId": "9303",
+    "roomNo": "C405",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Dr. P. V. VENKATESWARA RAO",
+    "cabin": "L508 (11)",
+    "department": "CSE-3",
+    "empId": "9312",
+    "roomNo": "L508",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "Mr. SEELAM VISWESWARA RAO",
+    "cabin": "C505 (NA)",
+    "department": "CSE-3",
+    "empId": "9323",
+    "roomNo": "C505",
+    "cabinSeq": "NA"
+  },
+  {
+    "faculty": "Dr. K. SARANYA",
+    "cabin": "M119 (4)",
+    "department": "CSE-3",
+    "empId": "9324",
+    "roomNo": "M119",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Mr. J. YATEESH",
+    "cabin": "C405 (2k)",
+    "department": "CSE-3",
+    "empId": "9327",
+    "roomNo": "C405",
+    "cabinSeq": "2k"
+  },
+  {
+    "faculty": "Mr. SANDEEP KUMAR SHARMA",
+    "cabin": "C221A (12)",
+    "department": "CSE-3",
+    "empId": "9342",
+    "roomNo": "C221A",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Mr. MOSHE DAYAN SIRAPANGI",
+    "cabin": "L508 (12)",
+    "department": "CSE-3",
+    "empId": "9347",
+    "roomNo": "L508",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Dr. SUSMITHA UDDARAJU",
+    "cabin": "L508 (13)",
+    "department": "CSE-3",
+    "empId": "9366",
+    "roomNo": "L508",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "Mrs. K.JYOTHSNA DEVI",
+    "cabin": "C405 (11)",
+    "department": "CSE-3",
+    "empId": "9395",
+    "roomNo": "C405",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "Mr.R.VIJAY",
+    "cabin": "C321A (13)",
+    "department": "CSE-3",
+    "empId": "9523",
+    "roomNo": "C321A",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "Dr Raynukaazhakarsamy",
+    "cabin": "L508 (15)",
+    "department": "CSE-3",
+    "empId": "9601",
+    "roomNo": "L508",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "Dr. SAZIYA TABBASUM",
+    "cabin": "C405 (14)",
+    "department": "CSE-3",
+    "empId": "9269",
+    "roomNo": "C405",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "Mr. STALIN BABU JALLI",
+    "cabin": "C405 (13)",
+    "department": "CSE-3",
+    "empId": "9270",
+    "roomNo": "C405",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "DR.V.CHANDRA PRAKASH",
+    "cabin": "C521A4",
+    "department": "CSE-4",
+    "empId": "10",
+    "roomNo": "C521A4",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.V.SRIKANTH",
+    "cabin": "C403",
+    "department": "CSE-4",
+    "empId": "439",
+    "roomNo": "C403",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.Y.PRASANTH",
+    "cabin": "C514B",
+    "department": "CSE-4",
+    "empId": "827",
+    "roomNo": "C514B",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.G.DINESH KUMAR",
+    "cabin": "C515B",
+    "department": "CSE-4",
+    "empId": "878",
+    "roomNo": "C515B",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. T. PAVAN KUMAR",
+    "cabin": "C603A",
+    "department": "CSE-4",
+    "empId": "1277",
+    "roomNo": "C603A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.S.SRINIVASA RAO",
+    "cabin": "C015B",
+    "department": "CSE-4",
+    "empId": "1479",
+    "roomNo": "C015B",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. B. SEKHAR BABU",
+    "cabin": "C018",
+    "department": "CSE-4",
+    "empId": "1553",
+    "roomNo": "C018",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr RUTH RAMYA",
+    "cabin": "C115A",
+    "department": "CSE-4",
+    "empId": "1901",
+    "roomNo": "C115A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.P.LAKSHMI PRASANNA",
+    "cabin": "C213",
+    "department": "CSE-4",
+    "empId": "1920",
+    "roomNo": "C213",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr K RAVINDRANATH",
+    "cabin": "C116",
+    "department": "CSE-4",
+    "empId": "1974",
+    "roomNo": "C116",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. K. SUBRAHMANYAM",
+    "cabin": "C521A2",
+    "department": "CSE-4",
+    "empId": "2192",
+    "roomNo": "C521A2",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. NAGA MALLESWARI",
+    "cabin": "C509A",
+    "department": "CSE-4",
+    "empId": "2649",
+    "roomNo": "C509A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. M S R PRASAD",
+    "cabin": "M116 (4)",
+    "department": "CSE-4",
+    "empId": "2919",
+    "roomNo": "M116",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "DR.K.V.RAJU",
+    "cabin": "L402",
+    "department": "CSE-4",
+    "empId": "2937",
+    "roomNo": "L402",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. P.V.R.D. PRASADA RAO",
+    "cabin": "C421A2 (1)",
+    "department": "CSE-4",
+    "empId": "3346",
+    "roomNo": "C421A2",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "MR.V.VIJAY KUMAR",
+    "cabin": "C505 (1)",
+    "department": "CSE-4",
+    "empId": "3880",
+    "roomNo": "C505",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "DR.G.SWAIN",
+    "cabin": "M309 (F)",
+    "department": "CSE-4",
+    "empId": "3895",
+    "roomNo": "M309",
+    "cabinSeq": "F"
+  },
+  {
+    "faculty": "DR.P.S.V.S.SRIDHAR",
+    "cabin": "C112",
+    "department": "CSE-4",
+    "empId": "4092",
+    "roomNo": "C112",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.M.LAKSHMANA PHANEENDRA",
+    "cabin": "C603D",
+    "department": "CSE-4",
+    "empId": "4277",
+    "roomNo": "C603D",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.RAJU ANITHA",
+    "cabin": "C513",
+    "department": "CSE-4",
+    "empId": "4788",
+    "roomNo": "C513",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. P. YELLAMMA",
+    "cabin": "C509A",
+    "department": "CSE-4",
+    "empId": "4795",
+    "roomNo": "C509A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. K. ASHESH",
+    "cabin": "C603C",
+    "department": "CSE-4",
+    "empId": "4868",
+    "roomNo": "C603C",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Mrs. V MOUNICA",
+    "cabin": "C509A",
+    "department": "CSE-4",
+    "empId": "5254",
+    "roomNo": "C509A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.K.BHANU PRAKASH",
+    "cabin": "L605",
+    "department": "CSE-4",
+    "empId": "5257",
+    "roomNo": "L605",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. A K VELMURUGAN",
+    "cabin": "M108 (1)",
+    "department": "CSE-4",
+    "empId": "5849",
+    "roomNo": "M108",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "DR.P.M.ASHOK KUMAR",
+    "cabin": "C505 (10)",
+    "department": "CSE-4",
+    "empId": "5956",
+    "roomNo": "C505",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "DR.P.VIDYA SAGAR",
+    "cabin": "C114A",
+    "department": "CSE-4",
+    "empId": "6126",
+    "roomNo": "C114A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.VITHYA GANESAN",
+    "cabin": "C521A3",
+    "department": "CSE-4",
+    "empId": "6199",
+    "roomNo": "C521A3",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.A.ABDUL RAHMAN",
+    "cabin": "M309 (D)",
+    "department": "CSE-4",
+    "empId": "6229",
+    "roomNo": "M309",
+    "cabinSeq": "D"
+  },
+  {
+    "faculty": "MRS. SMRITILEKHA DAS",
+    "cabin": "M119 (5)",
+    "department": "CSE-4",
+    "empId": "6295",
+    "roomNo": "M119",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "DR.S.HRUSHKESAVA RAJU",
+    "cabin": "C603 (A2)",
+    "department": "CSE-4",
+    "empId": "6307",
+    "roomNo": "C603",
+    "cabinSeq": "A2"
+  },
+  {
+    "faculty": "DR. NM JYOTHI",
+    "cabin": "M119 (6)",
+    "department": "CSE-4",
+    "empId": "6332",
+    "roomNo": "M119",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "DR.P. ITHAYA RANI",
+    "cabin": "M104 (3)",
+    "department": "CSE-4",
+    "empId": "6442",
+    "roomNo": "M104",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "DR. B UMAMAHESWARA RAO",
+    "cabin": "M309 (J)",
+    "department": "CSE-4",
+    "empId": "6482",
+    "roomNo": "M309",
+    "cabinSeq": "J"
+  },
+  {
+    "faculty": "DR.K.NAGARJUNA",
+    "cabin": "C405 (10)",
+    "department": "CSE-4",
+    "empId": "6641",
+    "roomNo": "C405",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "DR. BASANT SAH",
+    "cabin": "M109 (3)",
+    "department": "CSE-4",
+    "empId": "6869",
+    "roomNo": "M109",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "DR. KRISHNAN THIRUPPATHI",
+    "cabin": "C405 (9)",
+    "department": "CSE-4",
+    "empId": "6911",
+    "roomNo": "C405",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "MR.TUSHAR KANTI DE",
+    "cabin": "M119 (7)",
+    "department": "CSE-4",
+    "empId": "7060",
+    "roomNo": "M119",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "DR.SAJJA TULASI KRISHNA",
+    "cabin": "C405 (8)",
+    "department": "CSE-4",
+    "empId": "7122",
+    "roomNo": "C405",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "DR.VISWANATHAN RAMASAMY REDDY",
+    "cabin": "C521A3",
+    "department": "CSE-4",
+    "empId": "7175",
+    "roomNo": "C521A3",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Mr.R.Nagendra Babu",
+    "cabin": "M309 (C)",
+    "department": "CSE-4",
+    "empId": "7264",
+    "roomNo": "M309",
+    "cabinSeq": "C"
+  },
+  {
+    "faculty": "DR.R.D. SATHIYA",
+    "cabin": "M309 (K)",
+    "department": "CSE-4",
+    "empId": "7300",
+    "roomNo": "M309",
+    "cabinSeq": "K"
+  },
+  {
+    "faculty": "MRS. SUNEETHA BANDEELA",
+    "cabin": "R102 (7)",
+    "department": "CSE-4",
+    "empId": "7346",
+    "roomNo": "R102",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "DR. JAGADISH GURRALA",
+    "cabin": "C223 (19)",
+    "department": "CSE-4",
+    "empId": "7398",
+    "roomNo": "C223",
+    "cabinSeq": "19"
+  },
+  {
+    "faculty": "DR.DARAVIKRAM",
+    "cabin": "M309 (G)",
+    "department": "CSE-4",
+    "empId": "7511",
+    "roomNo": "M309",
+    "cabinSeq": "G"
+  },
+  {
+    "faculty": "MR.M.MARKANDEYULU",
+    "cabin": "C601 (13)",
+    "department": "CSE-4",
+    "empId": "7602",
+    "roomNo": "C601",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "MR.PALADUGU VENKATESWARA RAO",
+    "cabin": "C421A2 (2)",
+    "department": "CSE-4",
+    "empId": "7864",
+    "roomNo": "C421A2",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "DR.G.KRISHNA MOHAN",
+    "cabin": "M309 (C)",
+    "department": "CSE-4",
+    "empId": "7949",
+    "roomNo": "M309",
+    "cabinSeq": "C"
+  },
+  {
+    "faculty": "MR.SUKHAM ROMEN SINGH",
+    "cabin": "C405 (7)",
+    "department": "CSE-4",
+    "empId": "7989",
+    "roomNo": "C405",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "MR.L.V.SAMBASIVARAO",
+    "cabin": "C603 (2)",
+    "department": "CSE-4",
+    "empId": "8016",
+    "roomNo": "C603",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "DR. B. VEERAMALLU",
+    "cabin": "M309 (H)",
+    "department": "CSE-4",
+    "empId": "8063",
+    "roomNo": "M309",
+    "cabinSeq": "H"
+  },
+  {
+    "faculty": "DR. JAYAVARAPU KARTHIK",
+    "cabin": "C603D",
+    "department": "CSE-4",
+    "empId": "8068",
+    "roomNo": "C603D",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. R.MAHENDRAN",
+    "cabin": "M119 (8)",
+    "department": "CSE-4",
+    "empId": "8085",
+    "roomNo": "M119",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "DR. G. V. SAM KUMAR",
+    "cabin": "M119 (9)",
+    "department": "CSE-4",
+    "empId": "8094",
+    "roomNo": "M119",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "DR. G. RAJENDRA KUMAR",
+    "cabin": "M309 (A)",
+    "department": "CSE-4",
+    "empId": "8105",
+    "roomNo": "M309",
+    "cabinSeq": "A"
+  },
+  {
+    "faculty": "MR. D. KISHORE",
+    "cabin": "C603 (1)",
+    "department": "CSE-4",
+    "empId": "8106",
+    "roomNo": "C603",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "DR. K.SELVAM",
+    "cabin": "R102 (18)",
+    "department": "CSE-4",
+    "empId": "8118",
+    "roomNo": "R102",
+    "cabinSeq": "18"
+  },
+  {
+    "faculty": "DR.DHARMAIAH DEVARAPALLI",
+    "cabin": "M309 (E)",
+    "department": "CSE-4",
+    "empId": "8121",
+    "roomNo": "M309",
+    "cabinSeq": "E"
+  },
+  {
+    "faculty": "MR.YENGALA AMARAIAH",
+    "cabin": "C601 (2)",
+    "department": "CSE-4",
+    "empId": "8138",
+    "roomNo": "C601",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "MS.RAJAMAHENDRAVARAPU LAKSHMI DURGA",
+    "cabin": "C405 (6)",
+    "department": "CSE-4",
+    "empId": "8145",
+    "roomNo": "C405",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "DR. B. L. N. PHANEENDRA KUMAR",
+    "cabin": "C603C",
+    "department": "CSE-4",
+    "empId": "8215",
+    "roomNo": "C603C",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "MS. GUDAPATI SUNEETHA",
+    "cabin": "R102 (11)",
+    "department": "CSE-4",
+    "empId": "8242",
+    "roomNo": "R102",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "MS.LAVANYA KONGALA",
+    "cabin": "C601 (7)",
+    "department": "CSE-4",
+    "empId": "8244",
+    "roomNo": "C601",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "MR.REGULAGADDA RAMAKRISHNA",
+    "cabin": "M307 (1)",
+    "department": "CSE-4",
+    "empId": "8245",
+    "roomNo": "M307",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "MRS.N.SRAVANTHI",
+    "cabin": "C505 (5)",
+    "department": "CSE-4",
+    "empId": "8247",
+    "roomNo": "C505",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "MS.YAMPATI BHAGYALAKSHMI",
+    "cabin": "C601 (6)",
+    "department": "CSE-4",
+    "empId": "8248",
+    "roomNo": "C601",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "MS.ARUNA KOLUKULAPALLI",
+    "cabin": "R102 (13)",
+    "department": "CSE-4",
+    "empId": "8270",
+    "roomNo": "R102",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "MR.YALLAMATI PRAKASA RAO",
+    "cabin": "C603 (4)",
+    "department": "CSE-4",
+    "empId": "8299",
+    "roomNo": "C603",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "MR.G.V. RAMANA REDDY",
+    "cabin": "C601 (14)",
+    "department": "CSE-4",
+    "empId": "8310",
+    "roomNo": "C601",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "MR.TALATOTI RATNA KUMAR",
+    "cabin": "R102 (8)",
+    "department": "CSE-4",
+    "empId": "8317",
+    "roomNo": "R102",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "MS.NALLURI BHARGAVI",
+    "cabin": "C405 (5)",
+    "department": "CSE-4",
+    "empId": "8329",
+    "roomNo": "C405",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "MS.DONEPUDI ROHINI",
+    "cabin": "R102 (14)",
+    "department": "CSE-4",
+    "empId": "8334",
+    "roomNo": "R102",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "DR.KALAKOTI GOWRISANKAR",
+    "cabin": "C601 (15)",
+    "department": "CSE-4",
+    "empId": "8337",
+    "roomNo": "C601",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "DR.MD.SHAMSUL HAQUE ANSARI",
+    "cabin": "C405 (4)",
+    "department": "CSE-4",
+    "empId": "8377",
+    "roomNo": "C405",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "MR.MALLAMPATI MAHESH",
+    "cabin": "C505 (18)",
+    "department": "CSE-4",
+    "empId": "8400",
+    "roomNo": "C505",
+    "cabinSeq": "18"
+  },
+  {
+    "faculty": "DR.CH.NAGAMANI",
+    "cabin": "M119",
+    "department": "CSE-4",
+    "empId": "8409",
+    "roomNo": "M119",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "MS.G.ANUSHA",
+    "cabin": "M119",
+    "department": "CSE-4",
+    "empId": "8410",
+    "roomNo": "M119",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.MOHSIN FAYAZ",
+    "cabin": "M119 (10)",
+    "department": "CSE-4",
+    "empId": "8412",
+    "roomNo": "M119",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "MR.LAKSHMANARAO BATTULA",
+    "cabin": "C603 (3)",
+    "department": "CSE-4",
+    "empId": "8434",
+    "roomNo": "C603",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "MS.BANDLA NIROSHA",
+    "cabin": "C405 (3)",
+    "department": "CSE-4",
+    "empId": "8492",
+    "roomNo": "C405",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "MRS.R.SATHVIKI",
+    "cabin": "R102 (10)",
+    "department": "CSE-4",
+    "empId": "8508",
+    "roomNo": "R102",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "MR.VENKATA SUBRAMANYAM KALAVALA",
+    "cabin": "R102 (12)",
+    "department": "CSE-4",
+    "empId": "8553",
+    "roomNo": "R102",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "MRS.SHAIK THASEEN TAJ",
+    "cabin": "R102 (17)",
+    "department": "CSE-4",
+    "empId": "8740",
+    "roomNo": "R102",
+    "cabinSeq": "17"
+  },
+  {
+    "faculty": "MR.K.GOPALA KRISHNA",
+    "cabin": "M307 (2)",
+    "department": "CSE-4",
+    "empId": "8762",
+    "roomNo": "M307",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "MR.K.HARI",
+    "cabin": "M307 (3)",
+    "department": "CSE-4",
+    "empId": "8789",
+    "roomNo": "M307",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "DR.B.SURESH",
+    "cabin": "C601 (8)",
+    "department": "CSE-4",
+    "empId": "8795",
+    "roomNo": "C601",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "DR.R.SHALINI",
+    "cabin": "C603 (A1)",
+    "department": "CSE-4",
+    "empId": "8822",
+    "roomNo": "C603",
+    "cabinSeq": "A1"
+  },
+  {
+    "faculty": "MS. T.SRIVALLI",
+    "cabin": "R102 (9)",
+    "department": "CSE-4",
+    "empId": "8852",
+    "roomNo": "R102",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "DR. K. RAJASEKHARA RAO",
+    "cabin": "C201",
+    "department": "CSE-4",
+    "empId": "8882",
+    "roomNo": "C201",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "MRS. KOTTURU PRASUNA",
+    "cabin": "C221A (14)",
+    "department": "CSE-4",
+    "empId": "9053",
+    "roomNo": "C221A",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "DR.NIRUPMA PATHAK",
+    "cabin": "C603 (5)",
+    "department": "CSE-4",
+    "empId": "9071",
+    "roomNo": "C603",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "MS. V. ASHA LATHA",
+    "cabin": "C405 (2)",
+    "department": "CSE-4",
+    "empId": "9083",
+    "roomNo": "C405",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "DR.S.SARAVANAN",
+    "cabin": "C505 (17)",
+    "department": "CSE-4",
+    "empId": "9102",
+    "roomNo": "C505",
+    "cabinSeq": "17"
+  },
+  {
+    "faculty": "GAVINI NAGA PAVANI",
+    "cabin": "C603 (6)",
+    "department": "CSE-4",
+    "empId": "9138",
+    "roomNo": "C603",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "MR. A. SUDHAKAR",
+    "cabin": "M307 (4)",
+    "department": "CSE-4",
+    "empId": "9500",
+    "roomNo": "M307",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "MRS. AKULA AMRUTAVALLI",
+    "cabin": "C405 (1)",
+    "department": "CSE-4",
+    "empId": "9511",
+    "roomNo": "C405",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "MS.C LALITHA MANASA",
+    "cabin": "C603 (7)",
+    "department": "CSE-4",
+    "empId": "9517",
+    "roomNo": "C603",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "DR SURESH BABU J",
+    "cabin": "C601 (12)",
+    "department": "CSE-4",
+    "empId": "9519",
+    "roomNo": "C601",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "MRS.A.SWATHI",
+    "cabin": "C601 (1)",
+    "department": "CSE-4",
+    "empId": "9527",
+    "roomNo": "C601",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "Mr.P.VIJAYA BHASKAR",
+    "cabin": "C601 (9)",
+    "department": "CSE-4",
+    "empId": "9538",
+    "roomNo": "C601",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "Mr KOYYA AVINASH",
+    "cabin": "C601 (3)",
+    "department": "CSE-4",
+    "empId": "9561",
+    "roomNo": "C601",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "Mr.BHUKYA JABBER",
+    "cabin": "C601 (4)",
+    "department": "CSE-4",
+    "empId": "9570",
+    "roomNo": "C601",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "Mr GUMPULA ARAVIND",
+    "cabin": "C603 (8)",
+    "department": "CSE-4",
+    "empId": "9574",
+    "roomNo": "C603",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "Mr G MOHANA RAO",
+    "cabin": "C601 (10)",
+    "department": "CSE-4",
+    "empId": "9620",
+    "roomNo": "C601",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "MR AJAY KUMAR",
+    "cabin": "C601 (11)",
+    "department": "CSE-4",
+    "empId": "9624",
+    "roomNo": "C601",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "Mr. RAJA YASODHAR",
+    "cabin": "C603 (9)",
+    "department": "CSE-4",
+    "empId": "9626",
+    "roomNo": "C603",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "MR.D.KALYAN",
+    "cabin": "R305 (8)",
+    "department": "ELGE",
+    "empId": "2104",
+    "roomNo": "R305",
+    "cabinSeq": "8"
+  },
+  {
+    "faculty": "DR.KOGANTI SRIPATH ROY",
+    "cabin": "C424",
+    "department": "ELGE",
+    "empId": "2657",
+    "roomNo": "C424",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.MANCHIRAJU KAMESWARA RAO",
+    "cabin": "C114",
+    "department": "ELGE",
+    "empId": "3167",
+    "roomNo": "C114",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. PATHAN SALEEM AKRAM",
+    "cabin": "R305",
+    "department": "ELGE",
+    "empId": "3726",
+    "roomNo": "R305",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.SURYA NARAYANA PADHI",
+    "cabin": "R305",
+    "department": "ELGE",
+    "empId": "3786",
+    "roomNo": "R305",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.PORURI GOPI KRISHNA",
+    "cabin": "R305 (13)",
+    "department": "ELGE",
+    "empId": "3914",
+    "roomNo": "R305",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "MR.SRUNGARAM RAVI TEJA",
+    "cabin": "R305 (9)",
+    "department": "ELGE",
+    "empId": "4051",
+    "roomNo": "R305",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "DR.VENKATA NARESH MANDHALA",
+    "cabin": "C302",
+    "department": "ELGE",
+    "empId": "4093",
+    "roomNo": "C302",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.GOGINENI KRISHNA CHAITANYA",
+    "cabin": "R305 (2)",
+    "department": "ELGE",
+    "empId": "4108",
+    "roomNo": "R305",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "MR.RAMAIAH CHALLA",
+    "cabin": "R305 (10)",
+    "department": "ELGE",
+    "empId": "4278",
+    "roomNo": "R305",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "CH MOHAN KUMAR",
+    "cabin": "R305 (11)",
+    "department": "ELGE",
+    "empId": "4400",
+    "roomNo": "R305",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "DR.YELLA VENKATA RAJESH",
+    "cabin": "R305 (12)",
+    "department": "ELGE",
+    "empId": "4402",
+    "roomNo": "R305",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "MR.JONNALAGADDA SURYA KIRAN",
+    "cabin": "R305 (14)",
+    "department": "ELGE",
+    "empId": "4654",
+    "roomNo": "R305",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "DR.YALAVARTHI USHA DEVI",
+    "cabin": "R305",
+    "department": "ELGE",
+    "empId": "4719",
+    "roomNo": "R305",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.V DEEPAK",
+    "cabin": "R305",
+    "department": "ELGE",
+    "empId": "5269",
+    "roomNo": "R305",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.ASWIN KUMER S V",
+    "cabin": "R305",
+    "department": "ELGE",
+    "empId": "5395",
+    "roomNo": "R305",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.S ROOBAN",
+    "cabin": "R402",
+    "department": "ELGE",
+    "empId": "5406",
+    "roomNo": "R402",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.DINESH KUMAR A",
+    "cabin": "M108 (1)",
+    "department": "ELGE",
+    "empId": "5448",
+    "roomNo": "M108",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "DR.S ARUN METHA",
+    "cabin": "R305",
+    "department": "ELGE",
+    "empId": "5616",
+    "roomNo": "R305",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "MR.KANAKALA V RAVI TEJA",
+    "cabin": "R305 (15)",
+    "department": "ELGE",
+    "empId": "5730",
+    "roomNo": "R305",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "DR.PADMANABAN K",
+    "cabin": "M108 (2)",
+    "department": "ELGE",
+    "empId": "5848",
+    "roomNo": "M108",
+    "cabinSeq": "2"
+  },
+  {
+    "faculty": "DR.GANGA RAMA KOTESWARA RAO",
+    "cabin": "R502",
+    "department": "ELGE",
+    "empId": "6274",
+    "roomNo": "R502",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "MS.PUPPALA RAMYA",
+    "cabin": "R305 (16)",
+    "department": "ELGE",
+    "empId": "6288",
+    "roomNo": "R305",
+    "cabinSeq": "16"
+  },
+  {
+    "faculty": "MR.BALAJEE R.M",
+    "cabin": "R305 (17)",
+    "department": "ELGE",
+    "empId": "6298",
+    "roomNo": "R305",
+    "cabinSeq": "17"
+  },
+  {
+    "faculty": "DR.SADAM KAVITHA",
+    "cabin": "R305 (3)",
+    "department": "ELGE",
+    "empId": "6306",
+    "roomNo": "R305",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "DR.SUNEETHA BULLA",
+    "cabin": "R305 (4)",
+    "department": "ELGE",
+    "empId": "6655",
+    "roomNo": "R305",
+    "cabinSeq": "4"
+  },
+  {
+    "faculty": "DR.S SRITHAR",
+    "cabin": "R305 (5)",
+    "department": "ELGE",
+    "empId": "6684",
+    "roomNo": "R305",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "Ms.ANJANA DEVI AKURATHI",
+    "cabin": "R305 (18)",
+    "department": "ELGE",
+    "empId": "6921",
+    "roomNo": "R305",
+    "cabinSeq": "18"
+  },
+  {
+    "faculty": "Mr.BHAVANAM VENKATA SURESH REDDY",
+    "cabin": "R305 (19)",
+    "department": "ELGE",
+    "empId": "6943",
+    "roomNo": "R305",
+    "cabinSeq": "19"
+  },
+  {
+    "faculty": "Dr.N B ARUNE KUMAR",
+    "cabin": "R305 (20)",
+    "department": "ELGE",
+    "empId": "7155",
+    "roomNo": "R305",
+    "cabinSeq": "20"
+  },
+  {
+    "faculty": "Dr.V.L.MANGESH",
+    "cabin": "R305",
+    "department": "ELGE",
+    "empId": "7376",
+    "roomNo": "R305",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Mr.BAKKALA SANTHA KUMAR",
+    "cabin": "R305",
+    "department": "ELGE",
+    "empId": "8004",
+    "roomNo": "R305",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.SURYA KIRAN CHEBROLU",
+    "cabin": "R305 (6)",
+    "department": "ELGE",
+    "empId": "8135",
+    "roomNo": "R305",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Dr.GANTA JACOB VICTOR",
+    "cabin": "R305 (7)",
+    "department": "ELGE",
+    "empId": "8510",
+    "roomNo": "R305",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "DR.B.T.P.MADHAV",
+    "cabin": "L711",
+    "department": "IRD",
+    "empId": "1737",
+    "roomNo": "L711",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. DEVULAPALLI V.A.RAMA SASTRY",
+    "cabin": "M005",
+    "department": "IRD",
+    "empId": "1742",
+    "roomNo": "M005",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.CHAKKA RAGHAVA PRASAD",
+    "cabin": "L409",
+    "department": "IRD",
+    "empId": "2994",
+    "roomNo": "L409",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.BOGGARAPU NAGESWARA RAO",
+    "cabin": "M112 (1)",
+    "department": "IRD",
+    "empId": "3068",
+    "roomNo": "M112",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "DR.GURRAMPATI VENKATA RAMANA REDDY",
+    "cabin": "F106A",
+    "department": "IRD",
+    "empId": "3155",
+    "roomNo": "F106A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.POKKUNURI PARDHA SARADHI",
+    "cabin": "R102",
+    "department": "IRD",
+    "empId": "3621",
+    "roomNo": "R102",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.KOLLURU VENKATA RATNAM",
+    "cabin": "R202 (1)",
+    "department": "IRD",
+    "empId": "4452",
+    "roomNo": "R202",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "DR.SHAIK SAGAR IMAMBI",
+    "cabin": "C221A4",
+    "department": "IRD",
+    "empId": "4914",
+    "roomNo": "C221A4",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.G MURALI",
+    "cabin": "M105 (1)",
+    "department": "IRD",
+    "empId": "5171",
+    "roomNo": "M105",
+    "cabinSeq": "1"
+  },
+  {
+    "faculty": "DR.ENIREDDY VAMSIDHAR",
+    "cabin": "C104",
+    "department": "IRD",
+    "empId": "5261",
+    "roomNo": "C104",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. S. SHANMUGAN",
+    "cabin": "L601",
+    "department": "IRD",
+    "empId": "5715",
+    "roomNo": "L601",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. ARAVIND KILARU",
+    "cabin": "R305",
+    "department": "IRD",
+    "empId": "5927",
+    "roomNo": "R305",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR. SURYAKANTH V GANGASHETTY",
+    "cabin": "C014A",
+    "department": "IRD",
+    "empId": "6361",
+    "roomNo": "C014A",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. Nilu Singh",
+    "cabin": "L605",
+    "department": "IRD",
+    "empId": "6415",
+    "roomNo": "L605",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.GOVIND DIVAKARAN",
+    "cabin": "C212",
+    "department": "IRD",
+    "empId": "6567",
+    "roomNo": "C212",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.MANOHARMAYUM DOLPRIYA DEVI",
+    "cabin": "L606",
+    "department": "IRD",
+    "empId": "6606",
+    "roomNo": "L606",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.AKHILESH KUMAR DUBEY",
+    "cabin": "C212",
+    "department": "IRD",
+    "empId": "6727",
+    "roomNo": "C212",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.SAMUDRAVIJAYA K",
+    "cabin": "C221A1",
+    "department": "IRD",
+    "empId": "7006",
+    "roomNo": "C221A1",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.VIVEKANANTHAN VENKATESWARAN",
+    "cabin": "C612",
+    "department": "IRD",
+    "empId": "7501",
+    "roomNo": "C612",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.MONOJ SUTRADHAR",
+    "cabin": "L606",
+    "department": "IRD",
+    "empId": "7637",
+    "roomNo": "L606",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr. V Viswanath Shenoi",
+    "cabin": "L605",
+    "department": "IRD",
+    "empId": "8099",
+    "roomNo": "L605",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Mr. T T RAJESWAR RAO",
+    "cabin": "L606 (13)",
+    "department": "IRD",
+    "empId": "9365",
+    "roomNo": "L606",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "Mr. VENKATASAICHANDRAKANTH",
+    "cabin": "L606 (14)",
+    "department": "IRD",
+    "empId": "9367",
+    "roomNo": "L606",
+    "cabinSeq": "14"
+  },
+  {
+    "faculty": "DR.GRANDE SURESH KUMAR",
+    "cabin": "L609 (5)",
+    "department": "MDIE",
+    "empId": "2038",
+    "roomNo": "L609",
+    "cabinSeq": "5"
+  },
+  {
+    "faculty": "DR. KOMARAGIRI RAGHAVA RAO",
+    "cabin": "L412",
+    "department": "MDIE",
+    "empId": "2126",
+    "roomNo": "L412",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "Dr.K.Narasimha Raju",
+    "cabin": "L610",
+    "department": "MDIE",
+    "empId": "2272",
+    "roomNo": "L610",
+    "cabinSeq": "CABIN"
+  },
+  {
+    "faculty": "DR.SIREESHA KONERU",
+    "cabin": "L609 (15)",
+    "department": "MDIE",
+    "empId": "4568",
+    "roomNo": "L609",
+    "cabinSeq": "15"
+  },
+  {
+    "faculty": "DR.SANJEET KUMAR",
+    "cabin": "L609 (10)",
+    "department": "MDIE",
+    "empId": "4903",
+    "roomNo": "L609",
+    "cabinSeq": "10"
+  },
+  {
+    "faculty": "DR.BURRA VENKATA LAXMI SIVA PRASAD",
+    "cabin": "L609 (11)",
+    "department": "MDIE",
+    "empId": "5747",
+    "roomNo": "L609",
+    "cabinSeq": "11"
+  },
+  {
+    "faculty": "MR.NANDETI MAHAVEER SINGH",
+    "cabin": "L609 (9)",
+    "department": "MDIE",
+    "empId": "5757",
+    "roomNo": "L609",
+    "cabinSeq": "9"
+  },
+  {
+    "faculty": "DR.SHANKAR RAJENDRAN",
+    "cabin": "L609 (16)",
+    "department": "MDIE",
+    "empId": "6285",
+    "roomNo": "L609",
+    "cabinSeq": "16"
+  },
+  {
+    "faculty": "Dr.Ashwin Raut",
+    "cabin": "L609 (3)",
+    "department": "MDIE",
+    "empId": "6296",
+    "roomNo": "L609",
+    "cabinSeq": "3"
+  },
+  {
+    "faculty": "DR.RATNA KANTH NELAPATI",
+    "cabin": "L609 (13)",
+    "department": "MDIE",
+    "empId": "6446",
+    "roomNo": "L609",
+    "cabinSeq": "13"
+  },
+  {
+    "faculty": "Mr.LAKSHMINARAYANA KODAVALI",
+    "cabin": "L609 (7)",
+    "department": "MDIE",
+    "empId": "7894",
+    "roomNo": "L609",
+    "cabinSeq": "7"
+  },
+  {
+    "faculty": "Dr.K. VENKATA GURUNATHAM NAIDU",
+    "cabin": "L609 (12)",
+    "department": "MDIE",
+    "empId": "8301",
+    "roomNo": "L609",
+    "cabinSeq": "12"
+  },
+  {
+    "faculty": "Mr.T.NAGARAJU YADAV",
+    "cabin": "L609 (6)",
+    "department": "MDIE",
+    "empId": "8427",
+    "roomNo": "L609",
+    "cabinSeq": "6"
+  },
+  {
+    "faculty": "Mr.T.SELVAMUTHUKUMAR",
+    "cabin": "L609 (8)",
+    "department": "MDIE",
+    "empId": "8438",
+    "roomNo": "L609",
+    "cabinSeq": "8"
+  }
+]
