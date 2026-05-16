@@ -1,33 +1,120 @@
-# KL Attendance PWA
+# KL Edge
 
-Mobile-first KL ERP attendance dashboard with local-only credentials, manual captcha sync, attendance analytics, faculty cabin search, and offline caching.
+A modern student utility platform for KL University ERP students.
 
-## Run locally
+## Features
 
-```bash
+- Attendance calculator based on KL ERP system
+- Live ERP attendance sync
+- Faculty cabin search
+- Subject-wise attendance tracking
+- Mobile + desktop responsive UI
+- Local storage credential saving
+- Captcha-based secure syncing
+- Academic year & semester selection
+- Offline-friendly experience
+
+---
+
+## How It Works
+
+1. Student enters:
+   - ERP ID
+   - Password
+   - Captcha
+
+2. Credentials are stored only in browser local storage.
+
+3. App fetches latest ERP data from KL ERP.
+
+4. Every resync requires:
+   - Fresh captcha
+   - ERP verification
+
+---
+
+## Tech Stack
+
+- React
+- JavaScript
+- Next.js / Vite
+- Local Storage
+- ERP Sync APIs
+
+---
+
+## Attendance Formula
+
+KL ERP uses weighted attendance calculations.
+
+Formula:
+
+```math
+Attendance % = (Present Weightage / Total Weightage) × 100
+
+Theory and lab classes may have different weightages.
+
+
+---
+
+Security
+
+No external credential storage
+
+No backend password saving
+
+Data stays on user's device
+
+Captcha required for every sync
+
+
+
+---
+
+Future Features
+
+Timetable integration
+
+Attendance prediction
+
+Smart bunk calculator
+
+Internal marks tracker
+
+Faculty rating system
+
+Notifications & reminders
+
+
+
+---
+
+Installation
+
+git clone https://github.com/harsha08-2k6/KL-Edge.git
+cd KL-Edge
 npm install
 npm run dev
-```
 
-- Frontend: http://localhost:3000
-- Backend: http://localhost:4000
 
-## Security model
+---
 
-ERP ID and password are stored only in the student's browser `localStorage`. The backend receives credentials only during a manual sync request and does not persist them.
+Goal
 
-## ERP sync
+KL Edge simplifies the ERP experience with:
 
-The backend uses Puppeteer because KL ERP uses session cookies, captcha, and dynamic pages. Configure real ERP URLs and selectors through backend environment variables:
+Better UI
 
-```bash
-ERP_LOGIN_URL=https://example.edu/login
-ERP_ATTENDANCE_URL=https://example.edu/attendance
-ERP_ID_SELECTOR=#username
-ERP_PASSWORD_SELECTOR=#password
-ERP_CAPTCHA_SELECTOR=#captcha
-ERP_SUBMIT_SELECTOR=button[type="submit"]
-ERP_ATTENDANCE_TABLE_SELECTOR=table
-```
+Faster access
 
-Until those are configured, the ERP sync endpoints will return a configuration error and no data will be shown.
+Smart attendance insights
+
+Student-focused tools
+
+
+
+---
+
+Repository
+
+https://github.com/harsha08-2k6/KL-Edge
