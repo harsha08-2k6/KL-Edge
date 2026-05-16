@@ -91,80 +91,70 @@ KL-Edge/
 
 ---
 
-##Requirements
+## Requirements
 
-- Before running the project, make sure the following are installed:
-
-- Node.js
-
-- npm
-
-- Git
-
-- Modern browser (Chrome, Edge, Firefox)
-
-
+```bash
+Node.js
+npm
+Git
+Modern Browser (Chrome, Edge, Firefox)
+```
 
 ---
 
-##Installation
+## Installation
 
-- git clone https://github.com/harsha08-2k6/KL-Edge.git
+```bash
+git clone https://github.com/harsha08-2k6/KL-Edge.git
 
-- cd KL-Edge
+cd KL-Edge
 
-- npm install
+npm install
 
-- npm run dev
-
-
----
-
-##Security & Privacy
-
-- No external credential storage
-
-- No backend password saving
-
-- User data stays on the device
-
-- Captcha required during every sync
-
-- Secure local storage based access
-
-
+npm run dev
+```
 
 ---
 
-##Future Plans
+## Security & Privacy
 
+```txt
+✔ No external credential storage
+✔ No backend password saving
+✔ User data stays on the device
+✔ Captcha required during every sync
+✔ Secure local storage based access
+```
+
+---
+
+## Future Plans
+
+```txt
 - Timetable integration
-
 - Smart bunk calculator
-
 - Attendance prediction
-
 - Internal marks tracking
-
 - Faculty review system
-
 - Push notifications
-
 - PWA mobile app support
-
 - Dark mode support
-
-
-
----
-
-##Project Goal
-
-KL Edge aims to create a modern and student-friendly ERP companion platform that makes academic tracking easier, faster, and more efficient for K L University students.
-
+```
 
 ---
 
-##Repository
+## Project Goal
 
+```txt
+KL Edge aims to create a modern and student-friendly ERP companion platform
+that makes academic tracking easier, faster, and more efficient for
+K L University students.
+```
+
+---
+
+## Repository
+
+```txt
 https://github.com/harsha08-2k6/KL-Edge
+```
