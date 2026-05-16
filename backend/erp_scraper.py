@@ -738,6 +738,8 @@ def parse_attendance_table(table_html: str) -> List[Dict[str, object]]:
     code_index = find_index(headers, ["coursecode", "code"])
     subject_index = find_index(headers, ["coursedesc", "subject", "course", "name", "title"])
     ltps_index = find_index(headers, ["ltps", "type", "component"])
+    conducted_index = find_index(headers, ["conducted", "total conducted", "held"])
+    attended_index = find_index(headers, ["attended", "total attended", "present"])
     percentage_index = find_index(headers, ["percentage", "%", "percent"])
 
     results: List[Dict[str, object]] = []
@@ -750,6 +752,8 @@ def parse_attendance_table(table_html: str) -> List[Dict[str, object]]:
         code_val = values[code_index].strip().upper() if code_index >= 0 and code_index < len(values) else ""
         subject_val = values[subject_index].strip() if subject_index >= 0 and subject_index < len(values) else values[0]
         ltps_val = values[ltps_index].strip().upper() if ltps_index >= 0 and ltps_index < len(values) else ""
+        conducted = to_number(values[conducted_index]) if conducted_index >= 0 and conducted_index < len(values) else None
+        attended = to_number(values[attended_index]) if attended_index >= 0 and attended_index < len(values) else None
         pct = to_number(values[percentage_index].replace("%", "")) if percentage_index >= 0 and percentage_index < len(values) else None
 
         if not subject_val or "total" in subject_val.lower() or not code_val or len(code_val) < 3:
@@ -759,6 +763,8 @@ def parse_attendance_table(table_html: str) -> List[Dict[str, object]]:
             "subject": subject_val,
             "courseCode": code_val,
             "ltps": ltps_val,
+            "conducted": int(conducted) if conducted is not None else None,
+            "attended": int(attended) if attended is not None else None,
             "percentage": pct or 0
         })
 
@@ -807,11 +813,12 @@ def sync_attendance(payload: Dict[str, str]) -> List[Dict[str, object]]:
     for row in rows:
         code = row.get("courseCode") or row.get("subject", "")
         ltps = row.get("ltps", "").upper()
-        pct = row.get("percentage", 0)
         if code not in seen:
             seen[code] = {"subject": row["subject"], "courseCode": code}
         if ltps in ("L", "T", "P", "S"):
-            seen[code][ltps] = pct
+            seen[code][ltps] = row.get("percentage", 0)
+            seen[code][f"{ltps}_conducted"] = row.get("conducted")
+            seen[code][f"{ltps}_attended"] = row.get("attended")
     return list(seen.values())
 
 
