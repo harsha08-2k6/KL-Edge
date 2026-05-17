@@ -287,6 +287,8 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
         if looks_like_login_failure(login_html, login_form):
             message = extract_login_error_message(login_html)
             clean_message = message or "ERP login failed. Refresh captcha and check ERP ID, password, and captcha."
+            if DEBUG_ENABLED:
+                print(f"[erp:login] Rejected by ERP. Reason: '{clean_message}'")
             raise AppError(clean_message, 401)
 
         captcha_session["is_logged_in"] = True
