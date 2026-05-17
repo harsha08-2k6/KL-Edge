@@ -18,18 +18,18 @@ export default defineConfig({
         short_name: 'KLEdge',
         description: 'Advanced KL University ERP Scraper and Attendance Tracker',
         theme_color: '#12151f',
-        icons: [
-          {
-            src: '/pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: '/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
+        // icons: [
+        //   {
+        //     src: '/pwa-192x192.png',
+        //     sizes: '192x192',
+        //     type: 'image/png'
+        //   },
+        //   {
+        //     src: '/pwa-512x512.png',
+        //     sizes: '512x512',
+        //     type: 'image/png'
+        //   }
+        // ]
       }
     })
   ],

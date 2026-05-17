@@ -483,7 +483,7 @@ def extract_login_error_message(html: str) -> str:
     for selector in selectors:
         for element in soup.select(selector):
             text = clean_text(element.get_text(" "))
-            if text:
+            if text and len(text) > 1 and text != "*":
                 messages.append(text)
 
     if messages:
