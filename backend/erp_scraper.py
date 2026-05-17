@@ -15,6 +15,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+try:
+    import redis
+    HAS_REDIS = True
+except ImportError:
+    HAS_REDIS = False
+
+REDIS_URL = os.getenv("KV_URL") or os.getenv("REDIS_URL")
+redis_client = redis.Redis.from_url(REDIS_URL) if HAS_REDIS and REDIS_URL else None
+
 
 def selector_to_id(selector: str) -> str:
     if not selector:
@@ -81,7 +90,8 @@ SEMESTER_KEYWORDS = merge_keywords(
     os.getenv("ERP_SEMESTER_SELECTOR", "")
 )
 
-FACULTY_PATH = Path(__file__).resolve().parents[1] / "shared" / "faculty.json"
+FACULTY_PATH_SHARED = Path(__file__).resolve().parents[1] / "shared" / "faculty.json"
+FACULTY_PATH_LOCAL = Path(__file__).resolve().parent / "faculty.json"
 
 MARKS_LINK_KEYWORDS = [
     "marks",
@@ -145,14 +155,28 @@ class AppError(Exception):
         self.status_code = status_code
 
 
-@dataclass
-class CaptchaSession:
-    session: requests.Session
-    login_html: str
-    created_at: float
+captcha_sessions_memory: Dict[str, Dict] = {}
 
+def save_captcha_session(session_id: str, data: Dict):
+    if redis_client:
+        redis_client.setex(f"captcha_session:{session_id}", CAPTCHA_SESSION_TTL_MS // 1000, json.dumps(data))
+    else:
+        captcha_sessions_memory[session_id] = data
 
-captcha_sessions: Dict[str, CaptchaSession] = {}
+def get_captcha_session(session_id: str) -> Optional[Dict]:
+    if redis_client:
+        raw = redis_client.get(f"captcha_session:{session_id}")
+        if raw:
+            return json.loads(raw)
+        return None
+    return captcha_sessions_memory.get(session_id)
+
+def reconstruct_session(cookies: Dict[str, str]) -> requests.Session:
+    session = requests.Session()
+    session.headers.update({"User-Agent": DEFAULT_USER_AGENT})
+    session.cookies.update(cookies)
+    ensure_device_cookie(session)
+    return session
 
 
 def build_headers(base_url: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
@@ -216,11 +240,13 @@ def create_captcha_session() -> Dict[str, str]:
     image_base64 = base64.b64encode(image_bytes).decode("ascii")
     session_id = str(uuid.uuid4())
 
-    captcha_sessions[session_id] = CaptchaSession(
-        session=session,
-        login_html=login_html,
-        created_at=time.time()
-    )
+    save_captcha_session(session_id, {
+        "cookies": session.cookies.get_dict(),
+        "login_html": login_html,
+        "created_at": time.time(),
+        "is_logged_in": False,
+        "dashboard_html": ""
+    })
 
     return {
         "sessionId": session_id,
@@ -231,21 +257,22 @@ def create_captcha_session() -> Dict[str, str]:
 
 def perform_login(payload: Dict[str, str]) -> requests.Session:
     session_id = payload.get("captchaSessionId") or ""
-    captcha_session = captcha_sessions.get(session_id)
+    captcha_session = get_captcha_session(session_id)
     if not captcha_session:
         raise AppError("Captcha session expired. Refresh captcha and try again.", 410)
 
+    session = reconstruct_session(captcha_session.get("cookies", {}))
+
     # Check if already logged in to this session
-    if getattr(captcha_session, "is_logged_in", False):
-        return captcha_session.session
+    if captcha_session.get("is_logged_in", False):
+        return session
 
     try:
-        ensure_device_cookie(captcha_session.session)
-        login_form = extract_login_form(captcha_session.login_html, LOGIN_URL)
+        login_form = extract_login_form(captcha_session.get("login_html", ""), LOGIN_URL)
         login_data = build_login_form_data(login_form, payload)
 
         login_response = submit_form(
-            captcha_session.session,
+            session,
             login_form,
             login_data,
             referer=LOGIN_URL
@@ -257,10 +284,12 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
             clean_message = message or "ERP login failed. Refresh captcha and check ERP ID, password, and captcha."
             raise AppError(clean_message, 401)
 
-        captcha_session.is_logged_in = True
-        # Store the login HTML to find dashboard links later if needed
-        captcha_session.dashboard_html = login_html
-        return captcha_session.session
+        captcha_session["is_logged_in"] = True
+        captcha_session["dashboard_html"] = login_html
+        captcha_session["cookies"] = session.cookies.get_dict()
+        save_captcha_session(session_id, captcha_session)
+        
+        return session
     except AppError as e:
         raise e
     except Exception as e:
@@ -268,84 +297,13 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
             print("[erp:login] unexpected error", e)
         raise AppError(f"Login failed: {str(e)}", 500)
 
-    try:
-        login_form = extract_login_form(captcha_session.login_html, LOGIN_URL)
-        login_data = build_login_form_data(login_form, payload)
-
-        login_response = submit_form(
-            captcha_session.session,
-            login_form,
-            login_data,
-            referer=LOGIN_URL
-        )
-
-        login_html = login_response.text or ""
-        if looks_like_login_failure(login_html, login_form):
-            message = extract_login_error_message(login_html)
-            clean_message = message or "ERP login failed. Refresh captcha and check ERP ID, password, and captcha."
-            if DEBUG_ENABLED:
-                print("[erp:login] failed", {"message": clean_message})
-            raise AppError(clean_message, 401)
-
-        # Dynamically search the dashboard HTML for the Attendance link
-        dynamic_attendance_url = find_attendance_link(login_html, LOGIN_URL)
-        final_attendance_url = dynamic_attendance_url or ATTENDANCE_URL
-
-        if not final_attendance_url:
-            raise AppError("Could not find the Attendance link on the dashboard.", 404)
-
-        attendance_response = request_page(
-            captcha_session.session,
-            final_attendance_url,
-            headers=build_headers(final_attendance_url)
-        )
-        attendance_html = attendance_response.text or ""
-
-        # Smart optimization: Check if the table is already on the page BEFORE submitting the form
-        initial_table = extract_attendance_table(attendance_html)
-        parsed_initial = parse_attendance_table(initial_table) if initial_table else []
-        if parsed_initial:
-            return parsed_initial
-            
-        attendance_form = extract_attendance_form(attendance_html, final_attendance_url)
-        attendance_data = build_attendance_form_data(attendance_form, payload)
-
-        result_response = submit_form(
-            captcha_session.session,
-            attendance_form,
-            attendance_data,
-            referer=final_attendance_url
-        )
-        result_html = result_response.text or ""
-
-        table_html = extract_attendance_table(result_html)
-        if not table_html:
-            # Check for common "No data" messages before throwing the generic "no table" error
-            lowered_result = result_html.lower()
-            if "no records found" in lowered_result or "no data found" in lowered_result or "not found" in lowered_result:
-                 return [] # Return empty list instead of erroring if it's just a "no data" case
-                 
-            if DEBUG_ENABLED:
-                # Save the failure HTML for debugging if possible
-                try:
-                    debug_path = Path(__file__).resolve().parent / "last_failure.html"
-                    debug_path.write_text(result_html, encoding="utf8")
-                    print(f"[erp:scraper] Attendance table missing. Saved response to {debug_path}")
-                except Exception:
-                    pass
-            
-            raise AppError("Could not find attendance table in ERP response. This might happen if the ERP layout changed or if there is no attendance data for the selected semester.", 502)
-
-        return parse_attendance_table(table_html)
-    except Exception as e:
-        raise e
-
 
 def load_faculty() -> List[Dict[str, object]]:
-    if not FACULTY_PATH.exists():
-        return []
-
-    return json.loads(FACULTY_PATH.read_text(encoding="utf8"))
+    if FACULTY_PATH_LOCAL.exists():
+        return json.loads(FACULTY_PATH_LOCAL.read_text(encoding="utf8"))
+    if FACULTY_PATH_SHARED.exists():
+        return json.loads(FACULTY_PATH_SHARED.read_text(encoding="utf8"))
+    return []
 
 
 def request_page(session: requests.Session, url: str, headers: Optional[Dict[str, str]] = None, stream: bool = False) -> requests.Response:
@@ -840,8 +798,8 @@ def sync_attendance(payload: Dict[str, str]) -> List[Dict[str, object]]:
     session = perform_login(payload)
 
     session_id = payload.get("captchaSessionId") or ""
-    captcha_session = captcha_sessions.get(session_id)
-    dashboard_html = getattr(captcha_session, "dashboard_html", "") if captcha_session else ""
+    captcha_session = get_captcha_session(session_id)
+    dashboard_html = captcha_session.get("dashboard_html", "") if captcha_session else ""
 
     attendance_url = find_attendance_link(dashboard_html, LOGIN_URL) if dashboard_html else ""
     attendance_url = attendance_url or ATTENDANCE_URL
@@ -893,12 +851,14 @@ def merge_attendance_rows(rows: List[Dict[str, object]]) -> List[Dict[str, objec
 
 def sync_timetable(payload: Dict[str, str]) -> Dict[str, object]:
     session_id = payload.get("captchaSessionId") or ""
-    captcha_session = captcha_sessions.get(session_id)
+    captcha_session = get_captcha_session(session_id)
     if not captcha_session:
         raise AppError("Captcha session expired.", 410)
 
-    dashboard_html = getattr(captcha_session, "dashboard_html", "")
+    dashboard_html = captcha_session.get("dashboard_html", "")
     timetable_link = find_timetable_link(dashboard_html, LOGIN_URL) if dashboard_html else ""
+
+    session = reconstruct_session(captcha_session.get("cookies", {}))
 
     candidate_paths = [
         "index.php?r=timetables/universitymasteracademictimetableview/indexstudentindisearch",
@@ -921,7 +881,7 @@ def sync_timetable(payload: Dict[str, str]) -> Dict[str, object]:
         seen_urls.add(url)
 
         try:
-            timetable, html = fetch_timetable_from_url(captcha_session.session, url, payload)
+            timetable, html = fetch_timetable_from_url(session, url, payload)
             last_html = html
             last_url = url
             if timetable["grid"]:
@@ -950,7 +910,8 @@ def sync_timetable(payload: Dict[str, str]) -> Dict[str, object]:
 def sync_marks(payload: Dict[str, str]) -> List[Dict[str, object]]:
     session = perform_login(payload)
     ensure_device_cookie(session)
-    dashboard_html = getattr(captcha_sessions.get(payload.get("captchaSessionId") or ""), "dashboard_html", "")
+    captcha_session = get_captcha_session(payload.get("captchaSessionId") or "")
+    dashboard_html = captcha_session.get("dashboard_html", "") if captcha_session else ""
     candidate_urls = collect_feature_urls(dashboard_html, MARKS_LINK_KEYWORDS, MARKS_CANDIDATE_PATHS)
     menu_url = find_menu_link_by_keywords(session, ["internals", "internal", "course internals"])
     if menu_url:
@@ -986,7 +947,8 @@ def sync_marks(payload: Dict[str, str]) -> List[Dict[str, object]]:
 
 def sync_seating_plan(payload: Dict[str, str]) -> List[Dict[str, object]]:
     session = perform_login(payload)
-    dashboard_html = getattr(captcha_sessions.get(payload.get("captchaSessionId") or ""), "dashboard_html", "")
+    captcha_session = get_captcha_session(payload.get("captchaSessionId") or "")
+    dashboard_html = captcha_session.get("dashboard_html", "") if captcha_session else ""
     html, url = fetch_feature_html(
         session,
         dashboard_html,
@@ -1007,7 +969,8 @@ def sync_seating_plan(payload: Dict[str, str]) -> List[Dict[str, object]]:
 
 def sync_cgpa(payload: Dict[str, str]) -> Dict[str, object]:
     session = perform_login(payload)
-    dashboard_html = getattr(captcha_sessions.get(payload.get("captchaSessionId") or ""), "dashboard_html", "")
+    captcha_session = get_captcha_session(payload.get("captchaSessionId") or "")
+    dashboard_html = captcha_session.get("dashboard_html", "") if captcha_session else ""
     html, url = fetch_feature_html(
         session,
         dashboard_html,
@@ -1920,20 +1883,24 @@ def clean_text(value: str) -> str:
 
 
 def close_captcha_session(session_id: str) -> None:
-    if session_id in captcha_sessions:
-        del captcha_sessions[session_id]
+    if redis_client:
+        redis_client.delete(f"captcha_session:{session_id}")
+    else:
+        captcha_sessions_memory.pop(session_id, None)
 
 
 def prune_captcha_sessions() -> None:
+    if redis_client:
+        return
     now = time.time()
     expired = [
         session_id
-        for session_id, entry in captcha_sessions.items()
-        if now - entry.created_at >= CAPTCHA_SESSION_TTL_MS / 1000
+        for session_id, entry in captcha_sessions_memory.items()
+        if now - entry.get("created_at", 0) >= CAPTCHA_SESSION_TTL_MS / 1000
     ]
     for session_id in expired:
         close_captcha_session(session_id)
 
-    while len(captcha_sessions) >= MAX_CAPTCHA_SESSIONS:
-        oldest = min(captcha_sessions.items(), key=lambda item: item[1].created_at)
+    while len(captcha_sessions_memory) >= MAX_CAPTCHA_SESSIONS:
+        oldest = min(captcha_sessions_memory.items(), key=lambda item: item[1].get("created_at", 0))
         close_captcha_session(oldest[0])
