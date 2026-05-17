@@ -23,12 +23,12 @@ export default function Subjects() {
 
   return (
     <Layout title="Subjects">
-      <div className="mb-4 flex gap-2">
+      <div className="mb-2.5 flex gap-1.5">
         {[75, 85].map((t) => (
           <button
             key={t}
             onClick={() => selectTarget(t)}
-            className={`flex-1 rounded-lg py-2 text-sm font-black transition-colors ${
+            className={`h-9 flex-1 rounded-lg px-2.5 text-xs font-black transition-colors ${
               target === t ? "bg-ink text-paper" : "bg-white border border-ink/10 text-ink/50"
             }`}
           >
@@ -40,7 +40,7 @@ export default function Subjects() {
       {subjects.length ? (
         <SubjectTable subjects={subjects} />
       ) : (
-        <div className="rounded-lg border border-dashed border-ink/25 bg-white p-6 text-center shadow-soft">
+        <div className="rounded-lg border border-dashed border-ink/25 bg-white p-3 text-center shadow-soft">
           <p className="font-black">Sync attendance to see subjects.</p>
         </div>
       )}

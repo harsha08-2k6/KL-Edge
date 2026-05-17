@@ -23,9 +23,18 @@ export function calculateAttendance({ L, T, P, S }) {
   return Math.round(total / weight);
 }
 
+export function getFinalAttendance(subject = {}) {
+  const official = Number(subject.finalPercentage ?? subject.attendancePercentage ?? subject.percentage);
+  if (Number.isFinite(official) && official > 0) {
+    return Math.round(official);
+  }
+
+  return calculateAttendance(subject);
+}
+
 export function calculateOverall(subjects = []) {
   if (!subjects.length) return 0;
-  const finals = subjects.map(calculateAttendance).filter(Number.isFinite);
+  const finals = subjects.map(getFinalAttendance).filter(Number.isFinite);
   if (!finals.length) return 0;
   return Math.round(finals.reduce((sum, v) => sum + v, 0) / finals.length);
 }
@@ -63,7 +72,7 @@ export function classesNeeded(attended, conducted, target) {
 
 export function enrichSubjects(subjects = [], target = 75) {
   return subjects.map((subject) => {
-    const final = calculateAttendance(subject);
+    const final = getFinalAttendance(subject);
     const components = ["L", "T", "P", "S"].filter(k => subject[k] != null);
     const ltpsBunk = {};
     const ltpsNeeded = {};
@@ -88,4 +97,3 @@ export function enrichSubjects(subjects = [], target = 75) {
     };
   });
 }
-

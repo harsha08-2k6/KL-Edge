@@ -726,6 +726,14 @@ def extract_attendance_table(html: str) -> str:
     return str(tables[0]) if tables else ""
 
 
+def parse_attendance_tables(html: str) -> List[Dict[str, object]]:
+    soup = BeautifulSoup(html, "html.parser")
+    rows: List[Dict[str, object]] = []
+    for table in soup.find_all("table"):
+        rows.extend(parse_attendance_table(str(table)))
+    return rows
+
+
 def parse_attendance_table(table_html: str) -> List[Dict[str, object]]:
     soup = BeautifulSoup(table_html, "html.parser")
     rows = soup.find_all("tr")
@@ -765,7 +773,8 @@ def parse_attendance_table(table_html: str) -> List[Dict[str, object]]:
             "ltps": ltps_val,
             "conducted": int(conducted) if conducted is not None else None,
             "attended": int(attended) if attended is not None else None,
-            "percentage": pct or 0
+            "percentage": pct or 0,
+            "finalPercentage": pct if not ltps_val else None
         })
 
     return results
@@ -784,10 +793,9 @@ def sync_attendance(payload: Dict[str, str]) -> List[Dict[str, object]]:
     attendance_response = request_page(session, attendance_url, headers=build_headers(attendance_url))
     attendance_html = attendance_response.text or ""
 
-    table = extract_attendance_table(attendance_html)
-    parsed = parse_attendance_table(table) if table else []
+    parsed = parse_attendance_tables(attendance_html)
     if parsed:
-        return parsed
+        return merge_attendance_rows(parsed)
 
     attendance_form = extract_attendance_form(attendance_html, attendance_url)
     attendance_data = build_attendance_form_data(attendance_form, payload)
@@ -801,14 +809,17 @@ def sync_attendance(payload: Dict[str, str]) -> List[Dict[str, object]]:
         except Exception:
             pass
 
-    table = extract_attendance_table(result_html)
-    if not table:
+    rows = parse_attendance_tables(result_html)
+    if not rows:
         lowered = result_html.lower()
         if "no records found" in lowered or "no data" in lowered:
             return []
         raise AppError("Could not find attendance table in ERP response.", 502)
 
-    rows = parse_attendance_table(table)
+    return merge_attendance_rows(rows)
+
+
+def merge_attendance_rows(rows: List[Dict[str, object]]) -> List[Dict[str, object]]:
     seen = {}
     for row in rows:
         code = row.get("courseCode") or row.get("subject", "")
@@ -819,6 +830,8 @@ def sync_attendance(payload: Dict[str, str]) -> List[Dict[str, object]]:
             seen[code][ltps] = row.get("percentage", 0)
             seen[code][f"{ltps}_conducted"] = row.get("conducted")
             seen[code][f"{ltps}_attended"] = row.get("attended")
+        elif row.get("percentage") is not None:
+            seen[code]["finalPercentage"] = row.get("percentage", 0)
     return list(seen.values())
 
 

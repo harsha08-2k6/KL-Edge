@@ -1,6 +1,7 @@
 import { RefreshCw, X } from "lucide-react";
 import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
+import { SocialLinks } from "../components/SocialLinks.jsx";
 import { SubjectTable } from "../components/SubjectTable.jsx";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
 import { calculateOverall, enrichSubjects, getAttendanceStatus, classesNeededForTarget } from "../../shared/attendance";
@@ -79,30 +80,40 @@ export default function Home() {
     <Layout
       title="Dashboard"
       action={
-        <button
-          onClick={() => { setShowSync(true); loadCaptcha(); }}
-          className="tap inline-flex items-center gap-2 rounded-xl bg-mint/20 px-4 py-2 text-sm font-bold text-mint"
-        >
-          <RefreshCw size={16} className={syncBusy ? "animate-spin" : ""} />
-          Resync
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <SocialLinks />
+          <button
+            onClick={() => { setShowSync(true); loadCaptcha(); }}
+            className="tap inline-flex h-10 items-center gap-1.5 rounded-lg bg-ink px-3 text-sm font-bold text-paper shadow-soft transition-transform hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <RefreshCw size={15} className={syncBusy ? "animate-spin" : ""} />
+            Resync
+          </button>
+        </div>
       }
     >
       {/* Top cards */}
-      <section className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-border bg-paper p-4 shadow-soft">
-          <p className="text-[10px] font-black uppercase tracking-widest text-ink/40">Overall</p>
-          <h3 className={`mt-1 text-2xl font-black ${statusColor}`}>{overall}%</h3>
-          <p className={`text-xs font-bold ${statusColor}`}>{status.label}</p>
-          <div className="mt-3 flex gap-2">
+      <section className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+        <div className="rounded-xl border border-ink/10 bg-white/80 p-3 shadow-soft">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-ink/40">Overall</p>
+              <h3 className={`mt-0.5 text-2xl font-black leading-none ${statusColor}`}>{overall}%</h3>
+            </div>
+            <span className={`rounded-full bg-surface px-2.5 py-1 text-xs font-black ${statusColor}`}>
+              {status.label}
+            </span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-lg bg-surface p-1">
             {[75, 85].map((t) => (
               <button
                 key={t}
                 onClick={() => selectTarget(t)}
-                className={`flex-1 rounded-lg py-1.5 text-xs font-black transition-all ${
+                className={`rounded-md py-1.5 text-[11px] font-black transition-all ${
                   target === t
-                    ? "bg-mint text-base"
-                    : "border border-border bg-surface text-ink/40"
+                    ? "bg-ink text-paper shadow-sm"
+                    : "text-ink/45 hover:bg-white hover:text-ink"
                 }`}
               >
                 {t}%
@@ -110,7 +121,7 @@ export default function Home() {
             ))}
           </div>
           {classesNeeded > 0 && (
-            <p className="mt-2 text-[10px] font-bold text-coral">
+            <p className="mt-2 rounded-md bg-coral/10 px-2 py-1 text-[10px] font-bold text-coral">
               +{classesNeeded} class{classesNeeded !== 1 ? "es" : ""} to reach {target}%
             </p>
           )}
@@ -124,13 +135,13 @@ export default function Home() {
       </section>
 
       {/* Subjects */}
-      <section className="mt-5">
+      <section className="mt-3.5">
         {subjects.length ? (
           <SubjectTable subjects={subjects} />
         ) : (
-          <div className="rounded-xl border border-dashed border-border bg-paper p-8 text-center">
-            <p className="font-black text-ink/60">No attendance synced yet</p>
-            <p className="mt-1 text-sm text-ink/40">Go to Settings and run a sync.</p>
+          <div className="rounded-xl border border-dashed border-ink/15 bg-white/70 p-5 text-center shadow-soft">
+            <p className="font-black text-ink/70">No attendance synced yet</p>
+            <p className="mt-1 text-sm font-semibold text-ink/45">Go to Settings and run a sync.</p>
           </div>
         )}
       </section>
@@ -138,24 +149,24 @@ export default function Home() {
       {/* Resync Modal */}
       {showSync && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-base/80 p-4 backdrop-blur-sm sm:items-center">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-paper p-6 shadow-soft">
+          <div className="w-full max-w-md rounded-2xl border border-ink/10 bg-paper p-4 shadow-soft md:p-5">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-black text-ink">Quick Resync</h3>
-              <button onClick={() => setShowSync(false)} className="rounded-full bg-surface p-2 text-ink/40">
+              <button onClick={() => setShowSync(false)} className="rounded-full bg-surface p-2 text-ink/40 transition-colors hover:text-ink">
                 <X size={18} />
               </button>
             </div>
 
             <p className="mt-1 text-sm text-ink/50">Enter the ERP captcha to refresh data.</p>
 
-            <div className="mt-5 flex items-center gap-3">
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
               <div className="flex h-14 flex-1 items-center justify-center rounded-xl border border-border bg-surface">
                 {captchaImage
                   ? <img src={captchaImage} alt="captcha" className="max-h-10" />
                   : <div className="h-3 w-20 animate-pulse rounded bg-ink/10" />
                 }
               </div>
-              <button onClick={loadCaptcha} className="rounded-xl border border-border bg-surface p-3 text-ink/50">
+              <button onClick={loadCaptcha} className="h-12 rounded-xl border border-border bg-surface px-4 text-ink/50 transition-colors hover:text-ink">
                 <RefreshCw size={18} />
               </button>
             </div>
@@ -173,7 +184,7 @@ export default function Home() {
             <button
               onClick={handleResync}
               disabled={syncBusy || captcha.length < 4}
-              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-mint font-black text-base disabled:opacity-40"
+              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink font-black text-paper transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40"
             >
               <RefreshCw size={18} className={syncBusy ? "animate-spin" : ""} />
               {syncBusy ? "Syncing..." : "Sync Now"}

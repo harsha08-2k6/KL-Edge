@@ -1,5 +1,6 @@
 node_modules
 .next
+frontend/dist
 .env
 .env.local
 .dist
