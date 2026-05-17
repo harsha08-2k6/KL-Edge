@@ -6,7 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from erp_scraper import AppError, close_captcha_session, create_captcha_session, load_faculty, sync_attendance, sync_timetable
+from erp_scraper import (
+    AppError,
+    close_captcha_session,
+    create_captcha_session,
+    load_faculty,
+    sync_attendance,
+    sync_cgpa,
+    sync_marks,
+    sync_seating_plan,
+    sync_timetable
+)
 
 app = FastAPI()
 
@@ -65,12 +75,31 @@ def sync_attendance_route(body: SyncRequest):
             400
         )
 
+    def safe_sync(label, handler, fallback):
+        try:
+            return handler()
+        except AppError as exc:
+            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                print(f"[erp:{label}] {exc.message}")
+            return fallback
+        except Exception as exc:
+            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                print(f"[erp:{label}] {exc}")
+            return fallback
+
     try:
-        attendance = sync_attendance(body.model_dump())
-        timetable = sync_timetable(body.model_dump())
+        payload = body.model_dump()
+        attendance = sync_attendance(payload)
+        timetable = sync_timetable(payload)
+        marks = safe_sync("marks", lambda: sync_marks(payload), [])
+        seating_plan = safe_sync("seating-plan", lambda: sync_seating_plan(payload), [])
+        cgpa = safe_sync("cgpa", lambda: sync_cgpa(payload), {})
         return {
             "attendance": attendance,
             "timetable": timetable,
+            "marks": marks,
+            "seatingPlan": seating_plan,
+            "cgpa": cgpa,
             "syncedAt": f"{datetime.utcnow().isoformat()}Z"
         }
     finally:

@@ -1,12 +1,13 @@
-import { RefreshCw, X } from "lucide-react";
+import { RefreshCw, Settings, X } from "lucide-react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
 import { SocialLinks } from "../components/SocialLinks.jsx";
 import { SubjectTable } from "../components/SubjectTable.jsx";
+import { fetchCaptcha, syncAttendance } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
 import { calculateOverall, enrichSubjects, getAttendanceStatus, classesNeededForTarget } from "../../shared/attendance";
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { fetchCaptcha, syncAttendance } from "../utils/api.js";
 
 export default function Home() {
   const [rawSubjects, setRawSubjects] = useState([]);
@@ -55,6 +56,13 @@ export default function Home() {
       const payload = await syncAttendance({ ...credentials, ...syncOptions, captcha, captchaSessionId });
       writeLocal(STORAGE_KEYS.attendance, payload.attendance);
       writeLocal(STORAGE_KEYS.timetable, payload.timetable);
+      if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
+      if (payload.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
+      if (payload.cgpa) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
+      writeLocal(STORAGE_KEYS.timetableStatus, {
+        status: payload.timetable?.status || (payload.timetable?.grid?.length ? "ok" : "empty"),
+        message: payload.timetable?.message || ""
+      });
       writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);
       loadAttendance();
       setShowSync(false);
@@ -82,6 +90,14 @@ export default function Home() {
       action={
         <div className="flex flex-wrap items-center justify-end gap-2">
           <SocialLinks />
+          <Link
+            to="/settings"
+            aria-label="Settings"
+            title="Settings"
+            className="tap inline-flex h-10 w-10 items-center justify-center rounded-lg border border-ink/10 bg-white text-ink/70 shadow-soft transition-colors hover:text-ink"
+          >
+            <Settings size={16} aria-hidden="true" />
+          </Link>
           <button
             onClick={() => { setShowSync(true); loadCaptcha(); }}
             className="tap inline-flex h-10 items-center gap-1.5 rounded-lg bg-ink px-3 text-sm font-bold text-paper shadow-soft transition-transform hover:-translate-y-0.5 active:translate-y-0"

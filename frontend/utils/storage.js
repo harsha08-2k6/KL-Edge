@@ -3,7 +3,11 @@ export const STORAGE_KEYS = {
   syncOptions: "kl-edge.syncOptions",
   attendance: "kl-edge.attendance",
   timetable: "kl-edge.timetable",
-  lastUpdated: "kl-edge.lastUpdated"
+  timetableStatus: "kl-edge.timetableStatus",
+  lastUpdated: "kl-edge.lastUpdated",
+  marks: "kl-edge.marks",
+  seatingPlan: "kl-edge.seatingPlan",
+  cgpa: "kl-edge.cgpa"
 };
 
 export function readLocal(key, fallback) {

@@ -1,0 +1,207 @@
+<!-- URL: https://newerp.kluniversity.in/index.php?r=studentinfo/studentendexamresult/getstudentinternalmarks -->
+<style>
+    .form-control{display: inline;margin:2px 0;}
+/*   #w0 table td:nth-child(7) label,#w0 table td:nth-child(8) label,#w0 table td:nth-child(9) label,#w0 table td:nth-child(10) label{width: 50px}*/
+</style>
+<div class="course-info-index">
+    <h4></h4>
+
+
+    <form id="cmappinglist-self-generated" action="/index.php?r=courses%2Fcoursemastercatalogsectionstrengthinfo%2Faddmultiplecsec" method="post" data-pjax="1">
+<input type="hidden" name="_csrf" value="uUSFPMbY8O1Y_a2NI25ar3dDP5B2KHfSJECWdWvWkxvBDuxk_peinWm18sV6GhjCBxVZ4xBDWoV-Ju4eEaz_cw==">    <div class="card-body">
+        <div id="ajaxerrors">
+
+        </div>
+        <div id="w0" class="mh-55">
+<table class="table table-striped table-bordered"><thead>
+<tr class="CustomTableClass1"><th>#</th><th>CourseCode</th><th>Offered To</th><th>Course Name</th><th>LTPS</th><th>Total Strength</th><th>L Component</th><th>T Component</th><th>P Component</th><th>S Component</th><th><input type="checkbox" class="select-on-check-all" name="selection_all" value="1" disabled="disabled"></th></tr>
+</thead>
+<tbody>
+<tr><td colspan="11"><div class="empty">No results found.</div></td></tr>
+</tbody></table>
+</div>    </div>
+        <div class="card-footer text-center">
+            <button type="submit" class="btn btn-primary courselistjax">Submit</button>        </div>
+</div>
+
+</form>
+
+
+<script src="/assets/9575eff9/jquery.js"></script>
+<script src="/assets/125e0c85/yii.js"></script>
+<script src="/assets/125e0c85/yii.gridView.js"></script>
+<script src="/assets/125e0c85/yii.activeForm.js"></script>
+<script>jQuery('#w0').yiiGridView('setSelectionColumn', {"name":"selection[]","class":null,"multiple":true,"checkAll":"selection_all"});
+jQuery('#w0').yiiGridView({"filterUrl":"\/index.php?r=courses%2Fcoursemastercatalogsectionstrengthinfo%2Fcoursecataloglistbyjax","filterSelector":"#w0-filters input, #w0-filters select","filterOnFocusOut":true});
+jQuery('#cmappinglist-self-generated').yiiActiveForm([], []);
+myform=$('#cmappinglist-self-generated');
+var eflag=true;
+$(function () { 
+    $("[data-toggle='tooltip']").tooltip(); 
+});
+  myform.validate();
+var elemencount=$(".checkbox-row").length;
+var clickcountr=0;
+$(".checkbox-row").click(function(){
+    console.log($(this));
+      var ids=parseInt( $(this).attr('id'));
+      console.log('ids',ids);
+            if($(this).prop("checked") === true){
+             
+          $(".form-control"+ids).prop('disabled','');
+     $(".cmcss-form-control"+ids).prop('disabled','');
+         var names='CourseMasterCatalogSectionStrengthInfo['+ids+']';
+               
+             $(".form-control"+ids).each(function () {
+                    console.log($(this));
+                     $(this).rules("add", {
+                    required: true,
+                  
+                   checkpositive:true,
+                   digits: true
+                     });
+            
+             });
+             
+              $(".cmcss-form-control"+ids).each(function () {
+                 
+                    console.log($(this));
+                     $(this).rules("add", {
+                    required: true,
+                   
+                  
+                  // checkpositive:true,
+                 //  digits: true
+                     });
+           
+            
+             });
+             
+             
+              clickcountr++;
+              console.log('counter',clickcountr);
+            }
+            else{
+          clickcountr--;
+          
+                    telement= $("#w0 .table ").children('tbody').children('tr')[ids];
+                    telement.bgColor=' ';
+          console.log('counter',clickcountr);
+                 $(".form-control"+ids).prop('disabled','disabled') ;
+                   $(".cmcss-form-control"+ids).prop('disabled','disabled');
+                $(".form-control"+ids).val('');
+                
+                   $(".form-control"+ids+"-error").remove();
+                   $(".error"+ids).remove();
+                   
+                      /* $(".form-control"+ids).remove();*/
+                      
+                   
+                    
+            }});
+
+   $.validator.addMethod("checkValue", function (value, element) {
+      
+       elementid=(element.id).split('-')[0].slice(-1);
+       checkingvalue=$("#coursemastercataloginfo"+elementid+'-'+'strength').val();
+      
+       if( value>checkingvalue)
+          return false;
+       else
+           return value;
+    }, "invalid value");
+$.validator.addMethod("checkpositive", function (value, element) {
+      
+       elementid=(element.id).split('-')[0].slice(-1);
+             if( value<=0)
+          return false;
+       else
+           return value;
+    }, "invalid value");
+
+
+  $(".select-on-check-all").click( function(){
+    
+      $(".checkbox-row").prop("checked", $(this).is(":checked"));
+      
+  });  
+$(".courselistjax").on('click',function(e) { 
+  
+
+    if(clickcountr===0)
+    {  
+        alert('Atlert One selection to be made');
+       
+       
+     return false;
+    }
+   
+
+    eflag=true;
+    if(!myform.valid())
+        return false;
+    console.log('after primary valid');
+  var return_first = function () {
+    var tmp = null;
+    console.log('form data', myform.serialize());
+    $.ajax({
+        async: false,
+        type: "POST",
+        global: false,
+        data: myform.serialize(),
+        url: 'index.php?r=courses%2Fcoursemastercatalogsectionstrengthinfo%2Faddmultiplecsec',
+        'success': function (data) {
+            console.log('received data',data);
+             if(data===null)
+             {     tmp=true; 
+                    return false;
+             }
+                    
+            else{
+                
+                if($.isArray(data))
+               { 
+                
+                $.each(data,function(index,value){
+                       
+                    checkedid=$('.checkbox-row:checkbox:checked').eq (index).attr('id');
+                    telement= $("#w0 .table ").children('tbody').children('tr')[checkedid];
+                    telement.bgColor='red';
+                    console.log('value',value); 
+                     $.each($(".form-control"+checkedid),function(index,element){
+                        console.log('element',element);
+                      
+                    $("<label id="+checkedid +"-error class=error" + checkedid + " for=ele" +checkedid + ">" + data +"</label>").insertAfter(element);
+
+                         
+                     });
+                     
+                      
+                  });
+                 tmp=false;
+                 }
+                else{
+                    alert(data);
+                   tmp=false;
+                }
+             }
+          
+        }
+    });
+    return tmp;
+}();
+       
+       console.log('return temp',return_first);
+      // return false;
+    
+       if(!return_first)
+           return false;
+           
+  
+    
+});
+    
+     
+        
+
+</script>

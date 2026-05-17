@@ -104,6 +104,13 @@ export default function Settings() {
       const payload = await syncAttendance({ erpId, password, captcha, academicYear, semesterId, captchaSessionId });
       writeLocal(STORAGE_KEYS.attendance, payload.attendance);
       writeLocal(STORAGE_KEYS.timetable, payload.timetable);
+      if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
+      if (payload.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
+      if (payload.cgpa) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
+      writeLocal(STORAGE_KEYS.timetableStatus, {
+        status: payload.timetable?.status || (payload.timetable?.grid?.length ? "ok" : "empty"),
+        message: payload.timetable?.message || ""
+      });
       writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);
       setCaptcha("");
       setCaptchaImage("");
@@ -133,6 +140,7 @@ export default function Settings() {
     removeLocal(STORAGE_KEYS.syncOptions);
     removeLocal(STORAGE_KEYS.attendance);
     removeLocal(STORAGE_KEYS.timetable);
+    removeLocal(STORAGE_KEYS.timetableStatus);
     removeLocal(STORAGE_KEYS.lastUpdated);
     setErpId("");
     setPassword("");

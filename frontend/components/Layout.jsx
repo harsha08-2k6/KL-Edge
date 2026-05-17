@@ -1,12 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
-import { BookOpenCheck, Calendar, Home, Search, Settings } from "lucide-react";
+import { BookOpenCheck, Calendar, Home, ListChecks, MoreHorizontal } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/subjects", label: "Subjects", icon: BookOpenCheck },
   { href: "/timetable", label: "Timetable", icon: Calendar },
-  { href: "/faculty", label: "Faculty", icon: Search },
-  { href: "/settings", label: "Settings", icon: Settings }
+  { href: "/marks", label: "Marks", icon: ListChecks },
+  {
+    href: "/more",
+    label: "More",
+    icon: MoreHorizontal,
+    aliases: ["/faculty", "/seating-plan", "/settings", "/cgpa"]
+  }
 ];
 
 const widthClasses = {
@@ -34,7 +39,7 @@ export function Layout({ children, title, action, width = "default" }) {
         <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = location.pathname === item.href;
+            const active = location.pathname === item.href || (item.aliases || []).includes(location.pathname);
 
             return (
               <Link

@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
-from urllib.parse import urljoin
+from urllib.parse import quote, urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -83,6 +83,60 @@ SEMESTER_KEYWORDS = merge_keywords(
 
 FACULTY_PATH = Path(__file__).resolve().parents[1] / "shared" / "faculty.json"
 
+MARKS_LINK_KEYWORDS = [
+    "marks",
+    "internal",
+    "internals",
+    "insem",
+    "in sem",
+    "qp",
+    "qp wise",
+    "qpwise",
+    "summative",
+    "sessional",
+    "memo",
+    "result",
+    "courses",
+    "evaluation"
+]
+SEATING_LINK_KEYWORDS = [
+    "seating",
+    "seat",
+    "seating plan",
+    "room",
+    "room allotment",
+    "exam",
+    "hall",
+    "ticket",
+    "allocation"
+]
+CGPA_LINK_KEYWORDS = ["cgpa", "my cgpa", "gpa", "grade", "result", "cumulative", "sem end exam"]
+
+MARKS_CANDIDATE_PATHS = [
+    "index.php?r=examsection/examstudentcourseinternalsummativeqpwisemarksinfo/index",
+    "index.php?r=examsection/examstudentcourseinternalsummativeqpwisemarksinfo/index_student",
+    "index.php?r=examsection/examstudentcourseinternalsummativeqpwisemarksinfo/index_student_marks",
+    "index.php?r=studentinfo/studentendexamresult/getstudentinternalmarks",
+    "index.php?r=studentmarks/marks/index",
+    "index.php?r=studentmarks/marks/internal",
+    "index.php?r=studentmarks/marks/view",
+    "index.php?r=studentcourse/internalmarks/index"
+]
+
+SEATING_CANDIDATE_PATHS = [
+    "index.php?r=examsection/exam-invigilator-student-room-allotment-info/stud_my_seating_plan",
+    "index.php?r=studentexam/seatingplan/index",
+    "index.php?r=examination/seatingplan/index",
+    "index.php?r=studentexam/hallticket/index"
+]
+
+CGPA_CANDIDATE_PATHS = [
+    "index.php?r=studentinfo/studentendexamresult/searchgetmycgpa",
+    "index.php?r=studentresult/cgpa/index",
+    "index.php?r=studentresult/result/index",
+    "index.php?r=studentmarks/marks/cgpa"
+]
+
 
 class AppError(Exception):
     def __init__(self, message: str, status_code: int = 500):
@@ -126,6 +180,7 @@ def build_headers(base_url: str, extra: Optional[Dict[str, str]] = None) -> Dict
 def create_session() -> requests.Session:
     session = requests.Session()
     session.headers.update({"User-Agent": DEFAULT_USER_AGENT})
+    ensure_device_cookie(session)
     return session
 
 
@@ -185,6 +240,7 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
         return captcha_session.session
 
     try:
+        ensure_device_cookie(captcha_session.session)
         login_form = extract_login_form(captcha_session.login_html, LOGIN_URL)
         login_data = build_login_form_data(login_form, payload)
 
@@ -841,16 +897,969 @@ def sync_timetable(payload: Dict[str, str]) -> Dict[str, object]:
     if not captcha_session:
         raise AppError("Captcha session expired.", 410)
 
-    url = f"{LOGIN_URL}index.php?r=timetables/universitymasteracademictimetableview/indexstudentindisearch"
-    response = request_page(
-        captcha_session.session,
-        url,
-        headers=build_headers(url)
+    dashboard_html = getattr(captcha_session, "dashboard_html", "")
+    timetable_link = find_timetable_link(dashboard_html, LOGIN_URL) if dashboard_html else ""
+
+    candidate_paths = [
+        "index.php?r=timetables/universitymasteracademictimetableview/indexstudentindisearch",
+        "index.php?r=timetables/universitymasteracademictimetableview/indexstudent",
+        "index.php?r=timetables/universitymasteracademictimetableview/index",
+        "index.php?r=timetables/universitymasteracademictimetableview/indexsearch",
+        "index.php?r=timetables/studenttimetable/index",
+    ]
+    candidate_urls = []
+    if timetable_link:
+        candidate_urls.append(timetable_link)
+    candidate_urls.extend(urljoin(LOGIN_URL, path) for path in candidate_paths)
+
+    seen_urls = set()
+    last_html = ""
+    last_url = ""
+    for url in candidate_urls:
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        try:
+            timetable, html = fetch_timetable_from_url(captcha_session.session, url, payload)
+            last_html = html
+            last_url = url
+            if timetable["grid"]:
+                return {**timetable, "status": "ok", "sourceUrl": url}
+        except Exception as exc:
+            if DEBUG_ENABLED:
+                print(f"[erp:timetable] failed for {url}: {exc}")
+            continue
+
+    if DEBUG_ENABLED and last_html:
+        try:
+            debug_path = Path(__file__).resolve().parent / "last_timetable_failure.html"
+            debug_path.write_text(f"<!-- URL: {last_url} -->\n{last_html}", encoding="utf8")
+            print(f"[erp:timetable] Timetable table missing. Saved response to {debug_path}")
+        except Exception:
+            pass
+
+    return {
+        "grid": [],
+        "mappings": [],
+        "status": "empty",
+        "message": "ERP did not return timetable data for the selected academic year and semester."
+    }
+
+
+def sync_marks(payload: Dict[str, str]) -> List[Dict[str, object]]:
+    session = perform_login(payload)
+    ensure_device_cookie(session)
+    dashboard_html = getattr(captcha_sessions.get(payload.get("captchaSessionId") or ""), "dashboard_html", "")
+    candidate_urls = collect_feature_urls(dashboard_html, MARKS_LINK_KEYWORDS, MARKS_CANDIDATE_PATHS)
+    menu_url = find_menu_link_by_keywords(session, ["internals", "internal", "course internals"])
+    if menu_url:
+        candidate_urls = [menu_url, *candidate_urls]
+    csrf_token = extract_csrf_token(dashboard_html) or get_csrf_from_session(session)
+    last_html = ""
+    last_url = ""
+
+    for url in candidate_urls:
+        try:
+            html = fetch_html_with_term_form(session, url, payload, csrf_token=csrf_token, xhr=True)
+            last_html = html
+            last_url = url
+
+            marks = parse_course_internals_page(html, payload, session)
+            if marks:
+                return marks
+
+            marks = parse_marks_tables(html, payload)
+            if marks:
+                return marks
+        except Exception as exc:
+            if DEBUG_ENABLED:
+                print(f"[erp:marks] failed for {url}: {exc}")
+            continue
+
+    if DEBUG_ENABLED and last_html:
+        debug_path = Path(__file__).resolve().parent / "last_marks_failure.html"
+        debug_path.write_text(f"<!-- URL: {last_url} -->\n{last_html}", encoding="utf8")
+
+    return []
+
+
+def sync_seating_plan(payload: Dict[str, str]) -> List[Dict[str, object]]:
+    session = perform_login(payload)
+    dashboard_html = getattr(captcha_sessions.get(payload.get("captchaSessionId") or ""), "dashboard_html", "")
+    html, url = fetch_feature_html(
+        session,
+        dashboard_html,
+        payload,
+        SEATING_LINK_KEYWORDS,
+        SEATING_CANDIDATE_PATHS
     )
-    
-    html = response.text
+    plans = parse_seating_tables(html, payload)
+    if plans:
+        return plans
+
+    if DEBUG_ENABLED and html:
+        debug_path = Path(__file__).resolve().parent / "last_seating_failure.html"
+        debug_path.write_text(f"<!-- URL: {url} -->\n{html}", encoding="utf8")
+
+    return []
+
+
+def sync_cgpa(payload: Dict[str, str]) -> Dict[str, object]:
+    session = perform_login(payload)
+    dashboard_html = getattr(captcha_sessions.get(payload.get("captchaSessionId") or ""), "dashboard_html", "")
+    html, url = fetch_feature_html(
+        session,
+        dashboard_html,
+        payload,
+        CGPA_LINK_KEYWORDS,
+        CGPA_CANDIDATE_PATHS
+    )
+    cgpa = parse_cgpa_html(html, payload)
+    if cgpa:
+        return cgpa
+
+    if DEBUG_ENABLED and html:
+        debug_path = Path(__file__).resolve().parent / "last_cgpa_failure.html"
+        debug_path.write_text(f"<!-- URL: {url} -->\n{html}", encoding="utf8")
+
+    return {}
+
+
+def fetch_feature_html(
+    session: requests.Session,
+    dashboard_html: str,
+    payload: Dict[str, str],
+    keywords: List[str],
+    candidate_paths: List[str]
+) -> tuple:
+    candidate_urls = collect_feature_urls(dashboard_html, keywords, candidate_paths)
+    seen = set()
+    last_html = ""
+    last_url = ""
+
+    for url in candidate_urls:
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        try:
+            html = fetch_html_with_term_form(session, url, payload)
+            last_html = html
+            last_url = url
+            if html and html_has_keywords(html, keywords):
+                return html, url
+        except Exception as exc:
+            if DEBUG_ENABLED:
+                print(f"[erp:feature] failed for {url}: {exc}")
+            continue
+
+    return last_html, last_url
+
+
+def collect_feature_urls(dashboard_html: str, keywords: List[str], candidate_paths: List[str]) -> List[str]:
+    base_url = LOGIN_URL
+    candidate_urls = []
+    link_url = find_link_by_keywords(dashboard_html, base_url, keywords)
+    if link_url:
+        candidate_urls.append(link_url)
+    candidate_urls.extend(urljoin(base_url, path) for path in candidate_paths)
+
+    seen = set()
+    unique_urls = []
+    for url in candidate_urls:
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        unique_urls.append(url)
+    return unique_urls
+
+
+def find_menu_link_by_keywords(session: requests.Session, keywords: List[str]) -> str:
+    menu_url = urljoin(LOGIN_URL, "menu-student.json")
+    try:
+        response = request_page(session, menu_url, headers=build_headers(LOGIN_URL))
+        data = response.json()
+    except Exception:
+        return ""
+
+    link = search_menu_for_link(data, keywords)
+    if not link:
+        return ""
+    return urljoin(LOGIN_URL, link)
+
+
+def search_menu_for_link(node, keywords: List[str]) -> str:
+    if node is None:
+        return ""
+
+    lowered_keywords = [keyword.lower() for keyword in keywords]
+
+    if isinstance(node, dict):
+        label = ""
+        for key in ["label", "title", "name", "text"]:
+            if key in node and isinstance(node[key], str):
+                label = node[key]
+                break
+
+        if label and any(keyword in label.lower() for keyword in lowered_keywords):
+            for url_key in ["url", "href", "link", "route", "path"]:
+                if url_key in node and isinstance(node[url_key], str):
+                    return node[url_key]
+
+        for child_key in ["items", "children", "submenu", "nodes"]:
+            if child_key in node:
+                link = search_menu_for_link(node[child_key], keywords)
+                if link:
+                    return link
+
+    if isinstance(node, list):
+        for item in node:
+            link = search_menu_for_link(item, keywords)
+            if link:
+                return link
+
+    return ""
+
+
+def fetch_html_with_term_form(
+    session: requests.Session,
+    url: str,
+    payload: Dict[str, str],
+    csrf_token: Optional[str] = None,
+    xhr: bool = False
+) -> str:
+    headers_extra = {}
+    if xhr:
+        headers_extra["X-Requested-With"] = "XMLHttpRequest"
+        headers_extra["Accept"] = "text/html, */*; q=0.01"
+    if csrf_token:
+        headers_extra["X-CSRF-Token"] = csrf_token
+
+    response = request_page(session, url, headers=build_headers(url, headers_extra))
+    html = response.text or ""
+    html = extract_html_from_json(html)
+
+    form = extract_term_form(html, url)
+    if form.get("html"):
+        data = build_attendance_form_data(form, payload)
+        result_response = submit_form(session, form, data, referer=url)
+        html = result_response.text or ""
+        html = extract_html_from_json(html)
+
+    return html
+
+
+def extract_term_form(html: str, base_url: str) -> Dict[str, object]:
     soup = BeautifulSoup(html, "html.parser")
-    table = soup.find("table")
+    forms = soup.find_all("form")
+    academic_select = find_select_name(soup, ACADEMIC_KEYWORDS)
+    semester_select = find_select_name(soup, SEMESTER_KEYWORDS)
+
+    if not academic_select and not semester_select:
+        return {"html": "", "actionUrl": base_url, "method": "post"}
+
+    selected_form = None
+    for form in forms:
+        if academic_select and has_select(form, academic_select):
+            selected_form = form
+            break
+        if semester_select and has_select(form, semester_select):
+            selected_form = form
+            break
+
+    form = selected_form or (forms[0] if forms else None)
+    if not form:
+        return {"html": "", "actionUrl": base_url, "method": "post"}
+
+    action = form.get("action") or base_url
+    method = (form.get("method") or "post").lower()
+
+    ajax_url = ""
+    scripts = soup.find_all("script")
+    form_id = form.get("id", "")
+    for script in scripts:
+        script_text = script.string or ""
+        if form_id and form_id in script_text and ".ajax" in script_text:
+            match = re.search(r"url\s*:\s*['\"]([^'\"]+)['\"]", script_text)
+            if match:
+                ajax_url = match.group(1)
+                if DEBUG_ENABLED:
+                    print(f"[erp:feature] Detected AJAX form for {form_id}, URL: {ajax_url}")
+                break
+
+    return {
+        "html": str(form),
+        "actionUrl": urljoin(base_url, ajax_url or action),
+        "method": method,
+        "academicSelect": academic_select,
+        "semesterSelect": semester_select,
+        "hiddenFields": extract_hidden_inputs(form),
+        "isAjax": bool(ajax_url)
+    }
+
+
+def find_link_by_keywords(html: str, base_url: str, keywords: List[str]) -> str:
+    if not html:
+        return ""
+    lowered_keywords = [keyword.lower() for keyword in keywords]
+    soup = BeautifulSoup(html, "html.parser")
+    for link in soup.find_all("a", href=True):
+        href = (link.get("href", "") or "").strip()
+        if not href or href.startswith("#"):
+            continue
+        if "javascript:" in href.lower():
+            continue
+        text = clean_text(link.get_text(" ")).lower()
+        combined = f"{text} {href.lower()}"
+        if any(keyword in combined for keyword in lowered_keywords):
+            return urljoin(base_url, href)
+    return ""
+
+
+def html_has_keywords(html: str, keywords: List[str]) -> bool:
+    if not html:
+        return False
+    lowered_keywords = [keyword.lower() for keyword in keywords]
+    text = clean_text(BeautifulSoup(html, "html.parser").get_text(" ")).lower()
+    return any(keyword in text for keyword in lowered_keywords)
+
+
+def parse_marks_tables(html: str, payload: Dict[str, str]) -> List[Dict[str, object]]:
+    soup = BeautifulSoup(html or "", "html.parser")
+    tables = soup.find_all("table")
+
+    for table in tables:
+        headers, rows = parse_table(table)
+        if not headers or not rows:
+            continue
+
+        if not looks_like_marks_headers(headers):
+            continue
+
+        rows = filter_rows_by_term(rows, headers, payload)
+        parsed = parse_marks_rows(headers, rows, payload)
+        if parsed:
+            return parsed
+
+    return []
+
+
+def parse_course_internals_page(html: str, payload: Dict[str, str], session: requests.Session) -> List[Dict[str, object]]:
+    soup = BeautifulSoup(html or "", "html.parser")
+    tables = soup.find_all("table")
+    csrf_token = extract_csrf_token(html)
+
+    for table in tables:
+        rows = table.find_all("tr")
+        if len(rows) < 2:
+            continue
+
+        header_cells = rows[0].find_all(["th", "td"])
+        headers = [clean_text(cell.get_text(" ")).lower() for cell in header_cells]
+
+        if not any("academic" in header for header in headers):
+            continue
+        if not any("semester" in header for header in headers):
+            continue
+        if not any("course" in header for header in headers):
+            continue
+        if not any("evaluation" in header or "component" in header for header in headers):
+            continue
+
+        year_index = find_index(headers, ["academic year", "academicyear", "year"])
+        semester_index = find_index(headers, ["semester", "term"])
+        code_index = find_index(headers, ["coursecode", "course code", "code", "subjectcode", "subject code"])
+        subject_index = find_index(headers, ["course name", "course", "subject", "coursedesc", "title", "name"])
+        component_index = find_index(headers, ["evaluation components", "evaluation component", "components", "evaluation"])
+
+        results = []
+        for row in rows[1:]:
+            cells = row.find_all(["td", "th"])
+            if not cells:
+                continue
+
+            values = [clean_text(cell.get_text(" ")) for cell in cells]
+            if year_index >= 0 and not matches_year(row_value(values, year_index), payload.get("academicYear")):
+                continue
+            if semester_index >= 0 and not matches_semester(row_value(values, semester_index), payload.get("semesterId")):
+                continue
+
+            course_code = row_value(values, code_index)
+            subject = row_value(values, subject_index) or row_value(values, 0)
+
+            if component_index < 0 or component_index >= len(cells):
+                continue
+
+            component_cell = cells[component_index]
+            insem1 = None
+            insem2 = None
+            for link in component_cell.find_all("a"):
+                label = clean_text(link.get_text(" "))
+                bucket = component_bucket(label)
+                if not bucket:
+                    continue
+                url = extract_component_url(link)
+                if not url:
+                    continue
+                value = fetch_component_mark(session, url, csrf_token)
+                if bucket == "insem1" and value is not None:
+                    insem1 = value
+                if bucket == "insem2" and value is not None:
+                    insem2 = value
+
+            if insem1 is None and insem2 is None:
+                continue
+
+            results.append({
+                "courseCode": course_code,
+                "subject": subject,
+                "insem1": insem1,
+                "insem2": insem2,
+                "academicYear": row_value(values, year_index) or payload.get("academicYear"),
+                "semester": row_value(values, semester_index) or payload.get("semesterId")
+            })
+
+        if results:
+            return results
+
+    return []
+
+
+def parse_marks_rows(headers: List[str], rows: List[List[str]], payload: Dict[str, str]) -> List[Dict[str, object]]:
+    code_index = find_index(headers, ["coursecode", "course code", "code", "subjectcode", "subject code"])
+    subject_index = find_index(headers, ["coursedesc", "course", "subject", "name", "title"])
+    year_index = find_index(headers, ["year", "academicyear", "academic year"])
+    semester_index = find_index(headers, ["semester", "term"])
+
+    insem1_index = find_mark_index(headers, [
+        r"in\s*sem\s*1",
+        r"in\s*semester\s*1",
+        r"internal\s*1",
+        r"mid\s*1",
+        r"sessional\s*1"
+    ])
+    insem2_index = find_mark_index(headers, [
+        r"in\s*sem\s*2",
+        r"in\s*semester\s*2",
+        r"internal\s*2",
+        r"mid\s*2",
+        r"sessional\s*2"
+    ])
+    total_index = find_mark_index(headers, [r"total", r"overall", r"marks", r"score"])
+
+    results: List[Dict[str, object]] = []
+    for row in rows:
+        if year_index >= 0 and not matches_year(row_value(row, year_index), payload.get("academicYear")):
+            continue
+        if semester_index >= 0 and not matches_semester(row_value(row, semester_index), payload.get("semesterId")):
+            continue
+
+        course_code = row_value(row, code_index)
+        subject = row_value(row, subject_index) or row_value(row, 0)
+        insem1 = row_value(row, insem1_index)
+        insem2 = row_value(row, insem2_index)
+        total = row_value(row, total_index)
+
+        if not course_code and not subject:
+            continue
+
+        results.append({
+            "courseCode": course_code,
+            "subject": subject,
+            "insem1": insem1,
+            "insem2": insem2,
+            "total": total,
+            "academicYear": row_value(row, year_index) or payload.get("academicYear"),
+            "semester": row_value(row, semester_index) or payload.get("semesterId")
+        })
+
+    return results
+
+
+def parse_seating_tables(html: str, payload: Dict[str, str]) -> List[Dict[str, object]]:
+    soup = BeautifulSoup(html or "", "html.parser")
+    tables = soup.find_all("table")
+
+    for table in tables:
+        headers, rows = parse_table(table)
+        if not headers or not rows:
+            continue
+
+        if not looks_like_seating_headers(headers):
+            continue
+
+        rows = filter_rows_by_term(rows, headers, payload)
+        parsed = parse_seating_rows(headers, rows, payload)
+        if parsed:
+            return parsed
+
+    return []
+
+
+def parse_seating_rows(headers: List[str], rows: List[List[str]], payload: Dict[str, str]) -> List[Dict[str, object]]:
+    ref_index = find_index(headers, ["ref", "refid", "ref id", "reference"])
+    code_index = find_index(headers, ["coursecode", "course code", "code", "subjectcode", "subject code"])
+    subject_index = find_index(headers, ["coursedesc", "course", "subject", "name", "title"])
+    exam_type_index = find_index(headers, ["exam type", "type"])
+    exam_slot_index = find_index(headers, ["exam slot", "slot", "session"])
+    student_id_index = find_index(headers, ["student university id", "student id", "university id", "student"])
+    room_index = find_index(headers, ["room", "roomno", "room no", "hall", "hall no", "hallno"])
+    seat_index = find_index(headers, ["seat", "seatno", "seat no", "bench"])
+    block_index = find_index(headers, ["block", "building"])
+    date_index = find_index(headers, ["date", "examdate"])
+    time_index = find_index(headers, ["time", "slot", "examtime"])
+    created_index = find_index(headers, ["creation", "created", "created at", "created on"])
+    year_index = find_index(headers, ["year", "academicyear", "academic year"])
+    semester_index = find_index(headers, ["semester", "term"])
+
+    results: List[Dict[str, object]] = []
+    for row in rows:
+        if year_index >= 0 and not matches_year(row_value(row, year_index), payload.get("academicYear")):
+            continue
+        if semester_index >= 0 and not matches_semester(row_value(row, semester_index), payload.get("semesterId")):
+            continue
+        if year_index < 0 and semester_index < 0 and date_index >= 0:
+            exam_date = row_value(row, date_index)
+            if payload.get("academicYear") and not matches_academic_year_by_date(exam_date, payload.get("academicYear")):
+                continue
+            if payload.get("semesterId") and not matches_semester_by_date(exam_date, payload.get("semesterId")):
+                continue
+
+        entry = {
+            "refId": row_value(row, ref_index),
+            "studentId": row_value(row, student_id_index),
+            "courseCode": row_value(row, code_index),
+            "subject": row_value(row, subject_index) or row_value(row, 0),
+            "examType": row_value(row, exam_type_index),
+            "examSlot": row_value(row, exam_slot_index),
+            "room": row_value(row, room_index),
+            "seat": row_value(row, seat_index),
+            "block": row_value(row, block_index),
+            "date": row_value(row, date_index),
+            "time": row_value(row, time_index),
+            "createdAt": row_value(row, created_index),
+            "academicYear": row_value(row, year_index) or payload.get("academicYear"),
+            "semester": row_value(row, semester_index) or payload.get("semesterId")
+        }
+
+        if not any([entry["courseCode"], entry["subject"], entry["room"], entry["seat"], entry["date"], entry["time"]]):
+            continue
+        results.append(entry)
+
+    return results
+
+
+def component_bucket(label: str) -> str:
+    text = (label or "").lower()
+    if "exam" not in text:
+        return ""
+    if re.search(r"\b(2|ii)\b", text):
+        return "insem2"
+    if re.search(r"\b(1|i)\b", text):
+        return "insem1"
+    return ""
+
+
+def fetch_component_mark(session: requests.Session, url: str, csrf_token: Optional[str] = None):
+    headers_extra = {"X-Requested-With": "XMLHttpRequest"}
+    token = csrf_token or get_csrf_from_session(session)
+    if token:
+        headers_extra["X-CSRF-Token"] = token
+    response = request_page(session, url, headers=build_headers(url, headers_extra))
+    html = response.text or ""
+    html = extract_html_from_json(html)
+    value = parse_mark_from_component_html(html)
+    if value is None and DEBUG_ENABLED:
+        debug_path = Path(__file__).resolve().parent / "last_marks_component_failure.html"
+        debug_path.write_text(f"<!-- URL: {url} -->\n{html}", encoding="utf8")
+    return value
+
+
+def extract_html_from_json(html: str) -> str:
+    try:
+        data = json.loads(html)
+    except Exception:
+        return html
+
+    if isinstance(data, dict):
+        return data.get("content") or data.get("html") or data.get("data") or html
+    return html
+
+
+def extract_csrf_token(html: str) -> str:
+    soup = BeautifulSoup(html or "", "html.parser")
+    meta = soup.find("meta", {"name": "csrf-token"})
+    if meta and meta.get("content"):
+        return meta.get("content")
+    input_tag = soup.find("input", {"name": "_csrf"})
+    if input_tag and input_tag.get("value"):
+        return input_tag.get("value")
+    return ""
+
+
+def get_csrf_from_session(session: requests.Session) -> str:
+    if session is None:
+        return ""
+    token = session.cookies.get("_csrf") or session.cookies.get("csrf")
+    return token or ""
+
+
+def ensure_device_cookie(session: requests.Session) -> None:
+    if session is None:
+        return
+    if session.cookies.get("kl_erp_device_id"):
+        return
+
+    seed = os.urandom(32).hex()
+    token = os.urandom(32).hex()
+    raw_value = f"{seed}:2:{{i:0;s:16:\"kl_erp_device_id\";i:1;s:64:\"{token}\";}}"
+    session.cookies.set("kl_erp_device_id", quote(raw_value, safe=""))
+
+
+def extract_component_url(link_tag) -> str:
+    href = (link_tag.get("href") or "").strip()
+    if href and not href.startswith("#") and "javascript:" not in href.lower():
+        return urljoin(LOGIN_URL, href)
+
+    for value in link_tag.attrs.values():
+        if isinstance(value, list):
+            text = " ".join(str(item) for item in value)
+        else:
+            text = str(value)
+
+        url = extract_component_url_from_text(text)
+        if url:
+            return url
+
+    return ""
+
+
+def extract_component_url_from_text(text: str) -> str:
+    if not text:
+        return ""
+
+    match = re.search(r"index\.php\?r=[^'\"\s]*index_student_marks[^'\"\s]*", text)
+    if match:
+        return urljoin(LOGIN_URL, match.group(0))
+
+    match = re.search(r"index_student_marks[^'\"\s]*", text)
+    if match:
+        return urljoin(LOGIN_URL, match.group(0))
+
+    return ""
+
+
+def parse_mark_from_component_html(html: str):
+    soup = BeautifulSoup(html or "", "html.parser")
+    tables = soup.find_all("table")
+
+    for table in tables:
+        headers, rows = parse_table(table)
+        if not headers or not rows:
+            continue
+
+        score_index = find_mark_index(headers, [
+            r"(marks|score).*(obtained|secured|scored|score)",
+            r"obtained",
+            r"secured",
+            r"score"
+        ])
+        total_index = find_mark_index(headers, [r"total\s*marks", r"total"])
+        weighted_index = find_mark_index(headers, [r"weighted\s*marks", r"weighted"])
+        max_index = find_mark_index(headers, [r"max\s*marks", r"max", r"maximum", r"out\s*of"])
+
+        for row in rows:
+            score = to_number(row_value(row, score_index)) if score_index >= 0 else None
+            total = to_number(row_value(row, total_index)) if total_index >= 0 else None
+            weighted = to_number(row_value(row, weighted_index)) if weighted_index >= 0 else None
+            max_value = to_number(row_value(row, max_index)) if max_index >= 0 else None
+            if total is not None and max_value is not None:
+                return format_mark_value(total, max_value)
+            if total is not None:
+                return total
+            if weighted is not None:
+                return weighted
+            if score is not None and max_value is not None:
+                return format_mark_value(score, max_value)
+            if score is not None:
+                return score
+
+    text = clean_text(soup.get_text(" "))
+    match = re.search(r"(marks|score)\s*[:\-]?\s*(\d+(?:\.\d+)?)", text, re.IGNORECASE)
+    if match:
+        return float(match.group(2))
+
+    return None
+
+
+def format_mark_value(obtained: float, maximum: float) -> str:
+    def fmt(value: float) -> str:
+        if value is None:
+            return ""
+        if float(value).is_integer():
+            return str(int(value))
+        return f"{value:.2f}".rstrip("0").rstrip(".")
+
+    return f"{fmt(obtained)}/{fmt(maximum)}"
+
+
+def parse_cgpa_html(html: str, payload: Dict[str, str]) -> Dict[str, object]:
+    soup = BeautifulSoup(html or "", "html.parser")
+    tables = soup.find_all("table")
+    cgpa_value = None
+    text = clean_text(soup.get_text(" "))
+    match = re.search(r"cgpa[^0-9]*(\d+(?:\.\d+)?)", text, re.IGNORECASE)
+    if match:
+        cgpa_value = float(match.group(1))
+
+    for table in tables:
+        headers, rows = parse_table(table)
+        if not headers or not rows:
+            continue
+
+        year_index = find_index(headers, ["reg academic year", "academic year", "academicyear", "year"])
+        semester_index = find_index(headers, ["reg sem", "semester", "term"])
+        if year_index < 0 and semester_index < 0:
+            continue
+
+        rows = filter_rows_by_term(rows, headers, payload)
+        if rows:
+            if cgpa_value is None:
+                return {}
+            return {
+                "value": cgpa_value,
+                "semester": row_value(rows[0], semester_index) or payload.get("semesterId"),
+                "academicYear": row_value(rows[0], year_index) or payload.get("academicYear")
+            }
+
+    if cgpa_value is not None:
+        return {
+            "value": cgpa_value,
+            "semester": payload.get("semesterId"),
+            "academicYear": payload.get("academicYear")
+        }
+
+    return {}
+
+
+def parse_table(table) -> tuple:
+    rows = table.find_all("tr")
+    if len(rows) < 2:
+        return [], []
+
+    header_cells = rows[0].find_all(["th", "td"])
+    headers = [clean_text(cell.get_text(" ")).lower() for cell in header_cells]
+    data_rows = []
+
+    for row in rows[1:]:
+        cells = [clean_text(cell.get_text(" ")) for cell in row.find_all(["td", "th"])]
+        if not cells:
+            continue
+        data_rows.append(cells)
+
+    return headers, data_rows
+
+
+def looks_like_marks_headers(headers: List[str]) -> bool:
+    header_text = " ".join(headers)
+    return any(keyword in header_text for keyword in ["insem", "internal", "sessional", "marks", "mid"])
+
+
+def looks_like_seating_headers(headers: List[str]) -> bool:
+    header_text = " ".join(headers)
+    return any(keyword in header_text for keyword in ["seat", "room", "hall", "exam"]) and any(
+        keyword in header_text for keyword in ["course", "subject"]
+    )
+
+
+def filter_rows_by_term(rows: List[List[str]], headers: List[str], payload: Dict[str, str]) -> List[List[str]]:
+    year_index = find_index(headers, ["year", "academicyear", "academic year"])
+    semester_index = find_index(headers, ["semester", "term"])
+
+    if year_index < 0 and semester_index < 0:
+        return rows
+
+    filtered = []
+    for row in rows:
+        year_ok = True
+        semester_ok = True
+        if year_index >= 0:
+            year_ok = matches_year(row_value(row, year_index), payload.get("academicYear"))
+        if semester_index >= 0:
+            semester_ok = matches_semester(row_value(row, semester_index), payload.get("semesterId"))
+        if year_ok and semester_ok:
+            filtered.append(row)
+
+    return filtered
+
+
+def find_mark_index(headers: List[str], patterns: List[str]) -> int:
+    for index, header in enumerate(headers):
+        for pattern in patterns:
+            if re.search(pattern, header, re.IGNORECASE):
+                return index
+    return -1
+
+
+def row_value(row: List[str], index: int) -> str:
+    if index < 0 or index >= len(row):
+        return ""
+    return row[index]
+
+
+def matches_year(value: str, target: Optional[str]) -> bool:
+    if not target:
+        return True
+    value = (value or "").strip()
+    if not value:
+        return False
+
+    target_nums = re.findall(r"\d+", target)
+    value_nums = re.findall(r"\d+", value)
+    if target_nums and value_nums and target_nums[0] == value_nums[0]:
+        return True
+
+    lowered_target = target.lower()
+    lowered_value = value.lower()
+    return lowered_target in lowered_value or lowered_value in lowered_target
+
+
+def matches_semester(value: str, target: Optional[str]) -> bool:
+    if not target:
+        return True
+    value = (value or "").strip().lower()
+    if not value:
+        return False
+
+    target = target.lower()
+    if "even" in target:
+        return "even" in value
+    if "odd" in target:
+        return "odd" in value
+    if "summer" in target:
+        return "summer" in value
+    if "term" in target:
+        return "term" in value
+    return target in value or value in target
+
+
+def matches_academic_year_by_date(date_text: str, academic_year: Optional[str]) -> bool:
+    if not academic_year:
+        return True
+    year = parse_year_from_date(date_text)
+    if year is None:
+        return False
+    years = re.findall(r"\d{4}", academic_year)
+    if len(years) >= 2:
+        start_year = int(years[0])
+        end_year = int(years[1])
+        return year in {start_year, end_year}
+    if years:
+        return year == int(years[0])
+    return False
+
+
+def matches_semester_by_date(date_text: str, semester: Optional[str]) -> bool:
+    if not semester:
+        return True
+    month = parse_month_from_date(date_text)
+    if month is None:
+        return False
+    lowered = semester.lower()
+    # Heuristic mapping: odd -> Jul-Dec, even -> Jan-Jun, summer/term3 -> May-Jul.
+    if "odd" in lowered:
+        return month >= 7
+    if "even" in lowered:
+        return month <= 6
+    if "summer" in lowered or "term" in lowered:
+        return 5 <= month <= 7
+    return True
+
+
+def parse_year_from_date(date_text: str) -> Optional[int]:
+    if not date_text:
+        return None
+    match = re.search(r"(\d{4})", date_text)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def parse_month_from_date(date_text: str) -> Optional[int]:
+    if not date_text:
+        return None
+    match = re.search(r"(\d{4})[-/](\d{2})[-/](\d{2})", date_text)
+    if match:
+        return int(match.group(2))
+    match = re.search(r"(\d{2})[-/](\d{2})[-/](\d{4})", date_text)
+    if match:
+        return int(match.group(2))
+    return None
+
+
+def fetch_timetable_from_url(session: requests.Session, url: str, payload: Dict[str, str]) -> tuple:
+    response = request_page(session, url, headers=build_headers(url))
+    html = response.text or ""
+
+    timetable = parse_timetable_html(html)
+    if timetable["grid"]:
+        return timetable, html
+
+    form = extract_timetable_form(html, url)
+    if form.get("html"):
+        data = build_attendance_form_data(form, payload)
+        result_response = submit_form(session, form, data, referer=url)
+        html = result_response.text or ""
+        timetable = parse_timetable_html(html)
+        if timetable["grid"]:
+            return timetable, html
+
+    return {"grid": [], "mappings": []}, html
+
+
+def find_timetable_link(html: str, base_url: str) -> str:
+    soup = BeautifulSoup(html or "", "html.parser")
+    for link in soup.find_all("a", href=True):
+        text = link.get_text(" ", strip=True).lower()
+        href = link["href"].lower()
+        if "javascript:" in href:
+            continue
+        if "timetable" in text or "timetable" in href:
+            return urljoin(base_url, link["href"])
+    return ""
+
+
+def extract_timetable_form(html: str, base_url: str) -> Dict[str, object]:
+    soup = BeautifulSoup(html, "html.parser")
+    forms = soup.find_all("form")
+    academic_select = find_select_name(soup, ACADEMIC_KEYWORDS)
+    semester_select = find_select_name(soup, SEMESTER_KEYWORDS)
+
+    form = None
+    for candidate in forms:
+        form_text = candidate.get_text(" ", strip=True).lower()
+        if "timetable" in form_text or "academic" in form_text or "semester" in form_text:
+            form = candidate
+            break
+
+    form = form or (forms[0] if forms else None)
+    if not form:
+        return {"html": "", "actionUrl": base_url, "method": "post"}
+
+    action = form.get("action") or base_url
+    method = (form.get("method") or "post").lower()
+    return {
+        "html": str(form),
+        "actionUrl": urljoin(base_url, action),
+        "method": method,
+        "academicSelect": academic_select,
+        "semesterSelect": semester_select
+    }
+
+
+def parse_timetable_html(html: str) -> Dict[str, object]:
+    soup = BeautifulSoup(html, "html.parser")
+    table = find_timetable_table(soup)
     if not table:
         return {"grid": [], "mappings": []}
         
@@ -876,6 +1885,15 @@ def sync_timetable(payload: Dict[str, str]) -> Dict[str, object]:
         "grid": grid,
         "mappings": mappings
     }
+
+
+def find_timetable_table(soup: BeautifulSoup):
+    tables = soup.find_all("table")
+    for table in tables:
+        text = clean_text(table.get_text(" ")).lower()
+        if any(day.lower() in text for day in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]):
+            return table
+    return tables[0] if tables else None
 
 
 def find_index(headers: List[str], candidates: List[str]) -> int:
