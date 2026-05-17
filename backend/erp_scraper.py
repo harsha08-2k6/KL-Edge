@@ -288,7 +288,7 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
             message = extract_login_error_message(login_html)
             clean_message = message or "ERP login failed. Refresh captcha and check ERP ID, password, and captcha."
             if DEBUG_ENABLED:
-                print(f"[erp:login] Rejected by ERP. Reason: '{clean_message}'")
+                print(f"[erp:login] Rejected by ERP. Reason: '{clean_message}'", flush=True)
             raise AppError(clean_message, 401)
 
         captcha_session["is_logged_in"] = True
@@ -301,7 +301,7 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
         raise e
     except Exception as e:
         if DEBUG_ENABLED:
-            print("[erp:login] unexpected error", e)
+            print(f"[erp:login] unexpected error: {e}", flush=True)
         raise AppError(f"Login failed: {str(e)}", 500)
 
 
@@ -324,7 +324,7 @@ def request_page(session: requests.Session, url: str, headers: Optional[Dict[str
         return response
     except requests.RequestException as exc:
         if DEBUG_ENABLED:
-            print(f"[erp:http] request_page failed for {url}: {exc}")
+            print(f"[erp:http] request_page failed for {url}: {exc}", flush=True)
         raise AppError(f"ERP request failed: {exc}", 502) from exc
 
 
@@ -360,7 +360,7 @@ def submit_form(session: requests.Session, form: Dict[str, object], data: Dict[s
         return response
     except requests.RequestException as exc:
         if DEBUG_ENABLED:
-            print(f"[erp:http] submit_form failed for {url}: {exc}")
+            print(f"[erp:http] submit_form failed for {url}: {exc}", flush=True)
         raise AppError(f"ERP request failed: {exc}", 502) from exc
 
 
@@ -431,7 +431,7 @@ def extract_login_form(html: str, base_url: str) -> Dict[str, object]:
             "passwordField": password_field,
             "captchaField": captcha_field,
             "hiddenFields": list(hidden_fields.keys())
-        })
+        }, flush=True)
 
     return {
         "actionUrl": urljoin(base_url, action),

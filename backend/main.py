@@ -80,11 +80,12 @@ def sync_attendance_route(body: SyncRequest):
             return handler()
         except AppError as exc:
             if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
-                print(f"[erp:{label}] {exc.message}")
+
+                print(f"[erp:{label}] {exc.message}", flush=True)
             return fallback
         except Exception as exc:
             if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
-                print(f"[erp:{label}] {exc}")
+                print(f"[erp:{label}] {exc}", flush=True)
             return fallback
 
     try:
