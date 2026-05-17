@@ -22,7 +22,13 @@ except ImportError:
     HAS_REDIS = False
 
 REDIS_URL = os.getenv("KV_URL") or os.getenv("REDIS_URL")
-redis_client = redis.Redis.from_url(REDIS_URL) if HAS_REDIS and REDIS_URL else None
+
+if HAS_REDIS and REDIS_URL and REDIS_URL.startswith(("redis://", "rediss://", "unix://")):
+    redis_client = redis.Redis.from_url(REDIS_URL)
+else:
+    redis_client = None
+    if REDIS_URL:
+        print("Warning: Invalid REDIS_URL scheme. Must start with redis:// or rediss://. Falling back to memory.")
 
 
 def selector_to_id(selector: str) -> str:
