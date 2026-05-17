@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const isProduction = import.meta.env.PROD;
+
 export const apiClient = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: isProduction ? '/_/backend/api' : 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json'
   }
