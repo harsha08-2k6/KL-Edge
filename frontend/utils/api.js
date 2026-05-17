@@ -1,5 +1,5 @@
 const isProduction = import.meta.env.PROD;
-const API_BASE = import.meta.env.VITE_API_BASE || (isProduction ? "/_/backend" : "http://localhost:8000");
+const API_BASE = import.meta.env.VITE_API_BASE || (isProduction ? "" : "http://localhost:8000");
 
 class ApiError extends Error {
   constructor(message, status) {

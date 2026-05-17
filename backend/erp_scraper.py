@@ -90,8 +90,7 @@ SEMESTER_KEYWORDS = merge_keywords(
     os.getenv("ERP_SEMESTER_SELECTOR", "")
 )
 
-FACULTY_PATH_SHARED = Path(__file__).resolve().parents[1] / "shared" / "faculty.json"
-FACULTY_PATH_LOCAL = Path(__file__).resolve().parent / "faculty.json"
+FACULTY_PATH = Path(__file__).resolve().parent / "faculty.json"
 
 MARKS_LINK_KEYWORDS = [
     "marks",
@@ -299,10 +298,8 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
 
 
 def load_faculty() -> List[Dict[str, object]]:
-    if FACULTY_PATH_LOCAL.exists():
-        return json.loads(FACULTY_PATH_LOCAL.read_text(encoding="utf8"))
-    if FACULTY_PATH_SHARED.exists():
-        return json.loads(FACULTY_PATH_SHARED.read_text(encoding="utf8"))
+    if FACULTY_PATH.exists():
+        return json.loads(FACULTY_PATH.read_text(encoding="utf8"))
     return []
 
 
@@ -480,10 +477,11 @@ def extract_login_error_message(html: str) -> str:
     ]
 
     messages: List[str] = []
+    ignored_texts = {"*", "login username", "username", "password", "captcha", "login"}
     for selector in selectors:
         for element in soup.select(selector):
             text = clean_text(element.get_text(" "))
-            if text and len(text) > 1 and text != "*":
+            if text and len(text) > 1 and text.lower() not in ignored_texts:
                 messages.append(text)
 
     if messages:

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Layout } from "../components/Layout.jsx";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
-import { enrichSubjects } from "../../shared/attendance";
+import { enrichSubjects } from "../utils/attendance.js";
 import { SubjectTable } from "../components/SubjectTable.jsx";
 
 const cellLabel = { L: "Lecture", T: "Tutorial", P: "Practical", S: "Skill" };
@@ -47,4 +47,3 @@ export default function Subjects() {
     </Layout>
   );
 }
-

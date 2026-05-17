@@ -7,7 +7,8 @@ import { SocialLinks } from "../components/SocialLinks.jsx";
 import { SubjectTable } from "../components/SubjectTable.jsx";
 import { fetchCaptcha, syncAttendance } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
-import { calculateOverall, enrichSubjects, getAttendanceStatus, classesNeededForTarget } from "../../shared/attendance";
+import { calculateOverall } from '../utils/attendance.js';
+import { enrichSubjects, getAttendanceStatus, classesNeededForTarget } from "../utils/attendance.js";
 
 export default function Home() {
   const [rawSubjects, setRawSubjects] = useState([]);
