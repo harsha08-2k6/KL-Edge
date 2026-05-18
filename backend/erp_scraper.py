@@ -1203,6 +1203,10 @@ def sync_marks(payload: Dict[str, str]) -> List[Dict[str, object]]:
             marks = parse_course_internals_page(html, payload, session)
             if marks:
                 return marks
+                
+            marks = parse_component_rows(html, payload)
+            if marks:
+                return marks
 
             marks = parse_marks_tables(html, payload)
             if marks:
@@ -1581,20 +1585,18 @@ def parse_course_internals_page(html: str, payload: Dict[str, str], session: req
         header_cells = rows[0].find_all(["th", "td"])
         headers = [clean_text(cell.get_text(" ")).lower() for cell in header_cells]
 
-        if not any("academic" in header for header in headers):
-            continue
-        if not any("semester" in header for header in headers):
-            continue
-        if not any("course" in header for header in headers):
-            continue
-        if not any("evaluation" in header or "component" in header for header in headers):
+        # Relaxed header checks: just need to look like a course table
+        if not any(k in h for h in headers for k in ["course", "subject", "code"]):
             continue
 
         year_index = find_index(headers, ["academic year", "academicyear", "year"])
         semester_index = find_index(headers, ["semester", "term"])
         code_index = find_index(headers, ["coursecode", "course code", "code", "subjectcode", "subject code"])
         subject_index = find_index(headers, ["course name", "course", "subject", "coursedesc", "title", "name"])
-        component_index = find_index(headers, ["evaluation components", "evaluation component", "components", "evaluation"])
+        component_index = find_index(headers, ["evaluation components", "evaluation component", "components", "evaluation", "options", "action", "view", "internals", "marks"])
+
+        if code_index < 0 and subject_index < 0:
+            continue
 
         results = []
         for row in rows[1:]:
@@ -1611,25 +1613,71 @@ def parse_course_internals_page(html: str, payload: Dict[str, str], session: req
             course_code = row_value(values, code_index)
             subject = row_value(values, subject_index) or row_value(values, 0)
 
-            if component_index < 0 or component_index >= len(cells):
-                continue
-
-            component_cell = cells[component_index]
             insem1 = None
             insem2 = None
-            for link in component_cell.find_all("a"):
-                label = clean_text(link.get_text(" "))
-                bucket = component_bucket(label)
-                if not bucket:
-                    continue
-                url = extract_component_url(link)
-                if not url:
-                    continue
-                value = fetch_component_mark(session, url, csrf_token)
-                if bucket == "insem1" and value is not None:
-                    insem1 = value
-                if bucket == "insem2" and value is not None:
-                    insem2 = value
+            
+            target_cells = [cells[component_index]] if 0 <= component_index < len(cells) else cells
+
+            for cell in target_cells:
+                if insem1 is not None and insem2 is not None:
+                    break
+                for link in cell.find_all(["a", "button", "option", "input"]):
+                    if insem1 is not None and insem2 is not None:
+                        break
+                    label = clean_text(link.get_text(" ")) or link.get("title", "") or link.get("data-original-title", "")
+                    if not label and link.name == "input":
+                        next_sib = link.next_sibling
+                        if isinstance(next_sib, str):
+                            label = clean_text(next_sib)
+                        if not label:
+                            parent_label = link.find_parent("label")
+                            if parent_label:
+                                label = clean_text(parent_label.get_text(" "))
+                        if not label:
+                            label = link.get("value", "")
+
+                    bucket = component_bucket(label)
+                    url = extract_component_url(link)
+                    
+                    if bucket and url:
+                        value = fetch_component_mark(session, url, csrf_token)
+                        if bucket == "insem1" and value is not None and insem1 is None:
+                            insem1 = value
+                        elif bucket == "insem2" and value is not None and insem2 is None:
+                            insem2 = value
+                    elif bucket and not url:
+                        val = parse_mark_from_component_html(str(link.parent))
+                        if val is not None:
+                            if bucket == "insem1" and insem1 is None:
+                                insem1 = val
+                            elif bucket == "insem2" and insem2 is None:
+                                insem2 = val
+                    elif url and link.name in ["a", "button", "input"]:
+                        # Handle generic "View" buttons that open a sub-page/modal with all internals
+                        if re.search(r"view|mark|internal|detail|action|click|result|component", label, re.IGNORECASE) or not label:
+                            try:
+                                headers_extra = {"X-Requested-With": "XMLHttpRequest"}
+                                resp = session.get(url, headers=build_headers(url, headers_extra), timeout=get_timeout(), verify=not ALLOW_INSECURE)
+                                if resp.status_code == 200:
+                                    sub_html = extract_html_from_json(resp.text or "")
+                                    extracted = extract_marks_from_sub_html(sub_html)
+                                    if extracted.get("insem1") and insem1 is None:
+                                        insem1 = extracted["insem1"]
+                                    if extracted.get("insem2") and insem2 is None:
+                                        insem2 = extracted["insem2"]
+                            except Exception:
+                                pass
+
+                # Extract from raw cell text if still missing (inline text)
+                cell_text = clean_text(cell.get_text(" "))
+                if insem1 is None:
+                    m1 = re.search(r"(?:semester\s*in\s*exam\s*[-_]?\s*(?:1|i)\b|in\s*sem\s*1).*?(?:(?:marks|score|obtained|awarded|secured)[^0-9]*)?(\d+(?:\.\d+)?(?:/\d+(?:\.\d+)?)?)", cell_text, re.IGNORECASE)
+                    if m1:
+                        insem1 = m1.group(1)
+                if insem2 is None:
+                    m2 = re.search(r"(?:semester\s*in\s*exam\s*[-_]?\s*(?:2|ii)\b|in\s*sem\s*2).*?(?:(?:marks|score|obtained|awarded|secured)[^0-9]*)?(\d+(?:\.\d+)?(?:/\d+(?:\.\d+)?)?)", cell_text, re.IGNORECASE)
+                    if m2:
+                        insem2 = m2.group(1)
 
             if insem1 is None and insem2 is None:
                 continue
@@ -1660,14 +1708,20 @@ def parse_marks_rows(headers: List[str], rows: List[List[str]], payload: Dict[st
         r"in\s*semester\s*1",
         r"internal\s*1",
         r"mid\s*1",
-        r"sessional\s*1"
+        r"sessional\s*1",
+        r"semester\s*in\s*exam\s*[-_]?\s*(1|i)\b",
+        r"sem\s*in\s*exam\s*[-_]?\s*(1|i)\b",
+        r"exam\s*[-_]?\s*(1|i)\b"
     ])
     insem2_index = find_mark_index(headers, [
         r"in\s*sem\s*2",
         r"in\s*semester\s*2",
         r"internal\s*2",
         r"mid\s*2",
-        r"sessional\s*2"
+        r"sessional\s*2",
+        r"semester\s*in\s*exam\s*[-_]?\s*(2|ii)\b",
+        r"sem\s*in\s*exam\s*[-_]?\s*(2|ii)\b",
+        r"exam\s*[-_]?\s*(2|ii)\b"
     ])
     total_index = find_mark_index(headers, [r"total", r"overall", r"marks", r"score"])
 
@@ -1773,13 +1827,69 @@ def parse_seating_rows(headers: List[str], rows: List[List[str]], payload: Dict[
     return results
 
 
+def parse_component_rows(html: str, payload: Dict[str, str]) -> List[Dict[str, object]]:
+    soup = BeautifulSoup(html or "", "html.parser")
+    tables = soup.find_all("table")
+    results = {}
+    
+    for table in tables:
+        headers, rows = parse_table(table)
+        if not headers or not rows:
+            continue
+            
+        code_idx = find_index(headers, ["coursecode", "course code", "code", "subjectcode", "subject code"])
+        subject_idx = find_index(headers, ["coursedesc", "course name", "subject", "title", "course"])
+        comp_idx = find_index(headers, ["component", "evaluation", "type", "exam", "name", "description"])
+        marks_idx = find_mark_index(headers, [r"marks\s*obtained", r"obtained", r"scored", r"score", r"marks", r"result", r"awarded", r"secured"])
+        max_idx = find_mark_index(headers, [r"max\s*marks", r"maximum", r"out\s*of"])
+        
+        if (code_idx >= 0 or subject_idx >= 0) and comp_idx >= 0 and marks_idx >= 0:
+            for row in filter_rows_by_term(rows, headers, payload):
+                code = row_value(row, code_idx)
+                subject = row_value(row, subject_idx)
+                comp = row_value(row, comp_idx)
+                marks = row_value(row, marks_idx)
+                max_marks = row_value(row, max_idx) if max_idx >= 0 else None
+                
+                bucket = component_bucket(comp)
+                if not bucket:
+                    continue
+                    
+                key = code or subject
+                if not key:
+                    continue
+                    
+                if key not in results:
+                    results[key] = {
+                        "courseCode": code,
+                        "subject": subject or code,
+                        "insem1": None,
+                        "insem2": None,
+                        "total": None,
+                        "academicYear": payload.get("academicYear"),
+                        "semester": payload.get("semesterId")
+                    }
+                    
+                val = format_mark_value(to_number(marks), to_number(max_marks)) if max_marks else marks
+                if bucket == "insem1":
+                    results[key]["insem1"] = val
+                elif bucket == "insem2":
+                    results[key]["insem2"] = val
+                    
+    return list(results.values())
+
+
 def component_bucket(label: str) -> str:
     text = (label or "").lower()
-    if "exam" not in text:
+    if "exam" not in text and "insem" not in text and "mid" not in text and "internal" not in text:
         return ""
     if re.search(r"\b(2|ii)\b", text):
         return "insem2"
     if re.search(r"\b(1|i)\b", text):
+        return "insem1"
+    if "exam-ii" in text or "exam ii" in text:
+        return "insem2"
+    if "exam-i" in text or "exam i" in text:
         return "insem1"
     return ""
 
@@ -1851,6 +1961,10 @@ def extract_component_url(link_tag) -> str:
     if href and not href.startswith("#") and "javascript:" not in href.lower():
         return urljoin(LOGIN_URL, href)
 
+    value = (link_tag.get("value") or "").strip()
+    if value and "?r=" in value and not value.startswith("#"):
+        return urljoin(LOGIN_URL, value if "index.php" in value else "index.php" + value)
+
     for value in link_tag.attrs.values():
         if isinstance(value, list):
             text = " ".join(str(item) for item in value)
@@ -1861,6 +1975,16 @@ def extract_component_url(link_tag) -> str:
         if url:
             return url
 
+    # Fallback: check parent <select> for onchange URL
+    if link_tag.name == "option":
+        parent = link_tag.find_parent("select")
+        if parent:
+            onchange = parent.get("onchange") or parent.get("data-url") or ""
+            url = extract_component_url_from_text(str(onchange))
+            if url:
+                sep = "&" if "?" in url else "?"
+                return f"{url}{sep}val={value}"
+
     return ""
 
 
@@ -1868,13 +1992,11 @@ def extract_component_url_from_text(text: str) -> str:
     if not text:
         return ""
 
-    match = re.search(r"index\.php\?r=[^'\"\s]*index_student_marks[^'\"\s]*", text)
+    # Match any typical ERP route that might fetch data
+    match = re.search(r"(?:index\.php)?\?r=([^'\"\s>]+)", text, re.IGNORECASE)
     if match:
-        return urljoin(LOGIN_URL, match.group(0))
-
-    match = re.search(r"index_student_marks[^'\"\s]*", text)
-    if match:
-        return urljoin(LOGIN_URL, match.group(0))
+        route = match.group(1).replace("\\/", "/")
+        return urljoin(LOGIN_URL, "index.php?r=" + route)
 
     return ""
 
@@ -1915,11 +2037,56 @@ def parse_mark_from_component_html(html: str):
                 return score
 
     text = clean_text(soup.get_text(" "))
-    match = re.search(r"(marks|score)\s*[:\-]?\s*(\d+(?:\.\d+)?)", text, re.IGNORECASE)
+    match = re.search(r"(?:marks|score|obtained)\s*[:\-]?\s*(\d+(?:\.\d+)?(?:/\d+(?:\.\d+)?)?)", text, re.IGNORECASE)
     if match:
-        return float(match.group(2))
+        val = match.group(1)
+        if "/" in val:
+            return val
+        return float(val)
+
+    raw = str(soup)
+    match = re.search(r"show.*\(.*?(\d+(?:\.\d+)?).*?\)", raw, re.IGNORECASE)
+    if match:
+        return float(match.group(1))
 
     return None
+
+
+def extract_marks_from_sub_html(html: str) -> Dict[str, str]:
+    res = {}
+    soup = BeautifulSoup(html or "", "html.parser")
+    tables = soup.find_all("table")
+    
+    for table in tables:
+        headers, rows = parse_table(table)
+        if not headers or not rows:
+            continue
+        
+        comp_idx = find_index(headers, ["component", "evaluation", "type", "exam", "name", "description", "particulars"])
+        marks_idx = find_mark_index(headers, [r"marks\s*obtained", r"obtained", r"scored", r"score", r"marks", r"result", r"awarded", r"secured"])
+        max_idx = find_mark_index(headers, [r"max\s*marks", r"maximum", r"out\s*of"])
+        
+        if comp_idx >= 0 and marks_idx >= 0:
+            for row in rows:
+                comp = row_value(row, comp_idx)
+                marks = row_value(row, marks_idx)
+                max_marks = row_value(row, max_idx) if max_idx >= 0 else None
+                
+                bucket = component_bucket(comp)
+                if bucket:
+                    val = format_mark_value(to_number(marks), to_number(max_marks)) if max_marks else marks
+                    if val and bucket not in res:
+                        res[bucket] = val
+
+    text = clean_text(soup.get_text(" "))
+    if "insem1" not in res:
+        m1 = re.search(r"(?:semester\s*in\s*exam\s*[-_]?\s*(?:1|i)\b|in\s*sem\s*1).*?(?:(?:marks|score|obtained|awarded|secured)[^0-9]*)?(\d+(?:\.\d+)?(?:/\d+(?:\.\d+)?)?)", text, re.IGNORECASE)
+        if m1: res["insem1"] = m1.group(1)
+    if "insem2" not in res:
+        m2 = re.search(r"(?:semester\s*in\s*exam\s*[-_]?\s*(?:2|ii)\b|in\s*sem\s*2).*?(?:(?:marks|score|obtained|awarded|secured)[^0-9]*)?(\d+(?:\.\d+)?(?:/\d+(?:\.\d+)?)?)", text, re.IGNORECASE)
+        if m2: res["insem2"] = m2.group(1)
+        
+    return res
 
 
 def format_mark_value(obtained: float, maximum: float) -> str:

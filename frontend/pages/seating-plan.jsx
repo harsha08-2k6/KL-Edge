@@ -78,9 +78,11 @@ function getInSemBucket(entry, splitMonth) {
 
 export default function SeatingPlan() {
   const [rawPlan, setRawPlan] = useState([]);
+  const [attendance, setAttendance] = useState([]);
 
   useEffect(() => {
     setRawPlan(readLocal(STORAGE_KEYS.seatingPlan, []));
+    setAttendance(readLocal(STORAGE_KEYS.attendance, []));
   }, []);
 
   const entries = useMemo(() => {
@@ -146,6 +148,16 @@ export default function SeatingPlan() {
     return result;
   }, [entries]);
 
+  const courseMap = useMemo(() => {
+    const map = {};
+    attendance.forEach((item) => {
+      if (item.courseCode && item.subject) {
+        map[item.courseCode.trim().toUpperCase()] = item.subject.trim();
+      }
+    });
+    return map;
+  }, [attendance]);
+
   return (
     <Layout title="Seating Plan">
       {entries.length ? (
@@ -159,8 +171,9 @@ export default function SeatingPlan() {
                 </span>
               </div>
               {group.items.map((entry, index) => {
-                const title = entry.subject || entry.course || entry.title || "Seating";
                 const code = entry.courseCode || entry.code || entry.subjectCode;
+                const mappedSubject = code ? courseMap[code.trim().toUpperCase()] : null;
+                const title = mappedSubject || entry.subject || entry.course || entry.title || "Seating";
                 const meta = buildMeta(entry);
 
                 return (

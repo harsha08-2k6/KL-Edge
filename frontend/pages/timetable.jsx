@@ -134,17 +134,11 @@ function buildWeekSchedule(grid) {
 export default function Timetable() {
   const [grid, setGrid] = useState([]);
   const [syncStatus, setSyncStatus] = useState(null);
+  const [attendance, setAttendance] = useState([]);
   const today = getTodayName();
   const { schedule } = useMemo(() => buildWeekSchedule(grid), [grid]);
   const daysWithData = dayOrder.filter((day) => schedule[day]?.length);
   const [selectedDay, setSelectedDay] = useState(today);
-
-  useEffect(() => {
-    if (daysWithData.length && !daysWithData.includes(selectedDay)) {
-      setSelectedDay(daysWithData[0]);
-    }
-  }, [daysWithData, selectedDay]);
-
   const todayRows = daysWithData.length ? schedule[today] || [] : getTodayRows(grid, today);
   const selectedRows = daysWithData.length
     ? schedule[selectedDay] || []
@@ -155,12 +149,23 @@ export default function Timetable() {
   useEffect(() => {
     const data = readLocal(STORAGE_KEYS.timetable, { grid: [], mappings: [] });
     setSyncStatus(readLocal(STORAGE_KEYS.timetableStatus, null));
+    setAttendance(readLocal(STORAGE_KEYS.attendance, []));
     if (Array.isArray(data)) {
       setGrid(data);
     } else {
       setGrid(data.grid || []);
     }
   }, []);
+
+  const courseMap = useMemo(() => {
+    const map = {};
+    attendance.forEach((item) => {
+      if (item.courseCode && item.subject) {
+        map[item.courseCode.trim().toUpperCase()] = item.subject.trim();
+      }
+    });
+    return map;
+  }, [attendance]);
 
   return (
     <Layout title="Timetable">
@@ -197,16 +202,32 @@ export default function Timetable() {
 
           {selectedRows.length ? (
             <div className="mt-3 space-y-2">
-              {selectedRows.map((item, index) => (
-                <article key={`${item.slot}-${index}`} className="rounded-lg border border-ink/10 bg-paper p-2.5">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">{item.slot}</p>
-                  <p className="mt-1 text-sm font-black text-ink">{item.value}</p>
-                </article>
-              ))}
+              {selectedRows.map((item, index) => {
+                let subjectName = null;
+                const valueUpper = item.value.toUpperCase();
+                const sortedCodes = Object.keys(courseMap).sort((a, b) => b.length - a.length);
+                for (const code of sortedCodes) {
+                  if (valueUpper.includes(code)) {
+                    subjectName = courseMap[code];
+                    break;
+                  }
+                }
+                return (
+                  <article key={`${item.slot}-${index}`} className="rounded-lg border border-ink/10 bg-paper p-2.5">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">{item.slot}</p>
+                    <p className="mt-1 text-sm font-black text-ink">{item.value}</p>
+                    {subjectName && <p className="mt-0.5 text-xs font-semibold text-ink/60">{subjectName}</p>}
+                  </article>
+                );
+              })}
             </div>
           ) : (
             <div className="mt-3 rounded-lg border border-dashed border-ink/15 bg-paper p-4 text-center">
-              <p className="font-black text-ink/60">No classes scheduled for {selectedDay}</p>
+              <p className="font-black text-ink/60">
+                {selectedDay === "Sunday"
+                  ? "It's Sunday, enjoy your holiday! 🌴"
+                  : `No classes scheduled for ${selectedDay}.`}
+              </p>
             </div>
           )}
         </div>
@@ -228,4 +249,3 @@ export default function Timetable() {
     </Layout>
   );
 }
-

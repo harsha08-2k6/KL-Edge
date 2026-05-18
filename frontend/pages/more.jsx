@@ -1,61 +1,35 @@
-import { Calculator, ChevronRight, MapPin, Search, Settings } from "lucide-react";
+import { Armchair, ChevronRight, GraduationCap, ListChecks, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
 
-const moreItems = [
-  {
-    to: "/faculty",
-    label: "Faculty",
-    description: "Search cabin and department details",
-    icon: Search
-  },
-  {
-    to: "/seating-plan",
-    label: "Seating Plan",
-    description: "Find exam room and seat info",
-    icon: MapPin
-  },
-  {
-    to: "/cgpa",
-    label: "CGPA",
-    description: "Track overall grade points",
-    icon: Calculator
-  },
-  {
-    to: "/settings",
-    label: "Settings",
-    description: "ERP credentials and sync options",
-    icon: Settings
-  }
+const moreLinks = [
+  { href: "/marks", label: "Marks", description: "View internal exam marks (Coming Soon).", icon: ListChecks },
+  { href: "/cgpa", label: "CGPA", description: "Check your semester-wise CGPA.", icon: GraduationCap },
+  { href: "/seating-plan", label: "Seating Plan", description: "Find your exam seating arrangements.", icon: Armchair },
+  { href: "/settings", label: "Settings", description: "Configure credentials and sync options.", icon: Settings },
 ];
 
 export default function More() {
   return (
     <Layout title="More">
-      <section className="space-y-2.5">
-        {moreItems.map((item) => {
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className="tap flex items-center justify-between rounded-lg border border-ink/10 bg-white p-3 shadow-soft"
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface text-ink/60">
-                  <Icon size={18} aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="text-sm font-black text-ink">{item.label}</p>
-                  <p className="text-xs font-semibold text-ink/45">{item.description}</p>
-                </div>
+      <div className="mt-2 flex flex-col gap-2">
+        {moreLinks.map((item) => (
+          <Link
+            key={item.href}
+            to={item.href}
+            className="tap flex items-center justify-between rounded-xl border border-ink/10 bg-white p-4 shadow-soft"
+          >
+            <div className="flex items-center gap-4">
+              <item.icon size={20} className="text-ink/70" />
+              <div>
+                <p className="font-bold text-ink">{item.label}</p>
+                <p className="text-xs text-ink/60">{item.description}</p>
               </div>
-              <ChevronRight size={18} className="text-ink/30" aria-hidden="true" />
-            </Link>
-          );
-        })}
-      </section>
+            </div>
+            <ChevronRight size={20} className="text-ink/40" />
+          </Link>
+        ))}
+      </div>
     </Layout>
   );
 }

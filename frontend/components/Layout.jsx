@@ -1,16 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
-import { BookOpenCheck, Calendar, Home, ListChecks, MoreHorizontal } from "lucide-react";
+import { BookOpenCheck, Calendar, Home, MoreHorizontal, Users } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/subjects", label: "Subjects", icon: BookOpenCheck },
   { href: "/timetable", label: "Timetable", icon: Calendar },
-  { href: "/marks", label: "Marks", icon: ListChecks },
+  { href: "/faculty", label: "Faculty", icon: Users },
   {
     href: "/more",
     label: "More",
     icon: MoreHorizontal,
-    aliases: ["/faculty", "/seating-plan", "/settings", "/cgpa"]
+    aliases: ["/marks", "/seating-plan", "/settings", "/cgpa"]
   }
 ];
 
@@ -60,4 +60,3 @@ export function Layout({ children, title, action, width = "default" }) {
     </main>
   );
 }
-
