@@ -81,8 +81,8 @@ export function enrichSubjects(subjects = [], target = 75) {
       const conducted = subject[`${k}_conducted`];
       const attended = subject[`${k}_attended`];
       if (conducted != null && attended != null) {
-        ltpsBunk[k] = classesCanBunk(attended, conducted, target);
-        ltpsNeeded[k] = classesNeeded(attended, conducted, target);
+        ltpsBunk[k] = 0;
+        ltpsNeeded[k] = 0;
       }
       // no fallback — show nothing if real counts unavailable
     }

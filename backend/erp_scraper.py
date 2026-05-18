@@ -148,7 +148,9 @@ SEATING_CANDIDATE_PATHS = [
 CGPA_CANDIDATE_PATHS = [
     "index.php?r=studentinfo/studentendexamresult/searchgetmycgpa",
     "index.php?r=studentresult/cgpa/index",
-    "index.php?r=studentmarks/marks/cgpa"
+    "index.php?r=studentmarks/marks/cgpa",
+    "index.php?r=studentinfo/studentendexamresult/index",
+    "index.php?r=examsection/examstudentresult/index"
 ]
 
 
@@ -1243,34 +1245,109 @@ def sync_cgpa(payload: Dict[str, str]) -> Dict[str, object]:
     session = perform_login(payload)
     captcha_session = get_captcha_session(payload.get("captchaSessionId") or "")
     dashboard_html = captcha_session.get("dashboard_html", "") if captcha_session else ""
+    
+    overall_cgpa = None
+    semesters = []
+    subjects = []
+    
+    # 1. Fetch Overall CGPA from "My CGPA"
+    my_cgpa_url = find_menu_link_by_keywords(session, ["my cgpa", "mycgpa", "cgpa"])
+    if not my_cgpa_url:
+        my_cgpa_url = urljoin(LOGIN_URL, "index.php?r=studentinfo/studentendexamresult/searchgetmycgpa")
+        
+    try:
+        html = fetch_html_with_term_form(session, my_cgpa_url, payload)
+        parsed = parse_cgpa_html(html, payload, is_overall_page=True)
+        if parsed.get("value") is not None:
+            overall_cgpa = parsed["value"]
+        if parsed.get("semesters"):
+            semesters.extend(parsed["semesters"])
+        if parsed.get("subjects"):
+            subjects.extend(parsed["subjects"])
+    except Exception as exc:
+        if DEBUG_ENABLED:
+            print(f"[erp:cgpa] My CGPA fetch failed: {exc}")
 
-    menu_url = find_menu_link_by_keywords(session, ["cgpa"]) if session else ""
-    if menu_url:
-        try:
-            html = fetch_html_with_term_form(session, menu_url, payload)
-            cgpa = parse_cgpa_html(html, payload)
-            if cgpa:
-                return cgpa
-        except Exception as exc:
-            if DEBUG_ENABLED:
-                print(f"[erp:cgpa] menu link failed: {exc}")
+    # 2. Fetch Semester Results from "End Sem Results"
+    end_sem_url = find_menu_link_by_keywords(session, ["end sem result", "end semester result", "endexam", "end exam result", "end semester"])
+    if not end_sem_url:
+        end_sem_url = urljoin(LOGIN_URL, "index.php?r=studentinfo/studentendexamresult/index")
+        
+    try:
+        html = fetch_html_with_term_form(session, end_sem_url, payload)
+        parsed = parse_cgpa_html(html, payload, is_overall_page=False)
+        
+        if overall_cgpa is None and parsed.get("value") is not None:
+            overall_cgpa = parsed["value"]
+            
+        if parsed.get("semesters"):
+            semesters.extend(parsed["semesters"])
+        if parsed.get("subjects"):
+            subjects.extend(parsed["subjects"])
+    except Exception as exc:
+        if DEBUG_ENABLED:
+            print(f"[erp:cgpa] End Sem Results fetch failed: {exc}")
+            
+    # 3. Fallback to Dashboard scraping if still empty
+    if overall_cgpa is None and not semesters and not subjects:
+        captcha_session = get_captcha_session(payload.get("captchaSessionId") or "")
+        dashboard_html = captcha_session.get("dashboard_html", "") if captcha_session else ""
+        
+        candidate_urls = collect_feature_urls(
+            dashboard_html, 
+            CGPA_LINK_KEYWORDS + ["end sem", "end exam"], 
+            CGPA_CANDIDATE_PATHS
+        )
+        
+        for url in candidate_urls:
+            try:
+                html = fetch_html_with_term_form(session, url, payload)
+                is_overall = "cgpa" in url.lower()
+                parsed = parse_cgpa_html(html, payload, is_overall_page=is_overall)
+                if parsed:
+                    if parsed.get("value") is not None and overall_cgpa is None:
+                        overall_cgpa = parsed.get("value")
+                    if parsed.get("semesters"):
+                        semesters.extend(parsed["semesters"])
+                    if parsed.get("subjects"):
+                        subjects.extend(parsed["subjects"])
+                    if overall_cgpa is not None or semesters or subjects:
+                        break
+            except Exception:
+                continue
 
-    html, url = fetch_feature_html(
-        session,
-        dashboard_html,
-        payload,
-        CGPA_LINK_KEYWORDS,
-        CGPA_CANDIDATE_PATHS
-    )
-    cgpa = parse_cgpa_html(html, payload)
-    if cgpa:
-        return cgpa
+    # Deduplicate Semesters
+    seen_sems = {}
+    for sem in semesters:
+        sem_name = sem.get("semester", "")
+        if sem_name not in seen_sems:
+            seen_sems[sem_name] = sem
+        else:
+            existing = seen_sems[sem_name]
+            if not existing.get("sgpa") and sem.get("sgpa"):
+                existing["sgpa"] = sem.get("sgpa")
+            if not existing.get("cgpa") and sem.get("cgpa"):
+                existing["cgpa"] = sem.get("cgpa")
+                
+    unique_semesters = list(seen_sems.values())
+            
+    # Deduplicate Subjects
+    seen_subs = {}
+    for sub in subjects:
+        code = sub.get("courseCode", "")
+        if code not in seen_subs:
+            seen_subs[code] = sub
+            
+    unique_subjects = list(seen_subs.values())
+            
+    if overall_cgpa is None and not unique_semesters and not unique_subjects:
+        return {}
 
-    if DEBUG_ENABLED and html:
-        debug_path = Path(__file__).resolve().parent / "last_cgpa_failure.html"
-        debug_path.write_text(f"<!-- URL: {url} -->\n{html}", encoding="utf8")
-
-    return {}
+    return {
+        "value": overall_cgpa,
+        "semesters": unique_semesters,
+        "subjects": unique_subjects
+    }
 
 
 def fetch_feature_html(
@@ -1856,43 +1933,105 @@ def format_mark_value(obtained: float, maximum: float) -> str:
     return f"{fmt(obtained)}/{fmt(maximum)}"
 
 
-def parse_cgpa_html(html: str, payload: Dict[str, str]) -> Dict[str, object]:
+def parse_cgpa_html(html: str, payload: Dict[str, str], is_overall_page: bool = False) -> Dict[str, object]:
     soup = BeautifulSoup(html or "", "html.parser")
+    for script in soup(["script", "style"]):
+        script.extract()
     tables = soup.find_all("table")
     cgpa_value = None
     text = clean_text(soup.get_text(" "))
     match = re.search(r"cgpa[^0-9]*(\d+(?:\.\d+)?)", text, re.IGNORECASE)
     if match:
         cgpa_value = float(match.group(1))
+    
+    def extract_grade_value(pattern: str, search_text: str) -> Optional[float]:
+        for match in re.finditer(pattern, search_text, re.IGNORECASE):
+            val = float(match.group(1))
+            if 0.0 < val <= 10.0:
+                return val
+        return None
+
+    sgpa_value = None
+    sgpa_match = re.search(r"(?:sgpa|spi|sgpi|semester gpa)[^0-9]*(\d+(?:\.\d+)?)", text, re.IGNORECASE)
+    if sgpa_match:
+        sgpa_value = float(sgpa_match.group(1))
+    cgpa_value = extract_grade_value(r"(?:overall\s*cgpa|cumulative\s*gpa|final\s*cgpa|my\s*cgpa)\s*(?:[:=-]\s*)?(\d+(?:\.\d+)?)", text)
+    if cgpa_value is None and is_overall_page:
+        cleaned_cgpa = re.sub(r"minimum\s*cgpa\s*(?:[:=-]\s*)?\d+(?:\.\d+)?", "", text, flags=re.IGNORECASE)
+        cgpa_value = extract_grade_value(r"\bcgpa\b\s*(?:[:=-]\s*)?(\d+(?:\.\d+)?)", cleaned_cgpa)
+
+    cleaned_sgpa = re.sub(r"minimum\s*sgpa\s*(?:[:=-]\s*)?\d+(?:\.\d+)?", "", text, flags=re.IGNORECASE)
+    sgpa_value = extract_grade_value(r"\b(?:sgpa|spi|sgpi|semester gpa)\b\s*(?:[:=-]\s*)?(\d+(?:\.\d+)?)", cleaned_sgpa)
+
+    subjects = []
+    semesters = []
 
     for table in tables:
         headers, rows = parse_table(table)
         if not headers or not rows:
             continue
 
-        year_index = find_index(headers, ["reg academic year", "academic year", "academicyear", "year"])
-        semester_index = find_index(headers, ["reg sem", "semester", "term"])
-        if year_index < 0 and semester_index < 0:
-            continue
+        # Look for subject grades
+        code_idx = find_index(headers, ["coursecode", "course code", "code", "subjectcode", "subject code"])
+        name_idx = find_index(headers, ["coursedesc", "course name", "subject", "title", "course"])
+        grade_idx = find_index(headers, ["grade", "letter grade"])
+        points_idx = find_index(headers, ["points", "grade points", "gradepoint"])
+        credits_idx = find_index(headers, ["credits", "credit"])
 
-        rows = filter_rows_by_term(rows, headers, payload)
-        if rows:
-            if cgpa_value is None:
-                return {}
-            return {
-                "value": cgpa_value,
-                "semester": row_value(rows[0], semester_index) or payload.get("semesterId"),
-                "academicYear": row_value(rows[0], year_index) or payload.get("academicYear")
-            }
+        if code_idx >= 0 and grade_idx >= 0:
+            for row in rows:
+                code = row_value(row, code_idx)
+                name = row_value(row, name_idx) if name_idx >= 0 else ""
+                grade = row_value(row, grade_idx)
+                points = row_value(row, points_idx) if points_idx >= 0 else ""
+                credit = row_value(row, credits_idx) if credits_idx >= 0 else ""
+                if code and grade and grade.lower() not in ["grade", "letter grade"]:
+                    subjects.append({
+                        "courseCode": code,
+                        "subject": name,
+                        "grade": grade,
+                        "points": points,
+                        "credits": credit
+                    })
 
-    if cgpa_value is not None:
-        return {
-            "value": cgpa_value,
-            "semester": payload.get("semesterId"),
-            "academicYear": payload.get("academicYear")
-        }
+        # Look for semester CGPA
+        sem_idx = find_index(headers, ["semester", "term", "sem", "reg sem"])
+        sgpa_idx = find_index(headers, ["sgpa", "spi", "semester gpa", "sgpi"])
+        cgpa_idx = find_index(headers, ["cgpa", "cpi", "cumulative gpa", "cgpi"])
+        
+        if sem_idx >= 0 and (sgpa_idx >= 0 or cgpa_idx >= 0) and not (code_idx >= 0 and grade_idx >= 0):
+            for row in rows:
+                sem = row_value(row, sem_idx)
+                sgpa = row_value(row, sgpa_idx) if sgpa_idx >= 0 else ""
+                cgpa_text = row_value(row, cgpa_idx) if cgpa_idx >= 0 else ""
+                if sem and sem.lower() not in ["semester", "term", "sem", "reg sem"] and (sgpa or cgpa_text):
+                    semesters.append({
+                        "semester": sem,
+                        "sgpa": sgpa,
+                        "cgpa": cgpa_text
+                    })
 
-    return {}
+    if cgpa_value is None and len(semesters) > 1:
+        valid_cgpas = [to_number(s["cgpa"]) for s in semesters if s.get("cgpa") and to_number(s["cgpa"]) is not None and 0.0 < to_number(s["cgpa"]) <= 10.0]
+        if valid_cgpas:
+            cgpa_value = valid_cgpas[-1]
+
+    if not semesters and (sgpa_value is not None or cgpa_value is not None):
+        semesters.append({
+            "semester": payload.get("semesterId") or "Selected Semester",
+            "sgpa": sgpa_value if sgpa_value is not None else "",
+            "cgpa": cgpa_value if cgpa_value is not None else ""
+        })
+
+    if not subjects and not semesters and cgpa_value is None:
+        return {}
+
+    return {
+        "value": cgpa_value,
+        "semesters": semesters,
+        "subjects": subjects
+    }
+
 
 
 def parse_table(table) -> tuple:
