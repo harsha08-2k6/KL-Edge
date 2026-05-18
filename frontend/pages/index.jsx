@@ -20,6 +20,7 @@ export default function Home() {
   const [captchaSessionId, setCaptchaSessionId] = useState("");
   const [syncBusy, setSyncBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const selectTarget = (t) => {
     setTarget(t);
@@ -72,6 +73,8 @@ export default function Home() {
       loadAttendance();
       setShowSync(false);
       setCaptcha("");
+      setSuccessMessage("Resync successful! ✅");
+      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
       setMessage(
         error.status === 401
@@ -158,6 +161,13 @@ export default function Home() {
           helper={lastUpdated ? new Date(lastUpdated).toLocaleDateString() : "No data yet"}
         />
       </section>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mt-3 rounded-xl border border-mint/20 bg-mint/10 p-3 text-center text-sm font-black text-mint shadow-soft">
+          {successMessage}
+        </div>
+      )}
 
       {/* Subjects */}
       <section className="mt-3.5">
