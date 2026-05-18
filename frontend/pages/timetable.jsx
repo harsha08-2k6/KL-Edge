@@ -1,15 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Layout } from "../components/Layout.jsx";
 import { readLocal, STORAGE_KEYS } from "../utils/storage.js";
 
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const dayAliases = {
+  Monday: ["monday", "mon"],
+  Tuesday: ["tuesday", "tue", "tues"],
+  Wednesday: ["wednesday", "wed"],
+  Thursday: ["thursday", "thu", "thur", "thurs"],
+  Friday: ["friday", "fri"],
+  Saturday: ["saturday", "sat"],
+  Sunday: ["sunday", "sun"]
+};
 
 function normalize(value = "") {
   return String(value).trim().toLowerCase();
 }
 
+function normalizeDayText(value = "") {
+  return normalize(value).replace(/[^a-z]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchesAlias(text, alias) {
+  if (!text || !alias) return false;
+  return new RegExp(`\\b${escapeRegExp(alias)}\\b`, "i").test(text);
+}
+
 function cellHasDay(cell, day) {
-  return normalize(cell).includes(day.toLowerCase());
+  const text = normalizeDayText(cell);
+  const aliases = dayAliases[day] || [day.toLowerCase()];
+  return aliases.some((alias) => matchesAlias(text, alias));
+}
+
+function findDay(cell) {
+  for (const day of dayOrder) {
+    if (cellHasDay(cell, day)) return day;
+  }
+  return "";
+}
+
+function isSlotValue(value) {
+  const text = normalize(value);
+  if (!text) return false;
+  return text !== "-" && text !== "--" && text !== "na" && text !== "n/a";
 }
 
 function getTodayName() {
@@ -46,11 +84,73 @@ function getTodayRows(grid, today) {
   return [];
 }
 
+function buildWeekSchedule(grid) {
+  const schedule = Object.fromEntries(dayOrder.map((day) => [day, []]));
+  if (!Array.isArray(grid) || !grid.length) {
+    return { schedule, slots: [], mode: "empty" };
+  }
+
+  const headerRow = grid[0] || [];
+  const headerDays = headerRow
+    .map((cell, index) => ({ day: findDay(cell), index }))
+    .filter((entry) => entry.day);
+
+  if (headerDays.length >= 3) {
+    const slots = [];
+    grid.slice(1).forEach((row, rowIndex) => {
+      const slot = row?.[0] || `Slot ${rowIndex + 1}`;
+      slots.push(slot);
+      headerDays.forEach(({ day, index }) => {
+        const value = row?.[index] ?? "";
+        if (isSlotValue(value)) {
+          schedule[day].push({ slot, value });
+        }
+      });
+    });
+    return { schedule, slots, mode: "column" };
+  }
+
+  const dayRows = grid
+    .map((row, index) => ({ day: findDay(row?.[0]), index }))
+    .filter((entry) => entry.day);
+
+  if (dayRows.length >= 3) {
+    const slots = headerRow.slice(1).map((cell, index) => cell || `Slot ${index + 1}`);
+    dayRows.forEach(({ day, index }) => {
+      const row = grid[index] || [];
+      for (let col = 1; col < row.length; col += 1) {
+        const value = row[col];
+        if (isSlotValue(value)) {
+          schedule[day].push({ slot: slots[col - 1] || `Slot ${col}`, value });
+        }
+      }
+    });
+    return { schedule, slots, mode: "row" };
+  }
+
+  return { schedule, slots: [], mode: "unknown" };
+}
+
 export default function Timetable() {
   const [grid, setGrid] = useState([]);
   const [syncStatus, setSyncStatus] = useState(null);
   const today = getTodayName();
-  const todayRows = getTodayRows(grid, today);
+  const { schedule } = useMemo(() => buildWeekSchedule(grid), [grid]);
+  const daysWithData = dayOrder.filter((day) => schedule[day]?.length);
+  const [selectedDay, setSelectedDay] = useState(today);
+
+  useEffect(() => {
+    if (daysWithData.length && !daysWithData.includes(selectedDay)) {
+      setSelectedDay(daysWithData[0]);
+    }
+  }, [daysWithData, selectedDay]);
+
+  const todayRows = daysWithData.length ? schedule[today] || [] : getTodayRows(grid, today);
+  const selectedRows = daysWithData.length
+    ? schedule[selectedDay] || []
+    : selectedDay === today
+      ? todayRows
+      : [];
 
   useEffect(() => {
     const data = readLocal(STORAGE_KEYS.timetable, { grid: [], mappings: [] });
@@ -69,16 +169,35 @@ export default function Timetable() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-ink/40">Today</p>
-              <h2 className="text-xl font-black text-ink">{today}</h2>
+              <h2 className="text-xl font-black text-ink">{selectedDay}</h2>
             </div>
             <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-black text-ink/60">
-              {todayRows.length} slot{todayRows.length === 1 ? "" : "s"}
+              {selectedRows.length} slot{selectedRows.length === 1 ? "" : "s"}
             </span>
           </div>
 
-          {todayRows.length ? (
+          {daysWithData.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {dayOrder.map((day) => (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => setSelectedDay(day)}
+                  className={`rounded-full px-3 py-1 text-xs font-black transition-colors ${
+                    selectedDay === day
+                      ? "bg-ink text-paper"
+                      : "bg-surface text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {selectedRows.length ? (
             <div className="mt-3 space-y-2">
-              {todayRows.map((item, index) => (
+              {selectedRows.map((item, index) => (
                 <article key={`${item.slot}-${index}`} className="rounded-lg border border-ink/10 bg-paper p-2.5">
                   <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">{item.slot}</p>
                   <p className="mt-1 text-sm font-black text-ink">{item.value}</p>
@@ -87,7 +206,7 @@ export default function Timetable() {
             </div>
           ) : (
             <div className="mt-3 rounded-lg border border-dashed border-ink/15 bg-paper p-4 text-center">
-              <p className="font-black text-ink/60">No classes scheduled for {today}</p>
+              <p className="font-black text-ink/60">No classes scheduled for {selectedDay}</p>
             </div>
           )}
         </div>

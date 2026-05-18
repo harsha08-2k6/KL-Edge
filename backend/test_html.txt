@@ -1,0 +1,498 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="/favicon.ico">
+    <meta name="csrf-param" content="_csrf">
+<meta name="csrf-token" content="ySziTTBLtq_JstQxyikUt3DIE2nW0MY01IL63Rw_9--wTZQpcRzs2qfAklWkdlX7B5tyKoSng3K18cOkbX6N3A==">
+    <title>KL University ERP</title>
+
+        <style>
+        html {
+            visibility: hidden;
+        }
+
+    </style>
+    <script>
+        (function () {
+            const theme = localStorage.getItem('theme') || 'blue';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+</head>
+<body onload="$('#loader').hide();" id="mobile_bg">
+
+    <div class="vh-100 position-relative d-flex">
+            <div class="d-none d-sm-block flex-grow-1">
+                <div class="d-flex justify-content-center vh-100 align-items-center">
+                    <div class="erp-img">&nbsp;</div>
+                    <div class="position-absolute bottom-0 text-center">
+                        <small class="text-white text-center">© Copyright 2024 by K L Deemed to be University. All Rights Reserved.&nbsp; <i class="fa-duotone fa-regular fa-database"></i>&nbsp;&nbsp;erp1</small>
+                    </div>
+                </div>
+            </div>
+            <div class="login_bg w-35 overflow-auto d-flex flex-column flex-grow-0">
+                <div class="d-flex align-items-center justify-content-between">
+                <div class="mt-3 mx-xl-3 mx-3 d-flex align-items-center justify-content-between">
+                    <div>
+                    <img src="images/logo9.png" alt="" height="24px">
+                    <img src="images/klh-logo2.png" alt="" height="24px"></div>
+                </div>
+                <div id="settings-toggle" class="mt-3 mx-xl-3 mx-3">
+                    <i class="fa-regular fa-gear fa-lg fa-spin"></i>
+                </div>
+                <div id="settings-overlay"></div>
+                <div id="settings-panel">
+                    <div class="rpanel-title">   Theme Settings
+                        <button type="button" class="btn-close settings-close float-end fs-6" aria-label="Close"></button>
+                    </div>
+                    <div class="p-3">
+                        <p class="text-muted">Choose Theme Color</p>
+                        <form class="color-picker" action="">
+                            <fieldset>
+
+                                <input type="radio" name="theme" id="default" value="default" checked>
+                                <label for="default" title="Sky Blue"></label>
+                                <input type="radio" name="theme" id="theme1" value="theme1">
+                                <label for="theme1" title="Brown"></label>
+                                <input type="radio" name="theme" id="theme3" value="theme3">
+                                <label for="theme3" title="Green"></label>
+                                <input type="radio" name="theme" id="theme6" value="theme6">
+                                <label for="theme6" title="Violet"></label>
+                                <input type="radio" name="theme" id="theme8" value="theme8">
+                                <label for="theme8" title="Dark Yash"></label>
+                                <input type="radio" name="theme" id="theme11" value="theme11">
+                                <label for="theme11" title="Purple"></label>
+                                <input type="radio" name="theme" id="theme_gray" value="theme_gray">
+                                <label for="theme_gray" title="Gray"></label>
+                            </fieldset>
+                        </form></div>
+                </div>
+                </div>
+                <div class="d-flex align-items-center justify-content-center flex-grow-1 m-auto">
+                    <div class="shadow rounded-3 login-box m-2 m-md-5 card">
+                            <link href="/assets/11d230b4/bootstrap.css" rel="stylesheet">
+<link href="/css/bootstrap-treeview.min.css" rel="stylesheet">
+<link href="/css/main_local.css" rel="stylesheet">
+<link href="/css/fontawesome7.min.css" rel="stylesheet">
+<link href="/css/jstree.css" rel="stylesheet">
+<h4 class="redflag-text text-center m-4">Login</h4>
+<div class="site-login pb-3">
+    <!--<h1>Login</h1>-->
+
+    <div id="login-jax" data-pjax-container="" data-pjax-timeout="1000">
+    <form id="login-form" action="/index.php?r=site%2Flogin" method="post" data-pjax>
+<input type="hidden" name="_csrf" value="ySziTTBLtq_JstQxyikUt3DIE2nW0MY01IL63Rw_9--wTZQpcRzs2qfAklWkdlX7B5tyKoSng3K18cOkbX6N3A==">
+          <div class="form-group">
+            <div class="floating-label field-loginFormUserNameID required">
+<input type="text" id="loginFormUserNameID" class="form-control" name="LoginForm[username]" autofocus onchange="onUserNameChange()" placeholder=" " aria-required="true">
+<label class="control-label" for="loginFormUserNameID">Enter Username <span class="text-danger">*</span></label>
+<div class="help-block"></div>
+</div>        </div>
+
+        <div class="form-group">
+            <div class="floating-label field-loginFormPasswordID required">
+<input type="password" id="loginFormPasswordID" class="form-control" name="LoginForm[password]" onchange="onUserNameChange()" placeholder=" " aria-required="true">
+<label class="control-label" for="loginFormPasswordID">Enter Password <span class="text-danger">*</span></label>
+<div class="help-block"></div>
+</div>        </div>
+    <!--
+        -->        <div class="form-group field-loginFormCaptcha">
+<label class="control-label" for="loginform-captcha"></label>
+<img id="loginFormCaptcha-image" src="/index.php?r=site%2Fcaptcha&amp;v=6a09a03874fc19.29224357" alt=""><input type="text" id="loginFormCaptcha" class="form-control" name="LoginForm[captcha]" placeholder="Enter verification Code" onchange="onUserNameChange()">
+
+<div class="help-block"></div>
+</div>        <div class="text-center">
+            <a class="btn btn-link crudjax1" value="/index.php?r=site%2Frequest-password-reset">Forgot Password?</a>            <span>&nbsp;|&nbsp;</span>
+            <a class="btn btn-link crudjax1" value="/index.php?r=site%2Fparent-registration">Parent Registration?</a>
+
+    <a class="btn btn-link crudjax1" value="/index.php?r=usermanagement%2Fmfa-processing%2Fmfa-registration">MFA Registration?</a></div>
+            <div class="form-group field-loginFormQRCodeID">
+<label class="control-label" style="visibility:hidden" for="loginFormQRCodeID">MFA Code</label>
+<input type="text" id="loginFormQRCodeID" class="form-control" name="LoginForm[qr_code]" placeholder="Enter MFA Code" style="visibility:hidden" onchange="onQrCodeChange()">
+
+<div class="help-block"></div>
+</div>
+
+
+        <div class="form-group">
+        <div class="text-center d-grid" >
+                <button type="submit" class="btn btn-custom mb-3 w-auto" name="login-button">Login</button>        </div>
+        </div>
+
+    </form>    </div>
+    </div>
+
+
+<div id="modal" class="modal fade modal fade" tabindex="-1" aria-hidden="true" aria-labelledby="modal-label">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div id="modalHeader" class="modal-header">
+<h5 id="modal-label" class="modal-title"><div style="margin-top:-35px;text-align:center;">
+                    <img src="images/smalllogo1.png">
+                </div></h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+<div id='modalContent'><div class= 'loader' > </div>  
+    </div>
+</div>
+<div class="modal-footer">
+© Copyright 2019 by K L Deemed to be University
+</div>
+</div>
+</div>
+</div>
+<div id="modal1" class="modal fade modal fade" tabindex="-1" aria-hidden="true" aria-labelledby="modal1-label">
+<div class="modal-dialog modal-sm">
+<div class="modal-content">
+<div id="modalHeader" class="modal-header">
+<h5 id="modal1-label" class="modal-title"><div style="margin-top:-35px;text-align:center;">
+                    <img src="images/smalllogo1.png">
+                </div></h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+<div id='modalContent1'>  <div class= 'loader' > </div>
+    </div>
+</div>
+<div class="modal-footer">
+© Copyright 2019 by K L Deemed to be University
+</div>
+</div>
+</div>
+</div>
+<div id="modal2" class="modal fade modal fade" tabindex="-1" aria-hidden="true" aria-labelledby="modal2-label">
+<div class="modal-dialog modal-md">
+<div class="modal-content">
+<div id="modalHeader" class="modal-header">
+<h5 id="modal2-label" class="modal-title"><div style="margin-top:-35px;text-align:center;">
+                    <img src="images/smalllogo1.png">
+                </div></h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+<div id='modalContent2'>  <div class= 'loader'> </div>
+    </div>
+</div>
+<div class="modal-footer">
+© Copyright 2019 by K L Deemed to be University.
+</div>
+</div>
+</div>
+</div>
+
+<div id="modal3" class="modal fade modal fade" tabindex="-1" aria-hidden="true" aria-labelledby="modal3-label">
+<div class="modal-dialog modal-xl">
+<div class="modal-content">
+<div id="modalHeader" class="modal-header">
+<h5 id="modal3-label" class="modal-title"><div style="margin-top:-35px;text-align:center;">
+                    <img src="images/smalllogo1.png">
+                </div></h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+<div id='modalContent3'>  <div class= 'loader'> </div>
+    </div>
+</div>
+<div class="modal-footer">
+© Copyright 2019 by K L Deemed to be University.
+</div>
+</div>
+</div>
+</div>
+
+<div id="modal4" class="modal fade modal fade" tabindex="-1" aria-hidden="true" aria-labelledby="modal4-label">
+<div class="modal-dialog modal-lm">
+<div class="modal-content">
+<div id="modalHeader" class="modal-header">
+<h5 id="modal4-label" class="modal-title"><div style="margin-top:-35px;text-align:center;">
+                    <img src="images/smalllogo1.png">
+                </div></h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+<div id='modalContent4'>  <div class= 'loader'> </div>
+    </div>
+</div>
+<div class="modal-footer">
+© Copyright 2019 by K L Deemed to be University.
+</div>
+</div>
+</div>
+</div>
+
+<div id="modal6" class="modal fade modal fade" tabindex="-1" aria-hidden="true" aria-labelledby="modal6-label">
+<div class="modal-dialog modal-lm">
+<div class="modal-content">
+<div id="modalHeader" class="modal-header">
+<h5 id="modal6-label" class="modal-title"><div style="margin-top:-35px;text-align:center;">
+                    <img src="images/smalllogo1.png">
+                </div></h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+<div id='modalContent6'>  <div class= 'loader'> </div>
+    </div>
+</div>
+<div class="modal-footer">
+© Copyright 2019 by K L Deemed to be University.
+</div>
+</div>
+</div>
+</div>
+
+
+<script src="/assets/9575eff9/jquery.js"></script>
+<script src="/assets/125e0c85/yii.js"></script>
+<script src="/js/modalajax.js"></script>
+<script src="/js/csvdownload.js"></script>
+<script src="/js/employeprofile.js"></script>
+<script src="/js/jquery.vticker.js"></script>
+<script src="/js/pdf.js"></script>
+<script src="/js/counter.js"></script>
+<script src="/js/sidenav.js"></script>
+<script src="/js/pageonloader.js"></script>
+<script src="/js/jquery.validate.min.js"></script>
+<script src="/js/bootstrap-treeview.min.js"></script>
+<script src="/js/Chart.js"></script>
+<script src="/js/froala.events.js"></script>
+<script src="/js/jquery.countdown.js"></script>
+<script src="/js/webcam.min.js"></script>
+<script src="/js/cookie.min.js"></script>
+<script src="/js/ripple.js"></script>
+<script src="/js/jstree.min.js"></script>
+<script src="/js/qpTreeStructure.js"></script>
+<script src="/assets/125e0c85/yii.validation.js"></script>
+<script src="/assets/125e0c85/yii.captcha.js"></script>
+<script src="/assets/125e0c85/yii.activeForm.js"></script>
+<script src="/assets/dbc3468/jquery.pjax.js"></script>
+<script src="/assets/b0addbde/bootstrap.bundle.js"></script>
+<script>jQuery('#loginFormCaptcha-image').yiiCaptcha({"refreshUrl":"\/index.php?r=site%2Fcaptcha\u0026refresh=1","hashKey":"yiiCaptcha\/site\/captcha"});
+jQuery('#login-form').yiiActiveForm([{"id":"loginFormUserNameID","name":"username","container":".field-loginFormUserNameID","input":"#loginFormUserNameID","validate":function (attribute, value, messages, deferred, $form) {yii.validation.required(value, messages, {"message":"Username cannot be blank."});}},{"id":"loginFormPasswordID","name":"password","container":".field-loginFormPasswordID","input":"#loginFormPasswordID","validate":function (attribute, value, messages, deferred, $form) {yii.validation.required(value, messages, {"message":"Password cannot be blank."});}},{"id":"loginFormCaptcha","name":"captcha","container":".field-loginFormCaptcha","input":"#loginFormCaptcha","validate":function (attribute, value, messages, deferred, $form) {yii.validation.captcha(value, messages, {"hash":6981,"hashKey":"yiiCaptcha\/site\/captcha","caseSensitive":false,"message":"The verification code is incorrect."});}},{"id":"loginFormQRCodeID","name":"qr_code","container":".field-loginFormQRCodeID","input":"#loginFormQRCodeID","validate":function (attribute, value, messages, deferred, $form) {yii.validation.string(value, messages, {"message":"MFA Code must be a string.","max":6,"tooLong":"MFA Code should contain at most 6 characters.","skipOnEmpty":1});}}], []);
+jQuery(document).pjax("#login-jax a", {"push":false,"replace":false,"timeout":1000,"scrollTo":false,"container":"#login-jax"});
+jQuery(document).off("submit", "#login-jax form[data-pjax]").on("submit", "#login-jax form[data-pjax]", function (event) {jQuery.pjax.submit(event, {"push":false,"replace":false,"timeout":1000,"scrollTo":false,"container":"#login-jax"});});
+   
+    var isMfaFired;
+    var isrMfa;
+    var usernameElement = document.getElementById('loginFormUserNameID');
+    var passwdElement = document.getElementById('loginFormPasswordID');
+    var captchaElement = document.getElementById('loginFormCaptcha');
+    var qrCodeElement = document.getElementById('loginFormQRCodeID');
+    var qrCodeHelpBlock = qrCodeElement.parentElement.querySelector('.help-block');
+    var userHelpBlock = usernameElement.parentElement.querySelector('.help-block');
+    var captchaHelpBlock = captchaElement.parentElement.querySelector('.help-block');
+    var passwrdHelpBlock = passwdElement.parentElement.querySelector('.help-block');
+   
+    $(document).ready(function(){
+       
+         isMfaFired=0;
+         isrMfa=true;
+         username='';
+         changeMfaVisibility(false);
+          
+
+    });
+    function onUserNameChange() {
+        
+        var username=usernameElement.value.trim();
+        let pwd=passwdElement.value.trim();
+        let captchaVal=captchaElement.value.trim();
+        if(username===null || username==='')
+            return false;
+        if(isMfaFired===1)
+            return false;
+        
+        
+        
+       
+       /* if (captchaVal===null || captchaVal===''){
+            return false;
+        }*/
+       
+        isrMfa= isRequriedMfa(username);
+        var chngMfaVis= changeMfaVisibility(isrMfa);
+        return false;
+    }
+    function isRequriedMfa(username) {  
+            var url = "/index.php?r=site%2Fget-stakeholder-id";
+            if(username === '' || username === null) 
+                return false;
+            var response= jsPost(url, username) 
+            const responseValue = parseInt(response);
+            isMfaFired = 1;
+            if(responseValue=== 1) {
+                  
+                    //changeMfaVisibility(1,1);
+                    usernameElement.setAttribute('readonly', 'true');
+                    usernameElement.setAttribute('readonly', 'true');
+                    return true;
+            }
+            else if(responseValue=== -1) {
+                    userHelpBlock.innerHTML = "<span class='text-danger'>Not a Valid User.<span>";
+                    //changeMfaVisibility(0,-1);
+                    return false
+            }
+            else if(responseValue=== -2) {
+                     //changeMfaVisibility(0,-2);
+                    //userHelpBlock.innerHTML = 'Not a QR Validated Stakeholder.';
+                    return false;
+            }
+            else if(responseValue=== -3) {
+                    userHelpBlock.innerHTML = "<span class='text-danger'>Not a Registered MFA.<span>";
+                    //changeMfaVisibility(0,-3);
+                    return false;
+            }
+            else{
+                return true;
+            }
+            
+    }
+    function onQrCodeChange() {
+        let msg = '';
+        if((qrCodeElement.value===null || qrCodeElement.value==='') && isMfaFired===1 && isrMfa===true){
+            msg = "<span class='text-danger'>MFA Code cannot be blank</span>";
+        }
+        qrCodeHelpBlock.innerHTML = msg;
+        if(msg!==''){
+            qrCodeHelpBlock.style.display = 'block';
+            return false;
+        } else {
+            qrCodeHelpBlock.style.display = 'none';
+            return true;
+        }
+    }
+    function changeMfaVisibility(responseValue) {
+     
+            try{
+                    var divElements = document.getElementsByClassName("field-loginFormQRCodeID");
+                    const allElements = divElements[0].childNodes;
+                    allElements.forEach(function(node, index) {
+                        try{
+                           
+                             node.style.visibility = 'hidden';
+                            if(responseValue)
+                                node.style.visibility = 'visible';
+                            
+                            
+                        }catch(e){
+                            return false;
+                         }
+                    });
+                   return true;
+            }catch(e){ 
+                alert(e.message);
+                return false;
+            }
+    }
+    
+    $('#login-form').on('beforeSubmit', function (e) {
+      if(usernameElement.value.trim()==='' ||usernameElement.value.trim()===null){
+          return false;
+      }
+       if(isMfaFired===0){
+          return  isRequriedMfa(usernameElement.value.trim());
+       }   
+       return onQrCodeChange();
+       
+      
+    });
+    function jsPost(url, username) {
+     
+        var result;
+         $.ajax({
+                url: url,
+                type: 'POST',
+                data: {'username': username },
+                async: false,
+                success: function(response) {
+                  
+                    result=  response;
+                },
+                error: function(response) {
+                    result= 1;
+                }
+        
+        });
+        return result;
+    }
+
+(new bootstrap.Modal('#modal', {"show":false,"backdrop":"static","keyboard":false}));
+(new bootstrap.Modal('#modal1', {"show":false,"backdrop":"static","keyboard":false}));
+(new bootstrap.Modal('#modal2', {"show":false,"backdrop":"static","keyboard":false}));
+(new bootstrap.Modal('#modal3', {"show":false,"backdrop":"static","keyboard":false}));
+(new bootstrap.Modal('#modal4', {"show":false,"backdrop":"static","keyboard":false}));
+(new bootstrap.Modal('#modal6', {"show":false,"backdrop":"static","keyboard":false}));</script>                    </div>
+                    <div class="position-absolute bottom-0 text-center d-sm-none px-3">
+                        <small class="text-dark text-center">© Copyright 2024 by K L Deemed to be University. All Rights Reserved.&nbsp; <i class="fa-duotone fa-regular fa-database"></i>&nbsp;&nbsp;erp1</small>
+                    </div>
+                </div>
+            </div>
+    </div>
+<script>
+    window.addEventListener('load', function () {
+        document.documentElement.style.visibility = 'visible';
+    });
+</script>
+<script>
+    const themeRadios = document.querySelectorAll('input[name="theme"]');
+    const savedTheme = localStorage.getItem('theme');
+
+    if (savedTheme) {
+        document.body.dataset.theme = savedTheme;
+        const radio = document.querySelector(`input[name="theme"][value="${savedTheme}"]`);
+        if (radio) radio.checked = true;
+    }
+
+    themeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            document.body.dataset.theme = this.value;
+            localStorage.setItem('theme', this.value);
+        });
+    });
+</script>
+<script>
+    const toggleBtn = document.getElementById('settings-toggle');
+    const panel = document.getElementById('settings-panel');
+    const overlay = document.getElementById('settings-overlay');
+    const colors = document.querySelectorAll('.color');
+
+    function openPanel() {
+        panel.classList.add('active');
+        overlay.style.display = 'block';
+    }
+
+    function closePanel() {
+        panel.classList.remove('active');
+        overlay.style.display = 'none';
+    }
+
+    toggleBtn.addEventListener('click', openPanel);
+    overlay.addEventListener('click', closePanel);
+
+    /* Apply saved theme on load */
+    const savedColor = localStorage.getItem('themeColor');
+    if (savedColor) {
+        document.documentElement.style.setProperty('--theme-color', savedColor);
+    }
+
+    /* Change theme color */
+    colors.forEach(color => {
+        color.addEventListener('click', function () {
+            const selectedColor = this.getAttribute('data-color');
+            document.documentElement.style.setProperty('--theme-color', selectedColor);
+            localStorage.setItem('themeColor', selectedColor);
+        });
+    });
+</script>
+<script>
+    document.querySelector('.settings-close').addEventListener('click', function () {
+        document.getElementById('settings-panel').classList.remove('active');
+        document.getElementById('settings-overlay').style.display = 'none';
+    });
+</script>
+</body>
+</html>

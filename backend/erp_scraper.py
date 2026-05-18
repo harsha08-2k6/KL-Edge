@@ -125,7 +125,7 @@ SEATING_LINK_KEYWORDS = [
     "ticket",
     "allocation"
 ]
-CGPA_LINK_KEYWORDS = ["cgpa", "my cgpa", "gpa", "grade", "result", "cumulative", "sem end exam"]
+CGPA_LINK_KEYWORDS = ["cgpa", "my cgpa", "cumulative gpa", "gpa"]
 
 MARKS_CANDIDATE_PATHS = [
     "index.php?r=examsection/examstudentcourseinternalsummativeqpwisemarksinfo/index",
@@ -148,7 +148,6 @@ SEATING_CANDIDATE_PATHS = [
 CGPA_CANDIDATE_PATHS = [
     "index.php?r=studentinfo/studentendexamresult/searchgetmycgpa",
     "index.php?r=studentresult/cgpa/index",
-    "index.php?r=studentresult/result/index",
     "index.php?r=studentmarks/marks/cgpa"
 ]
 
@@ -161,6 +160,83 @@ class AppError(Exception):
 
 
 captcha_sessions_memory: Dict[str, Dict] = {}
+
+
+def serialize_cookies(jar: requests.cookies.RequestsCookieJar) -> List[Dict[str, object]]:
+    cookies: List[Dict[str, object]] = []
+    if jar is None:
+        return cookies
+    for cookie in jar:
+        cookies.append({
+            "name": cookie.name,
+            "value": cookie.value,
+            "domain": cookie.domain,
+            "path": cookie.path,
+            "expires": cookie.expires,
+            "secure": cookie.secure,
+            "rest": cookie._rest,
+            "version": cookie.version,
+            "port": cookie.port,
+            "comment": cookie.comment,
+            "comment_url": cookie.comment_url,
+            "discard": cookie.discard,
+            "rfc2109": cookie.rfc2109
+        })
+    return cookies
+
+
+def deserialize_cookies(raw) -> requests.cookies.RequestsCookieJar:
+    jar = requests.cookies.RequestsCookieJar()
+    if not raw:
+        return jar
+    if isinstance(raw, dict):
+        jar.update(raw)
+        return jar
+    if isinstance(raw, list):
+        for entry in raw:
+            if not isinstance(entry, dict):
+                continue
+            try:
+                cookie = requests.cookies.create_cookie(
+                    name=entry.get("name", ""),
+                    value=entry.get("value", ""),
+                    domain=entry.get("domain"),
+                    path=entry.get("path") or "/",
+                    expires=entry.get("expires"),
+                    secure=entry.get("secure", False),
+                    rest=entry.get("rest") or {},
+                    version=entry.get("version", 0),
+                    port=entry.get("port"),
+                    comment=entry.get("comment"),
+                    comment_url=entry.get("comment_url"),
+                    discard=entry.get("discard", False),
+                    rfc2109=entry.get("rfc2109", False)
+                )
+                jar.set_cookie(cookie)
+            except Exception:
+                continue
+    return jar
+
+
+def has_cookie_name(jar: requests.cookies.RequestsCookieJar, name: str) -> bool:
+    for cookie in jar:
+        if cookie.name == name:
+            return True
+    return False
+
+
+def dedupe_cookie(jar: requests.cookies.RequestsCookieJar, name: str) -> None:
+    seen = False
+    for cookie in list(jar):
+        if cookie.name != name:
+            continue
+        if not seen:
+            seen = True
+            continue
+        try:
+            jar.clear(domain=cookie.domain, path=cookie.path, name=cookie.name)
+        except KeyError:
+            continue
 
 def save_captcha_session(session_id: str, data: Dict):
     if redis_client:
@@ -179,7 +255,7 @@ def get_captcha_session(session_id: str) -> Optional[Dict]:
 def reconstruct_session(cookies: Dict[str, str]) -> requests.Session:
     session = requests.Session()
     session.headers.update({"User-Agent": DEFAULT_USER_AGENT})
-    session.cookies.update(cookies)
+    session.cookies = deserialize_cookies(cookies)
     ensure_device_cookie(session)
     return session
 
@@ -246,7 +322,7 @@ def create_captcha_session() -> Dict[str, str]:
     session_id = str(uuid.uuid4())
 
     save_captcha_session(session_id, {
-        "cookies": session.cookies.get_dict(),
+        "cookies": serialize_cookies(session.cookies),
         "login_html": login_html,
         "created_at": time.time(),
         "is_logged_in": False,
@@ -276,6 +352,23 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
         login_form = extract_login_form(captcha_session.get("login_html", ""), LOGIN_URL)
         login_data = build_login_form_data(login_form, payload)
 
+        if DEBUG_ENABLED:
+            erp_id = payload.get("erpId", "") or ""
+            masked_id = f"{erp_id[:2]}***{erp_id[-2:]}" if len(erp_id) >= 4 else "***"
+            print("[erp:login] submit", {
+                "action": login_form.get("actionUrl"),
+                "method": login_form.get("method"),
+                "isAjax": bool(login_form.get("isAjax")),
+                "pjaxContainer": login_form.get("pjaxContainer") or "",
+                "fields": list(login_data.keys()),
+                "erpId": masked_id,
+                "passwordLen": len(payload.get("password", "") or ""),
+                "captchaLen": len(payload.get("captcha", "") or "")
+            }, flush=True)
+        
+        csrf_token = (login_form.get("hiddenFields") or {}).get("_csrf", "")
+        prepare_login_stakeholder(session, payload.get("erpId", ""), csrf_token)
+
         login_response = submit_form(
             session,
             login_form,
@@ -283,17 +376,70 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
             referer=LOGIN_URL
         )
 
+        # Handle Yii2 PJAX X-Redirect
+        redirect_url = login_response.headers.get("X-Redirect") or login_response.headers.get("X-Pjax-Url")
+        if redirect_url:
+            login_response = request_page(session, urljoin(LOGIN_URL, redirect_url), headers=build_headers(LOGIN_URL))
+
         login_html = login_response.text or ""
-        if looks_like_login_failure(login_html, login_form):
+
+        if DEBUG_ENABLED:
+            print("[erp:login] response", {
+                "status": login_response.status_code,
+                "url": login_response.url,
+                "history": [resp.status_code for resp in login_response.history],
+                "contentType": login_response.headers.get("Content-Type", ""),
+                "isLoginPage": looks_like_login_page(login_html),
+                "hasCaptcha": "captcha" in login_html.lower()
+            }, flush=True)
+
+        has_app_redirect = False
+        for resp in login_response.history:
+            location = (resp.headers.get('Location') or resp.url).lower()
+            if location and "site/login" not in location and "site%2flogin" not in location:
+                has_app_redirect = True
+
+        if has_app_redirect and looks_like_login_page(login_html):
+            raise AppError("ERP Login successful, but you were redirected back to the login page. Your account might be restricted due to unpaid fees, MFA, or a required survey. Please log in via a normal browser.", 401)
+            
+        if looks_like_login_failure(login_response.url, login_html, login_form):
+            # Fallback: try a full form submit without PJAX headers
+            if login_form.get("isAjax"):
+                if DEBUG_ENABLED:
+                    print("[erp:login] retrying without PJAX headers", flush=True)
+                fallback_form = dict(login_form)
+                fallback_form["isAjax"] = False
+                fallback_form["pjaxContainer"] = ""
+                login_response = submit_form(
+                    session,
+                    fallback_form,
+                    login_data,
+                    referer=LOGIN_URL
+                )
+                redirect_url = login_response.headers.get("X-Redirect") or login_response.headers.get("X-Pjax-Url")
+                if redirect_url:
+                    login_response = request_page(session, urljoin(LOGIN_URL, redirect_url), headers=build_headers(LOGIN_URL))
+                login_html = login_response.text or ""
+
+            if not looks_like_login_failure(login_response.url, login_html, login_form):
+                captcha_session["is_logged_in"] = True
+                captcha_session["dashboard_html"] = login_html
+                captcha_session["cookies"] = serialize_cookies(session.cookies)
+                save_captcha_session(session_id, captcha_session)
+                return session
+
             message = extract_login_error_message(login_html)
             clean_message = message or "ERP login failed. Refresh captcha and check ERP ID, password, and captcha."
+            if not message or "Invalid Captcha" in clean_message:
+                clean_message = "Invalid Captcha, Incorrect Password, or your account might have restrictions (MFA, unpaid fees, surveys)."
             if DEBUG_ENABLED:
                 print(f"[erp:login] Rejected by ERP. Reason: '{clean_message}'", flush=True)
+                save_debug_html("last_login_failure.html", login_html, login_response.url)
             raise AppError(clean_message, 401)
 
         captcha_session["is_logged_in"] = True
         captcha_session["dashboard_html"] = login_html
-        captcha_session["cookies"] = session.cookies.get_dict()
+        captcha_session["cookies"] = serialize_cookies(session.cookies)
         save_captcha_session(session_id, captcha_session)
         
         return session
@@ -311,21 +457,59 @@ def load_faculty() -> List[Dict[str, object]]:
     return []
 
 
-def request_page(session: requests.Session, url: str, headers: Optional[Dict[str, str]] = None, stream: bool = False) -> requests.Response:
+def request_page(
+    session: requests.Session,
+    url: str,
+    headers: Optional[Dict[str, str]] = None,
+    stream: bool = False
+) -> requests.Response:
     try:
         response = session.get(
             url,
-            headers=headers,
+            headers=headers or build_headers(url),
+            stream=stream,
             timeout=get_timeout(),
-            verify=not ALLOW_INSECURE,
-            stream=stream
+            verify=not ALLOW_INSECURE
         )
         response.raise_for_status()
         return response
     except requests.RequestException as exc:
         if DEBUG_ENABLED:
-            print(f"[erp:http] request_page failed for {url}: {exc}", flush=True)
+            print(f"[erp:request] failed fetching {url}: {exc}", flush=True)
         raise AppError(f"ERP request failed: {exc}", 502) from exc
+
+
+def prepare_login_stakeholder(session: requests.Session, erp_id: str, csrf_token: str) -> None:
+    if not erp_id:
+        return
+    url = urljoin(LOGIN_URL, "index.php?r=site%2Fget-stakeholder-id")
+    data = {"username": erp_id}
+    headers_extra = {"X-Requested-With": "XMLHttpRequest"}
+    if csrf_token:
+        headers_extra["X-CSRF-Token"] = csrf_token
+        data["_csrf"] = csrf_token
+
+    try:
+        response = session.post(
+            url,
+            data=data,
+            headers=build_headers(LOGIN_URL, headers_extra),
+            timeout=get_timeout(),
+            verify=not ALLOW_INSECURE
+        )
+        response.raise_for_status()
+        val = response.text.strip()
+        if val == "1":
+            raise AppError("Your account requires Multi-Factor Authentication (MFA). Please log in via the official KL ERP portal.", 401)
+        elif val == "-1":
+            raise AppError("Not a Valid User.", 401)
+        elif val == "-3":
+            raise AppError("Not a Registered MFA User.", 401)
+    except AppError:
+        raise
+    except requests.RequestException as exc:
+        if DEBUG_ENABLED:
+            print(f"[erp:login] stakeholder check failed: {exc}", flush=True)
 
 
 def submit_form(session: requests.Session, form: Dict[str, object], data: Dict[str, str], referer: str) -> requests.Response:
@@ -335,6 +519,13 @@ def submit_form(session: requests.Session, form: Dict[str, object], data: Dict[s
     headers_extra = {"Content-Type": "application/x-www-form-urlencoded"}
     if form.get("isAjax"):
         headers_extra["X-Requested-With"] = "XMLHttpRequest"
+    pjax_container = form.get("pjaxContainer") or ""
+    if pjax_container:
+        headers_extra["X-PJAX"] = "true"
+        headers_extra["X-PJAX-Container"] = f"#{pjax_container.lstrip('#')}"
+    csrf_token = data.get("_csrf") or ""
+    if csrf_token:
+        headers_extra["X-CSRF-Token"] = csrf_token
         
     headers = build_headers(referer, headers_extra)
 
@@ -343,7 +534,7 @@ def submit_form(session: requests.Session, form: Dict[str, object], data: Dict[s
             response = session.get(
                 url,
                 params=data,
-                headers=build_headers(referer),
+                headers=headers,
                 timeout=get_timeout(),
                 verify=not ALLOW_INSECURE
             )
@@ -417,11 +608,18 @@ def extract_login_form(html: str, base_url: str) -> Dict[str, object]:
 
     action = form.get("action") or base_url
     method = (form.get("method") or "post").lower()
+    is_ajax = bool(form.has_attr("data-pjax") or form.has_attr("data-ajax"))
+    pjax_container = find_pjax_container_id(soup, form) if is_ajax else ""
 
     username_field = find_input_name_by_id(form, LOGIN_FIELD_IDS["erp_id"]) or find_input_name_by_pattern(form, r"user|login|erp") or "username"
     password_field = find_input_name_by_id(form, LOGIN_FIELD_IDS["password"]) or find_input_name_by_pattern(form, r"pass") or "password"
     captcha_field = find_input_name_by_id(form, LOGIN_FIELD_IDS["captcha"]) or find_input_name_by_pattern(form, r"captcha") or "captcha"
     hidden_fields = extract_hidden_inputs(form)
+    extra_fields = extract_extra_inputs(form, {
+        username_field,
+        password_field,
+        captcha_field
+    })
 
     if DEBUG_ENABLED:
         print("[erp:http] login form", {
@@ -430,7 +628,10 @@ def extract_login_form(html: str, base_url: str) -> Dict[str, object]:
             "usernameField": username_field,
             "passwordField": password_field,
             "captchaField": captcha_field,
-            "hiddenFields": list(hidden_fields.keys())
+            "hiddenFields": list(hidden_fields.keys()),
+            "extraFields": list(extra_fields.keys()),
+            "isAjax": is_ajax,
+            "pjaxContainer": pjax_container
         }, flush=True)
 
     return {
@@ -439,20 +640,44 @@ def extract_login_form(html: str, base_url: str) -> Dict[str, object]:
         "usernameField": username_field,
         "passwordField": password_field,
         "captchaField": captcha_field,
-        "hiddenFields": hidden_fields
+        "hiddenFields": hidden_fields,
+        "extraFields": extra_fields,
+        "isAjax": is_ajax,
+        "pjaxContainer": pjax_container
     }
 
 
 def build_login_form_data(form: Dict[str, object], payload: Dict[str, str]) -> Dict[str, str]:
-    return {
-        **form.get("hiddenFields", {}),
-        form.get("usernameField"): payload.get("erpId", ""),
-        form.get("passwordField"): payload.get("password", ""),
-        form.get("captchaField"): payload.get("captcha", "")
-    }
+    data = {}
+    data.update(form.get("hiddenFields", {}))
+    data.update(form.get("extraFields", {}))
+    data[form.get("usernameField")] = payload.get("erpId", "")
+    data[form.get("passwordField")] = payload.get("password", "")
+    data[form.get("captchaField")] = (payload.get("captcha", "") or "").strip()
+    return data
 
 
-def looks_like_login_failure(html: str, form: Dict[str, object]) -> bool:
+def looks_like_login_page(html: str) -> bool:
+    if not html:
+        return True
+    soup = BeautifulSoup(html, "html.parser")
+    if soup.select_one(".site-login") or soup.select_one("#login-form"):
+        return True
+    for form in soup.find_all("form"):
+        if has_login_fields(form):
+            return True
+    if soup.find("input", {"type": "password"}):
+        text = clean_text(soup.get_text(" ")).lower()
+        if "login" in text or "sign in" in text:
+            return True
+    return False
+
+
+def looks_like_login_failure(url: str, html: str, form: Dict[str, object]) -> bool:
+    url_low = url.lower()
+    if "site/login" in url_low or "site%2flogin" in url_low:
+        return True
+
     if not html:
         return True
 
@@ -461,9 +686,8 @@ def looks_like_login_failure(html: str, form: Dict[str, object]) -> bool:
         return True
     if "login" in lowered and "failed" in lowered:
         return True
-    if re.search(r"type=['\"]password['\"]", html, re.IGNORECASE):
-        return True
-    if contains_login_fields(html, form):
+
+    if looks_like_login_page(html):
         return True
 
     return False
@@ -494,6 +718,9 @@ def extract_login_error_message(html: str) -> str:
 
     if messages:
         return " ".join(list(dict.fromkeys(messages)))[:240]
+
+    for script in soup(["script", "style"]):
+        script.extract()
 
     body_text = clean_text(soup.get_text(" "))
     candidates = [
@@ -547,6 +774,37 @@ def extract_hidden_inputs(form) -> Dict[str, str]:
             hidden_fields[btn.get("name")] = btn.get("value") or btn.text.strip()
             
     return hidden_fields
+
+
+def find_pjax_container_id(soup: BeautifulSoup, form) -> str:
+    if form is None:
+        return ""
+    parent = form.find_parent(attrs={"data-pjax-container": True})
+    if parent and parent.get("id"):
+        return parent.get("id")
+    container = soup.find(attrs={"data-pjax-container": True}) if soup else None
+    if container and container.get("id"):
+        return container.get("id")
+    return ""
+
+
+def extract_extra_inputs(form, exclude: set) -> Dict[str, str]:
+    extras: Dict[str, str] = {}
+    for input_tag in form.find_all("input"):
+        name = input_tag.get("name")
+        if not name or name in exclude:
+            continue
+
+        input_type = (input_tag.get("type") or "").lower()
+        if input_type in ("submit", "button", "image"):
+            continue
+
+        if input_type in ("checkbox", "radio") and not input_tag.has_attr("checked"):
+            continue
+
+        extras[name] = input_tag.get("value") or ""
+
+    return extras
 
 
 def find_input_name_by_id(form, input_id: Optional[str]) -> str:
@@ -784,7 +1042,13 @@ def parse_attendance_table(table_html: str) -> List[Dict[str, object]]:
         attended = to_number(values[attended_index]) if attended_index >= 0 and attended_index < len(values) else None
         pct = to_number(values[percentage_index].replace("%", "")) if percentage_index >= 0 and percentage_index < len(values) else None
 
-        if not subject_val or "total" in subject_val.lower() or not code_val or len(code_val) < 3:
+        if not subject_val or "total" in subject_val.lower():
+            continue
+
+        if not code_val:
+            code_val = re.sub(r'[^A-Z0-9]', '', subject_val.upper())[:8]
+
+        if len(code_val) < 1:
             continue
 
         results.append({
@@ -832,8 +1096,10 @@ def sync_attendance(payload: Dict[str, str]) -> List[Dict[str, object]]:
     rows = parse_attendance_tables(result_html)
     if not rows:
         lowered = result_html.lower()
-        if "no records found" in lowered or "no data" in lowered:
+        if any(phrase in lowered for phrase in ["no records found", "no data", "no results", "empty", "no attendance"]):
             return []
+        with open("debug_502.html", "w", encoding="utf-8") as f:
+            f.write(result_html)
         raise AppError("Could not find attendance table in ERP response.", 502)
 
     return merge_attendance_rows(rows)
@@ -977,6 +1243,18 @@ def sync_cgpa(payload: Dict[str, str]) -> Dict[str, object]:
     session = perform_login(payload)
     captcha_session = get_captcha_session(payload.get("captchaSessionId") or "")
     dashboard_html = captcha_session.get("dashboard_html", "") if captcha_session else ""
+
+    menu_url = find_menu_link_by_keywords(session, ["cgpa"]) if session else ""
+    if menu_url:
+        try:
+            html = fetch_html_with_term_form(session, menu_url, payload)
+            cgpa = parse_cgpa_html(html, payload)
+            if cgpa:
+                return cgpa
+        except Exception as exc:
+            if DEBUG_ENABLED:
+                print(f"[erp:cgpa] menu link failed: {exc}")
+
     html, url = fetch_feature_html(
         session,
         dashboard_html,
@@ -1476,7 +1754,13 @@ def get_csrf_from_session(session: requests.Session) -> str:
 def ensure_device_cookie(session: requests.Session) -> None:
     if session is None:
         return
-    if session.cookies.get("kl_erp_device_id"):
+    try:
+        if session.cookies.get("kl_erp_device_id"):
+            return
+    except requests.cookies.CookieConflictError:
+        dedupe_cookie(session.cookies, "kl_erp_device_id")
+
+    if has_cookie_name(session.cookies, "kl_erp_device_id"):
         return
 
     seed = os.urandom(32).hex()

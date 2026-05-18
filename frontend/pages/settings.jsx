@@ -6,8 +6,8 @@ import { fetchCaptcha, syncAttendance } from "../utils/api.js";
 import { readLocal, removeLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
 
 const academicYears = [
-  "2026-2027",
   "2025-2026",
+  "2026-2027",
   "2024-2025",
   "2023-2024",
   "2022-2023",
@@ -27,6 +27,19 @@ const academicYears = [
 ];
 
 const semesters = ["Odd Sem", "Even Sem", "Summer Term", "Term3"];
+
+function getDefaultAcademicYear(date = new Date()) {
+  const year = date.getFullYear();
+  const startYear = date.getMonth() >= 6 ? year : year - 1;
+  return `${startYear}-${startYear + 1}`;
+}
+
+function getDefaultSemester(date = new Date()) {
+  const month = date.getMonth();
+  if (month >= 0 && month <= 5) return "Even Sem";
+  if (month >= 6 && month <= 11) return "Odd Sem";
+  return "";
+}
 
 export default function Settings() {
   const [erpId, setErpId] = useState("");
@@ -75,11 +88,12 @@ export default function Settings() {
 
   useEffect(() => {
     const credentials = readLocal(STORAGE_KEYS.credentials, { erpId: "", password: "" });
-    const syncOptions = readLocal(STORAGE_KEYS.syncOptions, { academicYear: "", semesterId: "" });
+    const defaults = { academicYear: getDefaultAcademicYear(), semesterId: getDefaultSemester() };
+    const syncOptions = readLocal(STORAGE_KEYS.syncOptions, defaults);
     setErpId(credentials.erpId || "");
     setPassword(credentials.password || "");
-    setAcademicYear(syncOptions.academicYear || "");
-    setSemesterId(syncOptions.semesterId || "");
+    setAcademicYear(syncOptions.academicYear || defaults.academicYear);
+    setSemesterId(syncOptions.semesterId || defaults.semesterId);
     if (!initialCaptchaLoaded.current) {
       initialCaptchaLoaded.current = true;
       loadCaptcha();
@@ -117,17 +131,21 @@ export default function Settings() {
       setCaptchaSessionId("");
       setMessage("Attendance synced successfully.");
     } catch (error) {
-      setCaptcha("");
-      setCaptchaImage("");
-      setCaptchaSessionId("");
-
       if (error.status === 501) {
+        setCaptcha("");
+        setCaptchaImage("");
+        setCaptchaSessionId("");
         setMessage("ERP sync is not configured on the backend. Set ERP_* env vars and restart the backend.");
       } else if (error.status === 410) {
-        setMessage("Captcha expired. Click refresh captcha, enter the new code, then sync again.");
+        setMessage("Captcha expired. Loading new captcha...");
+        await loadCaptcha({ preserveMessage: true });
       } else if (error.status === 401) {
-        setMessage(`${error.message} Click refresh captcha, enter the new code, then sync again.`);
+        setMessage(`${error.message} Check the captcha and try again with the newly loaded captcha.`);
+        await loadCaptcha({ preserveMessage: true });
       } else {
+        setCaptcha("");
+        setCaptchaImage("");
+        setCaptchaSessionId("");
         setMessage(error.message);
       }
     } finally {

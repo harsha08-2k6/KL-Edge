@@ -51,6 +51,10 @@ export default function Home() {
       setMessage("Please set credentials in Settings first.");
       return;
     }
+    if (!syncOptions.academicYear || !syncOptions.semesterId) {
+      setMessage("Please choose academic year and semester in Settings first.");
+      return;
+    }
     setSyncBusy(true);
     setMessage("");
     try {
@@ -69,7 +73,11 @@ export default function Home() {
       setShowSync(false);
       setCaptcha("");
     } catch (error) {
-      setMessage(error.message);
+      setMessage(
+        error.status === 401
+          ? `${error.message} Check the captcha and try again with the newly loaded captcha.`
+          : error.message
+      );
       loadCaptcha();
     } finally {
       setSyncBusy(false);

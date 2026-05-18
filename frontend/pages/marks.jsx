@@ -59,7 +59,7 @@ export default function Marks() {
   return (
     <Layout title="Marks">
       <div className="rounded-lg border border-ink/10 bg-white p-3 text-xs font-semibold text-ink/50 shadow-soft">
-        In-Semester 1 and 2 marks come from ERP Courses -> Internals.
+        In-Semester 1 and 2 marks come from ERP Courses -&gt; Internals.
       </div>
 
       {marks.length ? (
