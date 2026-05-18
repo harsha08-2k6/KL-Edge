@@ -1,160 +1,210 @@
 # KL Edge
 
-KL Edge is a smart student utility platform built for K L University students to simplify the ERP experience with a cleaner interface, faster access, and useful academic tools.
+A modern student utility platform built for K L University students to simplify ERP usage, attendance tracking, academic management, and daily student activities in one place.
+
+## 🚀 Overview
+
+KL Edge is designed to improve the overall student experience by providing a faster, cleaner, and more accessible interface compared to the traditional ERP workflow. The platform works seamlessly on both mobile and desktop devices and focuses on productivity, convenience, and real-time academic insights.
+
+GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.git)
 
 ---
 
-## Features
+## ✨ Features
 
-- Live ERP attendance sync
-- Subject-wise attendance tracking
-- KL attendance percentage calculator
+### 📊 Attendance Management
+- Real-time attendance tracking
+- Attendance percentage calculator
+- Subject-wise attendance analysis
+- Required classes calculation for safe attendance percentage
+- Shortage prediction system
+- Attendance sync with ERP
+
+### 📅 Timetable Access
+- Daily timetable view
+- Organized class schedules
+- Easy timetable navigation
+- Mobile-friendly timetable interface
+
+### 🪑 Seating Plan
+- Classroom seating plan access
+- Easy student seat lookup
+- Organized exam seating information
+
+### 🎓 CGPA Calculator
+- CGPA calculation system
+- Semester-wise GPA tracking
+- Academic performance analysis
+- Easy grade estimation
+
+### 👨‍🏫 Faculty Information
 - Faculty cabin search
-- Mobile and desktop responsive design
-- Local storage based credential saving
-- Captcha-based secure ERP verification
-- Offline-friendly experience after sync
-- Simple and fast dashboard UI
+- Quick faculty access system
+- Organized faculty directory
+
+### 🔄 ERP Synchronization
+- Sync latest academic data directly from ERP
+- Secure local storage based login flow
+- Faster access after initial login
+- Captcha-supported authentication flow
+
+### 📱 Responsive Design
+- Fully optimized for:
+  - Mobile devices
+  - Tablets
+  - Desktop systems
+- Modern responsive UI
+- Smooth user experience across all screen sizes
+
+### ⚡ Performance Optimizations
+- Fast loading pages
+- Lightweight frontend
+- Efficient API handling
+- Optimized state management
 
 ---
 
-## Why KL Edge?
+## 🛠️ Tech Stack
 
-The official ERP system is often slow and difficult to navigate on mobile devices. KL Edge improves the experience by providing:
-
-- Faster access to attendance data
-- Cleaner student-focused interface
-- Easy navigation
-- Smart attendance utilities
-- Better usability on all devices
-
----
-
-## Tech Stack
-
+### Frontend
 - React.js
-- Vite
 - JavaScript
-- React Router
-- Axios
-- Local Storage APIs
 - HTML5
 - CSS3
 
----
+### Backend
+- FastAPI
 
-## Project Structure
+### Deployment
+- Vercel (Frontend)
+- Render / Cloud Hosting (Backend)
 
-```txt
-KL-Edge/
-│
-├── public/
-│   ├── logo.png
-│   └── favicon.ico
-│
-├── src/
-│   ├── api/
-│   │   ├── erp.js
-│   │   └── attendance.js
-│   │
-│   ├── components/
-│   │   ├── Navbar.jsx
-│   │   ├── SubjectCard.jsx
-│   │   ├── FacultyCard.jsx
-│   │   ├── Loader.jsx
-│   │   └── SyncButton.jsx
-│   │
-│   ├── pages/
-│   │   ├── Home.jsx
-│   │   ├── Subjects.jsx
-│   │   ├── Faculty.jsx
-│   │   └── Settings.jsx
-│   │
-│   ├── utils/
-│   │   ├── localStorage.js
-│   │   ├── attendanceFormula.js
-│   │   └── helpers.js
-│   │
-│   ├── styles/
-│   │   │── global.css
-│   │
-│   ├── App.jsx
-│   ├── main.jsx
-│   └── routes.jsx
-│
-├── .gitignore
-├── package.json
-├── vite.config.js
-├── README.md
-└── LICENSE
-
+### Storage
+- Browser Local Storage
 
 ---
 
-## Requirements
+## 🔐 Authentication & Privacy
+
+- No student credentials are stored on external servers
+- Credentials remain on the user's device
+- Local storage based session management
+- ERP authentication handled securely
+- Captcha verification required during ERP sync
+
+---
+
+## 📂 Project Structure
 
 ```bash
-Node.js
-npm
-Git
-Modern Browser (Chrome, Edge, Firefox)
+KL-Edge/
+│
+├── backend/
+│   ├── api/
+│   ├── routes/
+│   ├── services/
+│   ├── utils/
+│   └── main.py
+│
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── hooks/
+│   │   ├── styles/
+│   │   └── App.js
+│   │
+│   └── package.json
+│
+├── assets/
+├── README.md
+└── requirements.txt
 ```
 
 ---
 
-## Installation
+## 🎯 Main Objectives
+
+- Simplify ERP usage
+- Save student time
+- Improve attendance management
+- Provide quick academic access
+- Build a clean and modern student platform
+- Deliver better usability compared to traditional ERP systems
+
+---
+
+## 🌐 Platform Support
+
+| Platform | Supported |
+|---|---|
+| Android | ✅ |
+| iOS | ✅ |
+| Windows | ✅ |
+| macOS | ✅ |
+| Tablets | ✅ |
+
+---
+
+## ⚙️ Installation
+
+### Clone Repository
 
 ```bash
 git clone https://github.com/harsha08-2k6/KL-Edge.git
+```
 
-cd KL-Edge
+### Frontend Setup
 
+```bash
+cd frontend
 npm install
-
 npm run dev
 ```
 
----
+### Backend Setup
 
-## Security & Privacy
-
-```txt
-✔ No external credential storage
-✔ No backend password saving
-✔ User data stays on the device
-✔ Captcha required during every sync
-✔ Secure local storage based access
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
 ```
 
 ---
 
-## Future Plans
+## 📈 Future Improvements
 
-```txt
-- Timetable integration
-- Smart bunk calculator
-- Attendance prediction
-- Internal marks tracking
-- Faculty review system
 - Push notifications
-- PWA mobile app support
-- Dark mode support
-```
+- AI-based attendance predictions
+- GPA calculator enhancements
+- Exam scheduler
+- Notes sharing system
+- Assignment tracker
+- Dark mode enhancements
+- Offline support
 
 ---
 
-## Project Goal
+## 🤝 Contributions
 
-```txt
-KL Edge aims to create a modern and student-friendly ERP companion platform
-that makes academic tracking easier, faster, and more efficient for
-K L University students.
-```
+Contributions, feature requests, and improvements are welcome.
+
+1. Fork the repository
+2. Create a new branch
+3. Commit your changes
+4. Push to your branch
+5. Open a Pull Request
 
 ---
 
-## Repository
+## 📜 License
 
-```txt
-https://github.com/harsha08-2k6/KL-Edge
-```
+This project is intended for educational and student productivity purposes.
+
+---
+
+## ⭐ Support
+
+If you found this project useful, consider giving it a star on GitHub.
