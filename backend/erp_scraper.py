@@ -402,7 +402,14 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
                 has_app_redirect = True
 
         if has_app_redirect and looks_like_login_page(login_html):
-            raise AppError("ERP Login successful, but you were redirected back to the login page. Your account might be restricted due to unpaid fees, MFA, or a required survey. Please log in via a normal browser.", 401)
+            # Check for specific error types first
+            error_type = detect_login_error_type(login_html)
+            if error_type == "captcha":
+                raise AppError("Captcha is incorrect. Refresh the captcha and try again.", 401)
+            elif error_type == "credentials":
+                raise AppError("Incorrect username or password.", 401)
+            else:
+                raise AppError("ERP Login successful, but you were redirected back to the login page. Your account might be restricted due to unpaid fees, MFA, or a required survey. Please log in via a normal browser.", 401)
             
         if looks_like_login_failure(login_response.url, login_html, login_form):
             # Fallback: try a full form submit without PJAX headers
