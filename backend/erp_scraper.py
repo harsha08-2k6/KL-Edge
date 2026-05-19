@@ -402,14 +402,7 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
                 has_app_redirect = True
 
         if has_app_redirect and looks_like_login_page(login_html):
-            # Check for specific error types first
-            error_type = detect_login_error_type(login_html)
-            if error_type == "captcha":
-                raise AppError("Captcha is incorrect. Refresh the captcha and try again.", 401)
-            elif error_type == "credentials":
-                raise AppError("Incorrect username or password.", 401)
-            else:
-                raise AppError("ERP Login successful, but you were redirected back to the login page. Your account might be restricted due to unpaid fees, MFA, or a required survey. Please log in via a normal browser.", 401)
+            raise AppError("Invalid credentials. Check username, password and captcha.", 401)
             
         if looks_like_login_failure(login_response.url, login_html, login_form):
             # Fallback: try a full form submit without PJAX headers
@@ -437,23 +430,11 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
                 save_captcha_session(session_id, captcha_session)
                 return session
 
-            # Detect specific error type and provide appropriate message
-            error_type = detect_login_error_type(login_html)
-            message = extract_login_error_message(login_html)
-            
-            if error_type == "captcha":
-                clean_message = "Captcha is incorrect. Refresh the captcha and try again."
-            elif error_type == "credentials":
-                clean_message = "Incorrect username or password."
-            elif message:
-                clean_message = message
-            else:
-                clean_message = "Incorrect username or password, or captcha is incorrect. Your account might also have restrictions (MFA, unpaid fees, surveys)."
-            
+            # Show simple error message for invalid login attempt
             if DEBUG_ENABLED:
-                print(f"[erp:login] Rejected by ERP (error_type={error_type}). Reason: '{clean_message}'", flush=True)
+                print(f"[erp:login] Login failed. User will be prompted to check credentials.", flush=True)
                 save_debug_html("last_login_failure.html", login_html, login_response.url)
-            raise AppError(clean_message, 401)
+            raise AppError("Invalid credentials. Check username, password and captcha.", 401)
 
         captcha_session["is_logged_in"] = True
         captcha_session["dashboard_html"] = login_html
@@ -712,19 +693,28 @@ def looks_like_login_failure(url: str, html: str, form: Dict[str, object]) -> bo
 
 
 def detect_login_error_type(html: str) -> str:
-    """Detect specific login error type: 'captcha', 'credentials', or 'unknown'"""
+    """
+    Detect specific login error type: 'captcha', 'credentials', or 'unknown'
+    Conservative approach: default to 'credentials' unless very strong evidence of captcha error
+    """
+    if not html:
+        return "unknown"
+    
     lowered = html.lower()
     
-    # Check for captcha errors
-    if "captcha" in lowered and ("invalid" in lowered or "incorrect" in lowered):
+    # Strong evidence of captcha error: look for "verification code" or "captcha" with "incorrect"/"invalid"
+    if re.search(r"verification code.*?(?:incorrect|invalid)", lowered, re.IGNORECASE):
         return "captcha"
-    if re.search(r"verification code.*incorrect|invalid.*captcha", lowered, re.IGNORECASE):
+    if re.search(r"captcha.*?incorrect.*?code", lowered, re.IGNORECASE):
+        return "captcha"
+    if "incorrect verification code" in lowered:
+        return "captcha"
+    if "invalid verification code" in lowered:
         return "captcha"
     
-    # Check for credential errors
-    if re.search(r"invalid.*username|invalid.*password|incorrect.*password|invalid.*user", lowered, re.IGNORECASE):
-        return "credentials"
-    if "login failed" in lowered:
+    # If no clear captcha error, default to credentials (most likely cause)
+    # Only return unknown if HTML structure seems completely unexpected
+    if looks_like_login_page(html):
         return "credentials"
     
     return "unknown"
