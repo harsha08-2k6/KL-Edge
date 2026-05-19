@@ -171,8 +171,9 @@ export default function Settings() {
   }
 
   return (
-    <Layout title="Settings" action={<SocialLinks />} width="wide">
+    <Layout title="Login Settings" action={<SocialLinks />} width="wide">
       <section className="space-y-2.5 rounded-lg border border-ink/10 bg-white p-2.5 shadow-soft">
+        <p className="text-sm font-bold text-ink/60">Configure your ERP login credentials below</p>
         <label className="block">
           <span className="text-sm font-black text-ink/70">ERP ID</span>
           <input

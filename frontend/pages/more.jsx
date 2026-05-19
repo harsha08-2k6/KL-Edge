@@ -6,7 +6,7 @@ const moreLinks = [
   { href: "/marks", label: "Marks", description: "View internal exam marks (Coming Soon).", icon: ListChecks },
   { href: "/cgpa", label: "CGPA", description: "Check your semester-wise CGPA.", icon: GraduationCap },
   { href: "/seating-plan", label: "Seating Plan", description: "Find your exam seating arrangements.", icon: Armchair },
-  { href: "/settings", label: "Settings", description: "Configure credentials and sync options.", icon: Settings },
+  { href: "/settings", label: "Settings", description: "Configure login credentials and sync options for ERP access.", icon: Settings },
 ];
 
 export default function More() {

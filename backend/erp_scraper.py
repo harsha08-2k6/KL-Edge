@@ -430,12 +430,21 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
                 save_captcha_session(session_id, captcha_session)
                 return session
 
+            # Detect specific error type and provide appropriate message
+            error_type = detect_login_error_type(login_html)
             message = extract_login_error_message(login_html)
-            clean_message = message or "ERP login failed. Refresh captcha and check ERP ID, password, and captcha."
-            if not message or "Invalid Captcha" in clean_message:
-                clean_message = "Invalid Captcha, Incorrect Password, or your account might have restrictions (MFA, unpaid fees, surveys)."
+            
+            if error_type == "captcha":
+                clean_message = "Captcha is incorrect. Refresh the captcha and try again."
+            elif error_type == "credentials":
+                clean_message = "Incorrect username or password."
+            elif message:
+                clean_message = message
+            else:
+                clean_message = "Incorrect username or password, or captcha is incorrect. Your account might also have restrictions (MFA, unpaid fees, surveys)."
+            
             if DEBUG_ENABLED:
-                print(f"[erp:login] Rejected by ERP. Reason: '{clean_message}'", flush=True)
+                print(f"[erp:login] Rejected by ERP (error_type={error_type}). Reason: '{clean_message}'", flush=True)
                 save_debug_html("last_login_failure.html", login_html, login_response.url)
             raise AppError(clean_message, 401)
 
@@ -693,6 +702,25 @@ def looks_like_login_failure(url: str, html: str, form: Dict[str, object]) -> bo
         return True
 
     return False
+
+
+def detect_login_error_type(html: str) -> str:
+    """Detect specific login error type: 'captcha', 'credentials', or 'unknown'"""
+    lowered = html.lower()
+    
+    # Check for captcha errors
+    if "captcha" in lowered and ("invalid" in lowered or "incorrect" in lowered):
+        return "captcha"
+    if re.search(r"verification code.*incorrect|invalid.*captcha", lowered, re.IGNORECASE):
+        return "captcha"
+    
+    # Check for credential errors
+    if re.search(r"invalid.*username|invalid.*password|incorrect.*password|invalid.*user", lowered, re.IGNORECASE):
+        return "credentials"
+    if "login failed" in lowered:
+        return "credentials"
+    
+    return "unknown"
 
 
 def extract_login_error_message(html: str) -> str:
