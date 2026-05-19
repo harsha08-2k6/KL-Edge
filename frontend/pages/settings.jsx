@@ -298,7 +298,10 @@ export default function Settings() {
 
         {message ? <p className="rounded-lg bg-paper px-3 py-2 text-sm font-bold text-ink/70">{message}</p> : null}
       </section>
+
+      <div className="pt-4 pb-2 text-center">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-ink/40">© 2026 KL Edge. All rights reserved.</p>
+      </div>
     </Layout>
   );
 }
-

@@ -9,7 +9,11 @@ export default function Faculty() {
   const [faculty, setFaculty] = useState([]);
 
   useEffect(() => {
-    fetchFaculty().then(setFaculty).catch(() => setFaculty([]));
+    fetchFaculty()
+      .then((res) => {
+        setFaculty(Array.isArray(res) ? res : res?.faculty || res?.data || []);
+      })
+      .catch(() => setFaculty([]));
   }, []);
 
   const branches = useMemo(() => {
@@ -85,4 +89,3 @@ export default function Faculty() {
     </Layout>
   );
 }
-

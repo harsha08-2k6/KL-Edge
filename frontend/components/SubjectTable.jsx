@@ -15,6 +15,9 @@ export function SubjectTable({ subjects }) {
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-ink/40">{subject.courseCode}</p>
                 <p className="mt-0.5 truncate text-sm font-black text-ink">{subject.subject}</p>
+                {(subject.faculty || subject.facultyName) && (
+                  <p className="mt-0.5 truncate text-xs font-semibold text-ink/60">{subject.faculty || subject.facultyName}</p>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="text-base font-black text-ink">{subject.final}%</span>
@@ -29,8 +32,6 @@ export function SubjectTable({ subjects }) {
                   if (subject[cell] == null) return null;
                   const conducted = subject[`${cell}_conducted`];
                   const attended = subject[`${cell}_attended`];
-                  const bunk = subject.ltpsBunk?.[cell];
-                  const needed = subject.ltpsNeeded?.[cell];
                   return (
                     <div key={cell} className="rounded-lg bg-surface p-1.5">
                       <div className="flex items-center justify-between">
@@ -44,34 +45,19 @@ export function SubjectTable({ subjects }) {
                           {attended}/{conducted} classes
                         </p>
                       )}
-                      {bunk != null && bunk > 0 && (
-                        <p className="text-[9px] font-bold text-mint">
-                          Can bunk: {bunk}
-                        </p>
-                      )}
-                      {needed != null && needed > 0 && (
-                        <p className="text-[9px] font-bold text-coral">
-                          Need: {needed} more
-                        </p>
-                      )}
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {/* Warning for low attendance courses */}
-            {!hasLtpsData && subject.final != null && subject.final < 75 && (
-              <div className="mt-2.5 rounded-md bg-coral/10 px-2 py-1.5">
-                <p className="text-[10px] font-bold text-coral">
-                  ⚠ Low attendance — attend {subject.neededForTarget || 0} more classes to reach 75%
-                </p>
-              </div>
-            )}
           </div>
         );
       })}
+
+      <div className="pt-4 pb-2 text-center">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-ink/40">© 2026 KL Edge. All rights reserved.</p>
+      </div>
     </div>
   );
 }
-

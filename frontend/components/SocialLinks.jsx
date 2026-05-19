@@ -6,26 +6,12 @@ function GitHubLogo(props) {
   );
 }
 
-function LinkedInLogo(props) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
-      <path d="M5.35 3.5a2.1 2.1 0 1 1 0 4.2 2.1 2.1 0 0 1 0-4.2ZM3.6 9h3.5v11.5H3.6V9Zm5.8 0h3.35v1.57h.05c.47-.88 1.6-1.82 3.3-1.82 3.53 0 4.18 2.33 4.18 5.36v6.39h-3.5v-5.66c0-1.35-.03-3.08-1.88-3.08-1.88 0-2.17 1.47-2.17 2.98v5.76H9.4V9Z" />
-    </svg>
-  );
-}
-
 const links = [
   {
-    href: "https://github.com/harsha08-2k6",
+    href: "https://github.com/harsha08-2k6/KL-Edge.git",
     label: "GitHub",
     icon: GitHubLogo,
     className: "hover:text-ink"
-  },
-  {
-    href: "https://www.linkedin.com/in/siva-harsha-vardhan-reddy/",
-    label: "LinkedIn",
-    icon: LinkedInLogo,
-    className: "hover:text-[#0a66c2]"
   }
 ];
 
