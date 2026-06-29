@@ -11,12 +11,46 @@ from erp_scraper import (
     close_captcha_session,
     create_captcha_session,
     load_faculty,
+    redis_client,
     sync_attendance,
     sync_cgpa,
     sync_marks,
     sync_seating_plan,
     sync_timetable
 )
+import json
+
+# Redis key for faculty cache
+FACULTY_CACHE_KEY = "faculty_cache"
+FACULTY_CACHE_TTL_SECONDS = 86400  # 24 hours
+
+
+def cached_faculty():
+    """Get cached faculty data from Redis if available."""
+    if redis_client is None:
+        return None
+    try:
+        cached = redis_client.get(FACULTY_CACHE_KEY)
+        if cached:
+            return json_lib.loads(cached)
+    except Exception:
+        pass
+    return None
+
+
+def cache_faculty(faculty_data):
+    """Cache faculty data in Redis."""
+    if redis_client is None:
+        return
+    try:
+        redis_client.setex(
+            FACULTY_CACHE_KEY,
+            FACULTY_CACHE_TTL_SECONDS,
+            json_lib.dumps(faculty_data)
+        )
+    except Exception:
+        pass
+
 
 app = FastAPI()
 
@@ -110,4 +144,20 @@ def sync_attendance_route(body: SyncRequest):
 
 @app.get("/api/faculty")
 def get_faculty():
-    return load_faculty()
+    # Try to get cached faculty data from Redis
+    cached = cached_faculty()
+    if cached is not None:
+        return JSONResponse(
+            content=cached,
+            headers={"Cache-Control": "public, max-age=3600, s-maxage=86400"}
+        )
+    
+    # Load from file and cache it
+    faculty_data = load_faculty()
+    if faculty_data:
+        cache_faculty(faculty_data)
+    
+    return JSONResponse(
+        content=faculty_data,
+        headers={"Cache-Control": "public, max-age=3600, s-maxage=86400"}
+    )

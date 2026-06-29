@@ -39,7 +39,34 @@ export async function syncAttendance({ erpId, password, captcha, academicYear, s
 }
 
 export async function fetchFaculty() {
+  // Try to get from localStorage cache first for instant load
+  const cached = localStorage.getItem("faculty_cache");
+  const cachedTime = localStorage.getItem("faculty_cache_time");
+  const now = Date.now();
+  
+  // Use cache if less than 24 hours old
+  if (cached && cachedTime) {
+    const age = now - parseInt(cachedTime);
+    if (age < 24 * 60 * 60 * 1000) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        // Invalid cache, continue to fetch
+      }
+    }
+  }
+  
   const response = await fetch(`${API_BASE}/api/faculty`);
   if (!response.ok) return [];
-  return response.json();
+  const data = await response.json();
+  
+  // Cache the result
+  try {
+    localStorage.setItem("faculty_cache", JSON.stringify(data));
+    localStorage.setItem("faculty_cache_time", now.toString());
+  } catch {
+    // Storage full or unavailable
+  }
+  
+  return data;
 }
