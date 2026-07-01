@@ -2,6 +2,7 @@ import { Eye, EyeOff, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Layout } from "../components/Layout.jsx";
 import { SocialLinks } from "../components/SocialLinks.jsx";
+import { Footer } from "../components/Footer.jsx";
 import { fetchCaptcha, syncAttendance } from "../utils/api.js";
 import { readLocal, removeLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
 
@@ -118,7 +119,7 @@ export default function Settings() {
       const payload = await syncAttendance({ erpId, password, captcha, academicYear, semesterId, captchaSessionId });
       writeLocal(STORAGE_KEYS.attendance, payload.attendance);
       writeLocal(STORAGE_KEYS.timetable, payload.timetable);
-      if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
+      // if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
       if (payload.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
       if (payload.cgpa) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
       writeLocal(STORAGE_KEYS.timetableStatus, {
@@ -159,6 +160,7 @@ export default function Settings() {
     removeLocal(STORAGE_KEYS.attendance);
     removeLocal(STORAGE_KEYS.timetable);
     removeLocal(STORAGE_KEYS.timetableStatus);
+    removeLocal(STORAGE_KEYS.marks);
     removeLocal(STORAGE_KEYS.lastUpdated);
     setErpId("");
     setPassword("");
@@ -299,9 +301,8 @@ export default function Settings() {
         {message ? <p className="rounded-lg bg-paper px-3 py-2 text-sm font-bold text-ink/70">{message}</p> : null}
       </section>
 
-      <div className="pt-4 pb-2 text-center">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-ink/40">© 2026 KL Edge. All rights reserved.</p>
-      </div>
+      {/* Footer */}
+      <Footer />
     </Layout>
   );
 }

@@ -62,7 +62,7 @@ export default function Home() {
       const payload = await syncAttendance({ ...credentials, ...syncOptions, captcha, captchaSessionId });
       writeLocal(STORAGE_KEYS.attendance, payload.attendance);
       writeLocal(STORAGE_KEYS.timetable, payload.timetable);
-      if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
+      // if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
       if (payload.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
       if (payload.cgpa) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
       writeLocal(STORAGE_KEYS.timetableStatus, {
@@ -101,7 +101,7 @@ export default function Home() {
       title="Dashboard"
       action={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <SocialLinks />
+          <SocialLinks showLinkedIn={false} />
           <Link
             to="/settings"
             aria-label="Settings"
@@ -122,63 +122,63 @@ export default function Home() {
     >
       {/* Top cards */}
       <section className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-        <div className="rounded-xl border border-ink/10 bg-white/80 p-3 shadow-soft">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-ink/40">Overall</p>
-              <h3 className={`mt-0.5 text-2xl font-black leading-none ${statusColor}`}>{overall}%</h3>
+          <div className="rounded-xl border border-ink/10 bg-white/80 p-3 shadow-soft">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-ink/40">Overall</p>
+                <h3 className={`mt-0.5 text-2xl font-black leading-none ${statusColor}`}>{overall}%</h3>
+              </div>
+              <span className={`rounded-full bg-surface px-2.5 py-1 text-xs font-black ${statusColor}`}>
+                {status.label}
+              </span>
             </div>
-            <span className={`rounded-full bg-surface px-2.5 py-1 text-xs font-black ${statusColor}`}>
-              {status.label}
-            </span>
+
+            <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-lg bg-surface p-1">
+              {[75, 85].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => selectTarget(t)}
+                  className={`rounded-md py-1.5 text-[11px] font-black transition-all ${
+                    target === t
+                      ? "bg-ink text-paper shadow-sm"
+                      : "text-ink/45 hover:bg-white hover:text-ink"
+                  }`}
+                >
+                  {t}%
+                </button>
+              ))}
+            </div>
+            {classesNeeded > 0 && (
+              <p className="mt-2 rounded-md bg-coral/10 px-2 py-1 text-[10px] font-bold text-coral">
+                +{classesNeeded} class{classesNeeded !== 1 ? "es" : ""} to reach {target}%
+              </p>
+            )}
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-lg bg-surface p-1">
-            {[75, 85].map((t) => (
-              <button
-                key={t}
-                onClick={() => selectTarget(t)}
-                className={`rounded-md py-1.5 text-[11px] font-black transition-all ${
-                  target === t
-                    ? "bg-ink text-paper shadow-sm"
-                    : "text-ink/45 hover:bg-white hover:text-ink"
-                }`}
-              >
-                {t}%
-              </button>
-            ))}
-          </div>
-          {classesNeeded > 0 && (
-            <p className="mt-2 rounded-md bg-coral/10 px-2 py-1 text-[10px] font-bold text-coral">
-              +{classesNeeded} class{classesNeeded !== 1 ? "es" : ""} to reach {target}%
-            </p>
-          )}
-        </div>
-
-        <MetricCard
-          label="Last Sync"
-          value={lastUpdated ? new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--"}
-          helper={lastUpdated ? new Date(lastUpdated).toLocaleDateString() : "No data yet"}
-        />
+          <MetricCard
+            label="Last Sync"
+            value={lastUpdated ? new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--"}
+            helper={lastUpdated ? new Date(lastUpdated).toLocaleDateString() : "No data yet"}
+          />
       </section>
 
-      {/* Success Message */}
-      {successMessage && (
+          {/* Success Message */}
+          {successMessage && (
         <div className="mt-3 rounded-xl border border-mint/20 bg-mint/10 p-3 text-center text-sm font-black text-mint shadow-soft">
-          {successMessage}
-        </div>
-      )}
+              {successMessage}
+            </div>
+          )}
 
       {/* Subjects */}
       <section className="mt-3.5">
-        {subjects.length ? (
-          <SubjectTable subjects={subjects} />
-        ) : (
-          <div className="rounded-xl border border-dashed border-ink/15 bg-white/70 p-5 text-center shadow-soft">
-            <p className="font-black text-ink/70">No attendance synced yet</p>
-            <p className="mt-1 text-sm font-semibold text-ink/45">Go to Settings and run a sync.</p>
-          </div>
-        )}
+            {subjects.length ? (
+              <SubjectTable subjects={subjects} />
+            ) : (
+              <div className="rounded-xl border border-dashed border-ink/15 bg-white/70 p-5 text-center shadow-soft">
+                <p className="font-black text-ink/70">No attendance synced yet</p>
+                <p className="mt-1 text-sm font-semibold text-ink/45">Go to Settings and run a sync.</p>
+              </div>
+            )}
       </section>
 
       {/* Resync Modal */}

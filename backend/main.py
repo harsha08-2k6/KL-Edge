@@ -32,7 +32,7 @@ def cached_faculty():
     try:
         cached = redis_client.get(FACULTY_CACHE_KEY)
         if cached:
-            return json_lib.loads(cached)
+            return json.loads(cached)
     except Exception:
         pass
     return None
@@ -46,7 +46,7 @@ def cache_faculty(faculty_data):
         redis_client.setex(
             FACULTY_CACHE_KEY,
             FACULTY_CACHE_TTL_SECONDS,
-            json_lib.dumps(faculty_data)
+            json.dumps(faculty_data)
         )
     except Exception:
         pass
@@ -125,14 +125,14 @@ def sync_attendance_route(body: SyncRequest):
     try:
         payload = body.model_dump()
         attendance = sync_attendance(payload)
-        timetable = sync_timetable(payload)
-        marks = safe_sync("marks", lambda: sync_marks(payload), [])
+        timetable = safe_sync("timetable", lambda: sync_timetable(payload), {"grid": [], "mappings": [], "status": "empty", "message": "Timetable sync failed."})
+        # marks = safe_sync("marks", lambda: sync_marks(payload), [])
         seating_plan = safe_sync("seating-plan", lambda: sync_seating_plan(payload), [])
         cgpa = safe_sync("cgpa", lambda: sync_cgpa(payload), {})
         return {
             "attendance": attendance,
             "timetable": timetable,
-            "marks": marks,
+            "marks": [],
             "seatingPlan": seating_plan,
             "cgpa": cgpa,
             "syncedAt": f"{datetime.utcnow().isoformat()}Z"
@@ -161,3 +161,9 @@ def get_faculty():
         content=faculty_data,
         headers={"Cache-Control": "public, max-age=3600, s-maxage=86400"}
     )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    # Use reload=True for development, which might be causing the issue on Windows.
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

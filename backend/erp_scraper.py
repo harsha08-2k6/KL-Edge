@@ -15,6 +15,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def save_debug_html(filename: str, html: str, url: str = "") -> None:
+    try:
+        debug_path = Path(__file__).resolve().parent / filename
+        content = f"<!-- URL: {url} -->\n{html}" if url else html
+        debug_path.write_text(content, encoding="utf8")
+    except Exception:
+        pass
+
 try:
     import redis
     HAS_REDIS = True
@@ -128,14 +137,30 @@ SEATING_LINK_KEYWORDS = [
 CGPA_LINK_KEYWORDS = ["cgpa", "my cgpa", "cumulative gpa", "gpa"]
 
 MARKS_CANDIDATE_PATHS = [
-    "index.php?r=examsection/examstudentcourseinternalsummativeqpwisemarksinfo/index",
-    "index.php?r=examsection/examstudentcourseinternalsummativeqpwisemarksinfo/index_student",
-    "index.php?r=examsection/examstudentcourseinternalsummativeqpwisemarksinfo/index_student_marks",
+    # Course Internals - THE WORKING URL based on user's ERP navigation
     "index.php?r=studentinfo/studentendexamresult/getstudentinternalmarks",
+    # Student info - CGPA results (backup)
+    "index.php?r=studentinfo/studentendexamresult/searchgetmycgpa",
+    # QP Wise Internal Marks
+    "index.php?r=examsection/examstudentcourseinternalsummativeqpwisemarksinfo/index",
+    # Student marks pages
     "index.php?r=studentmarks/marks/index",
     "index.php?r=studentmarks/marks/internal",
     "index.php?r=studentmarks/marks/view",
-    "index.php?r=studentcourse/internalmarks/index"
+    "index.php?r=studentmarks/studentinternalmarks/index",
+    "index.php?r=studentmarks/internals/index",
+    "index.php?r=studentmarks/myinternals/index",
+    "index.php?r=studentmarks/viewmarks/index",
+    # Student Info - End Exam Results
+    "index.php?r=studentinfo/studentendexamresult/index",
+    "index.php?r=studentinfo/studentendexamresult/marks",
+    "index.php?r=studentinfo/myresult/index",
+    # Course internal marks
+    "index.php?r=studentcourse/internalmarks/index",
+    "index.php?r=studentcourse/courseinternals/index",
+    # Exam section internal marks
+    "index.php?r=examsection/examstudentinternalmarks/index",
+    "index.php?r=examsection/studentinternalmarks",
 ]
 
 SEATING_CANDIDATE_PATHS = [
@@ -1048,47 +1073,131 @@ def parse_attendance_table(table_html: str) -> List[Dict[str, object]]:
     header_cells = rows[0].find_all(["th", "td"])
     headers = [clean_text(cell.get_text(" ")).lower() for cell in header_cells]
 
-    code_index = find_index(headers, ["coursecode", "code"])
-    subject_index = find_index(headers, ["coursedesc", "subject", "course", "name", "title"])
-    ltps_index = find_index(headers, ["ltps", "type", "component"])
-    conducted_index = find_index(headers, ["conducted", "total conducted", "held"])
-    attended_index = find_index(headers, ["attended", "total attended", "present"])
-    percentage_index = find_index(headers, ["percentage", "%", "percent"])
+    # Check if this is the consolidated table format
+    is_consolidated = any("actual conducted" in h or "l actual" in h for h in headers)
 
-    results: List[Dict[str, object]] = []
-    for row in rows[1:]:
-        cells = row.find_all(["td", "th"])
-        if not cells:
-            continue
-        values = [clean_text(cell.get_text(" ")) for cell in cells]
+    if is_consolidated:
+        code_index = find_index(headers, ["coursecode", "code"])
+        subject_index = find_index(headers, ["coursename", "course name", "coursedesc", "subject", "course", "name", "title"])
+        percentage_index = find_index(headers, ["attendance percentage", "percentage", "%", "percent"])
 
-        code_val = values[code_index].strip().upper() if code_index >= 0 and code_index < len(values) else ""
-        subject_val = values[subject_index].strip() if subject_index >= 0 and subject_index < len(values) else values[0]
-        ltps_val = values[ltps_index].strip().upper() if ltps_index >= 0 and ltps_index < len(values) else ""
-        conducted = to_number(values[conducted_index]) if conducted_index >= 0 and conducted_index < len(values) else None
-        attended = to_number(values[attended_index]) if attended_index >= 0 and attended_index < len(values) else None
-        pct = to_number(values[percentage_index].replace("%", "")) if percentage_index >= 0 and percentage_index < len(values) else None
+        # Find component indices
+        comp_indices = {}
+        for comp in ["l", "t", "p", "s"]:
+            comp_upper = comp.upper()
+            cond_idx = -1
+            for idx, h in enumerate(headers):
+                tokens = re.sub(r"[^a-z0-9]+", " ", h).split()
+                if tokens and tokens[0] == comp and ("conducted" in h or "held" in h):
+                    cond_idx = idx
+                    break
+            att_idx = -1
+            for idx, h in enumerate(headers):
+                tokens = re.sub(r"[^a-z0-9]+", " ", h).split()
+                if tokens and tokens[0] == comp and ("attended" in h or "present" in h):
+                    att_idx = idx
+                    break
+            if cond_idx != -1 and att_idx != -1:
+                comp_indices[comp_upper] = (cond_idx, att_idx)
 
-        if not subject_val or "total" in subject_val.lower():
-            continue
+        results: List[Dict[str, object]] = []
+        for row in rows[1:]:
+            cells = row.find_all(["td", "th"])
+            if not cells:
+                continue
+            values = [clean_text(cell.get_text(" ")) for cell in cells]
 
-        if not code_val:
-            code_val = re.sub(r'[^A-Z0-9]', '', subject_val.upper())[:8]
+            code_val = values[code_index].strip().upper() if code_index >= 0 and code_index < len(values) else ""
+            subject_val = values[subject_index].strip() if subject_index >= 0 and subject_index < len(values) else values[0]
+            pct_val = values[percentage_index].replace("%", "").strip() if percentage_index >= 0 and percentage_index < len(values) else ""
+            pct = to_number(pct_val) if pct_val else None
 
-        if len(code_val) < 1:
-            continue
+            if not subject_val or "total" in subject_val.lower():
+                continue
 
-        results.append({
-            "subject": subject_val,
-            "courseCode": code_val,
-            "ltps": ltps_val,
-            "conducted": int(conducted) if conducted is not None else None,
-            "attended": int(attended) if attended is not None else None,
-            "percentage": pct or 0,
-            "finalPercentage": pct if not ltps_val else None
-        })
+            if not code_val:
+                code_val = re.sub(r'[^A-Z0-9]', '', subject_val.upper())[:8]
 
-    return results
+            if len(code_val) < 1:
+                continue
+
+            has_any_component = False
+            for comp, (cond_idx, att_idx) in comp_indices.items():
+                cond_val = values[cond_idx] if cond_idx < len(values) else ""
+                att_val = values[att_idx] if att_idx < len(values) else ""
+
+                conducted = to_number(cond_val)
+                attended = to_number(att_val)
+
+                if conducted is not None and conducted > 0:
+                    has_any_component = True
+                    comp_pct = round((attended / conducted) * 100, 2) if conducted > 0 else 0
+                    results.append({
+                        "subject": subject_val,
+                        "courseCode": code_val,
+                        "ltps": comp,
+                        "conducted": int(conducted),
+                        "attended": int(attended) if attended is not None else 0,
+                        "percentage": comp_pct,
+                        "finalPercentage": None
+                    })
+
+            if pct is not None:
+                results.append({
+                    "subject": subject_val,
+                    "courseCode": code_val,
+                    "ltps": "",
+                    "conducted": None,
+                    "attended": None,
+                    "percentage": pct,
+                    "finalPercentage": pct
+                })
+
+        return results
+
+    else:
+        # Original format parser
+        code_index = find_index(headers, ["coursecode", "code"])
+        subject_index = find_index(headers, ["coursedesc", "subject", "course", "name", "title"])
+        ltps_index = find_index(headers, ["ltps", "type", "component"])
+        conducted_index = find_index(headers, ["conducted", "total conducted", "held"])
+        attended_index = find_index(headers, ["attended", "total attended", "present"])
+        percentage_index = find_index(headers, ["percentage", "%", "percent"])
+
+        results: List[Dict[str, object]] = []
+        for row in rows[1:]:
+            cells = row.find_all(["td", "th"])
+            if not cells:
+                continue
+            values = [clean_text(cell.get_text(" ")) for cell in cells]
+
+            code_val = values[code_index].strip().upper() if code_index >= 0 and code_index < len(values) else ""
+            subject_val = values[subject_index].strip() if subject_index >= 0 and subject_index < len(values) else values[0]
+            ltps_val = values[ltps_index].strip().upper() if ltps_index >= 0 and ltps_index < len(values) else ""
+            conducted = to_number(values[conducted_index]) if conducted_index >= 0 and conducted_index < len(values) else None
+            attended = to_number(values[attended_index]) if attended_index >= 0 and attended_index < len(values) else None
+            pct = to_number(values[percentage_index].replace("%", "")) if percentage_index >= 0 and percentage_index < len(values) else None
+
+            if not subject_val or "total" in subject_val.lower():
+                continue
+
+            if not code_val:
+                code_val = re.sub(r'[^A-Z0-9]', '', subject_val.upper())[:8]
+
+            if len(code_val) < 1:
+                continue
+
+            results.append({
+                "subject": subject_val,
+                "courseCode": code_val,
+                "ltps": ltps_val,
+                "conducted": int(conducted) if conducted is not None else None,
+                "attended": int(attended) if attended is not None else None,
+                "percentage": pct or 0,
+                "finalPercentage": pct if not ltps_val else None
+            })
+
+        return results
 
 
 def sync_attendance(payload: Dict[str, str]) -> List[Dict[str, object]]:
@@ -1211,13 +1320,31 @@ def sync_marks(payload: Dict[str, str]) -> List[Dict[str, object]]:
     ensure_device_cookie(session)
     captcha_session = get_captcha_session(payload.get("captchaSessionId") or "")
     dashboard_html = captcha_session.get("dashboard_html", "") if captcha_session else ""
-    candidate_urls = collect_feature_urls(dashboard_html, MARKS_LINK_KEYWORDS, MARKS_CANDIDATE_PATHS)
-    menu_url = find_menu_link_by_keywords(session, ["internals", "internal", "course internals"])
+    
+    # First, try to find the Course Internals link from the menu
+    menu_url = find_menu_link_by_keywords(session, ["course internals", "internals", "internal marks", "my internals"])
+    if DEBUG_ENABLED:
+        print(f"[erp:marks] Menu URL found: {menu_url}", flush=True)
+    
+    # Build candidate URLs - prioritize the working ones
+    candidate_urls = []
+    
+    # 1. Start with menu URL if found
     if menu_url:
-        candidate_urls = [menu_url, *candidate_urls]
+        candidate_urls.append(menu_url)
+    
+    # 2. Add working URL from user's navigation (Courses → Internals)
+    candidate_urls.append(urljoin(LOGIN_URL, "index.php?r=studentinfo/studentendexamresult/getstudentinternalmarks"))
+    
+    # 3. Add other candidate paths
+    for path in MARKS_CANDIDATE_PATHS:
+        if "getstudentinternalmarks" not in path:
+            candidate_urls.append(urljoin(LOGIN_URL, path))
+    
     csrf_token = extract_csrf_token(dashboard_html) or get_csrf_from_session(session)
     last_html = ""
     last_url = ""
+    all_marks = []
 
     for url in candidate_urls:
         try:
@@ -1641,60 +1768,52 @@ def parse_course_internals_page(html: str, payload: Dict[str, str], session: req
             insem1 = None
             insem2 = None
             
-            target_cells = [cells[component_index]] if 0 <= component_index < len(cells) else cells
-
-            for cell in target_cells:
-                if insem1 is not None and insem2 is not None:
-                    break
-                for link in cell.find_all(["a", "button", "option", "input"]):
-                    if insem1 is not None and insem2 is not None:
-                        break
-                    label = clean_text(link.get_text(" ")) or link.get("title", "") or link.get("data-original-title", "")
-                    if not label and link.name == "input":
-                        next_sib = link.next_sibling
-                        if isinstance(next_sib, str):
-                            label = clean_text(next_sib)
-                        if not label:
-                            parent_label = link.find_parent("label")
-                            if parent_label:
-                                label = clean_text(parent_label.get_text(" "))
-                        if not label:
-                            label = link.get("value", "")
-
-                    bucket = component_bucket(label)
-                    url = extract_component_url(link)
+            # The ERP table has evaluation components in a cell - find Semester in Exam-I and Semester in Exam-II links
+            component_cell = cells[component_index] if component_index >= 0 and component_index < len(cells) else None
+            
+            if component_cell:
+                # Find ALL links in the component cell that contain "semester in exam" or "in sem"
+                links = component_cell.find_all("a")
+                for link in links:
+                    label = clean_text(link.get_text(" ")).lower()
+                    href = link.get("href", "") or ""
                     
-                    if bucket and url:
-                        value = fetch_component_mark(session, url, csrf_token)
-                        if bucket == "insem1" and value is not None and insem1 is None:
-                            insem1 = value
-                        elif bucket == "insem2" and value is not None and insem2 is None:
-                            insem2 = value
-                    elif bucket and not url:
-                        val = parse_mark_from_component_html(str(link.parent))
-                        if val is not None:
-                            if bucket == "insem1" and insem1 is None:
-                                insem1 = val
-                            elif bucket == "insem2" and insem2 is None:
-                                insem2 = val
-                    elif url and link.name in ["a", "button", "input"]:
-                        # Handle generic "View" buttons that open a sub-page/modal with all internals
-                        if re.search(r"view|mark|internal|detail|action|click|result|component", label, re.IGNORECASE) or not label:
-                            try:
-                                headers_extra = {"X-Requested-With": "XMLHttpRequest"}
-                                resp = session.get(url, headers=build_headers(url, headers_extra), timeout=get_timeout(), verify=not ALLOW_INSECURE)
-                                if resp.status_code == 200:
-                                    sub_html = extract_html_from_json(resp.text or "")
-                                    extracted = extract_marks_from_sub_html(sub_html)
-                                    if extracted.get("insem1") and insem1 is None:
-                                        insem1 = extracted["insem1"]
-                                    if extracted.get("insem2") and insem2 is None:
-                                        insem2 = extracted["insem2"]
-                            except Exception:
-                                pass
+                    # Determine if this is insem1 or insem2
+                    is_insem1 = "semester in exam-i" in label or "semester in exam 1" in label or "in sem 1" in label or "in sem-i" in label
+                    is_insem2 = "semester in exam-ii" in label or "semester in exam 2" in label or "in sem 2" in label or "in sem-ii" in label or "exam-ii" in label
+                    is_insem2 = is_insem2 or "exam ii" in label
+                    is_insem1 = is_insem1 or "exam i" in label
+                    
+                    bucket = None
+                    if is_insem2:
+                        bucket = "insem2"
+                    elif is_insem1:
+                        bucket = "insem1"
+                    
+                    if bucket and href and "javascript" not in href.lower():
+                        try:
+                            # Make request to get the marks
+                            full_url = urljoin(LOGIN_URL, href)
+                            resp = session.get(full_url, headers=build_headers(full_url, {"X-Requested-With": "XMLHttpRequest"}), timeout=get_timeout(), verify=not ALLOW_INSECURE)
+                            if resp.status_code == 200:
+                                mark_html = resp.text
+                                # Parse the returned HTML for marks
+                                mark_val = parse_mark_from_component_html(mark_html)
+                                if mark_val:
+                                    if bucket == "insem1" and insem1 is None:
+                                        insem1 = str(mark_val)
+                                    elif bucket == "insem2" and insem2 is None:
+                                        insem2 = str(mark_val)
+                                    if DEBUG_ENABLED:
+                                        print(f"[erp:marks] Got {bucket}={mark_val} for {course_code}", flush=True)
+                        except Exception as e:
+                            if DEBUG_ENABLED:
+                                print(f"[erp:marks] Failed to fetch {bucket}: {e}", flush=True)
+                            pass
 
-                # Extract from raw cell text if still missing (inline text)
-                cell_text = clean_text(cell.get_text(" "))
+            # Also check the component cell text directly for any marks info
+            if component_cell and insem1 is None and insem2 is None:
+                cell_text = clean_text(component_cell.get_text(" "))
                 if insem1 is None:
                     m1 = re.search(r"(?:semester\s*in\s*exam\s*[-_]?\s*(?:1|i)\b|in\s*sem\s*1).*?(?:(?:marks|score|obtained|awarded|secured)[^0-9]*)?(\d+(?:\.\d+)?(?:/\d+(?:\.\d+)?)?)", cell_text, re.IGNORECASE)
                     if m1:
@@ -1715,6 +1834,9 @@ def parse_course_internals_page(html: str, payload: Dict[str, str], session: req
                 "academicYear": row_value(values, year_index) or payload.get("academicYear"),
                 "semester": row_value(values, semester_index) or payload.get("semesterId")
             })
+            
+            if DEBUG_ENABLED and (insem1 or insem2):
+                print(f"[erp:marks] Found marks for {course_code}: insem1={insem1}, insem2={insem2}", flush=True)
 
         if results:
             return results
