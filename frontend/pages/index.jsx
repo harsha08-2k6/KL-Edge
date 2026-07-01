@@ -76,6 +76,13 @@ export default function Home() {
       setCaptcha("");
       setSuccessMessage("Resync successful! ✅");
       setTimeout(() => setSuccessMessage(""), 3000);
+
+      if (localStorage.getItem("kl-edge.notificationsEnabled") === "true") {
+        new Notification("KL-Edge Sync Complete", {
+          body: "Your attendance and timetable have been refreshed.",
+          icon: "/favicon.ico"
+        });
+      }
     } catch (error) {
       setMessage(
         error.status === 401

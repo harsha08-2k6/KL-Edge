@@ -56,6 +56,34 @@ export default function Settings() {
   const [captchaBusy, setCaptchaBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [toast, setToast] = useState(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    return localStorage.getItem("kl-edge.notificationsEnabled") === "true";
+  });
+
+  const toggleNotifications = async () => {
+    if (notificationsEnabled) {
+      localStorage.setItem("kl-edge.notificationsEnabled", "false");
+      setNotificationsEnabled(false);
+    } else {
+      if (!("Notification" in window)) {
+        alert("This browser does not support desktop notifications.");
+        return;
+      }
+      
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        localStorage.setItem("kl-edge.notificationsEnabled", "true");
+        setNotificationsEnabled(true);
+        new Notification("KL-Edge Notifications Enabled! 🔔", {
+          body: "You will now receive alerts for class countdowns and sync updates.",
+          icon: "/favicon.ico"
+        });
+      } else {
+        alert("Notification permission denied. Please allow notifications in your browser settings.");
+      }
+    }
+  };
+
   const initialCaptchaLoaded = useRef(false);
   const captchaRequestId = useRef(0);
 
@@ -134,6 +162,13 @@ export default function Settings() {
       setCaptchaSessionId("");
       setMessage("");
       setToast({ message: "Attendance synced successfully! ✅", type: "success" });
+
+      if (localStorage.getItem("kl-edge.notificationsEnabled") === "true") {
+        new Notification("KL-Edge Sync Complete", {
+          body: "Your attendance and timetable have been synced successfully.",
+          icon: "/favicon.ico"
+        });
+      }
     } catch (error) {
       if (error.status === 501) {
         setCaptcha("");
@@ -302,6 +337,27 @@ export default function Settings() {
         </button>
 
         {message ? <p className="rounded-lg bg-paper px-3 py-2 text-sm font-bold text-ink/70">{message}</p> : null}
+      </section>
+
+      {/* Notifications Section */}
+      <section className="mt-3.5 space-y-2.5 rounded-lg border border-ink/10 bg-white p-3 shadow-soft">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h4 className="text-sm font-black text-ink">Browser Notifications</h4>
+            <p className="text-xs font-semibold text-ink/50 mt-0.5">Receive alerts when attendance syncs or classes start.</p>
+          </div>
+          <button
+            type="button"
+            onClick={toggleNotifications}
+            className={`tap px-3 py-1.5 text-xs font-black rounded-lg transition-colors border ${
+              notificationsEnabled
+                ? "bg-mint/10 text-mint border-mint/20"
+                : "bg-surface text-ink/60 border-ink/10"
+            }`}
+          >
+            {notificationsEnabled ? "Enabled" : "Disabled"}
+          </button>
+        </div>
       </section>
 
       {/* Toast Notification */}

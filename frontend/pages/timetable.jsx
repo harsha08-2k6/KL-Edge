@@ -131,6 +131,32 @@ function buildWeekSchedule(grid) {
   return { schedule, slots: [], mode: "unknown" };
 }
 
+const slotTimes = {
+  "1": "07:10 - 08:00",
+  "2": "08:00 - 08:50",
+  "3": "09:20 - 10:10",
+  "4": "10:10 - 11:00",
+  "5": "11:10 - 12:00",
+  "6": "12:00 - 12:50",
+  "7": "01:50 - 02:40",
+  "8": "02:40 - 03:30",
+  "9": "03:40 - 04:30",
+  "10": "04:30 - 05:30",
+  "11": "05:30 - 06:20",
+  "12": "06:20 - 07:10"
+};
+
+function formatSlotWithTime(slot) {
+  if (!slot) return "";
+  const cleaned = slot.trim();
+  const numKey = String(parseInt(cleaned, 10));
+  const timeRange = slotTimes[numKey];
+  if (timeRange) {
+    return `Slot ${numKey} • ${timeRange}`;
+  }
+  return slot;
+}
+
 export default function Timetable() {
   const [grid, setGrid] = useState([]);
   const [syncStatus, setSyncStatus] = useState(null);
@@ -214,7 +240,7 @@ export default function Timetable() {
                 }
                 return (
                   <article key={`${item.slot}-${index}`} className="rounded-lg border border-ink/10 bg-paper p-2.5">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">{item.slot}</p>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">{formatSlotWithTime(item.slot)}</p>
                     <p className="mt-1 text-sm font-black text-ink">{item.value}</p>
                     {subjectName && <p className="mt-0.5 text-xs font-semibold text-ink/60">{subjectName}</p>}
                   </article>
