@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from erp_scraper import (
     AppError,
+    LOGIN_URL,
     close_captcha_session,
     create_captcha_session,
     load_faculty,
@@ -93,6 +94,28 @@ async def unhandled_error_handler(_request, exc: Exception):
 @app.get("/health")
 def health_check():
     return {"ok": True}
+
+
+@app.get("/api/portal-status")
+def get_portal_status():
+    import requests
+    try:
+        # Check if ERP login page is reachable (HEAD request is light)
+        r = requests.head(LOGIN_URL, timeout=4)
+        if r.status_code < 500:
+            return {"status": "online"}
+    except Exception:
+        pass
+
+    try:
+        # Fallback to GET check
+        r = requests.get(LOGIN_URL, timeout=4)
+        if r.status_code < 500:
+            return {"status": "online"}
+    except Exception:
+        pass
+
+    return {"status": "offline"}
 
 
 @app.get("/api/captcha")

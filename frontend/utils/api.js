@@ -70,3 +70,13 @@ export async function fetchFaculty() {
   
   return data;
 }
+
+export async function fetchPortalStatus() {
+  try {
+    const response = await fetch(`${API_BASE}/api/portal-status`);
+    if (!response.ok) return { status: "offline" };
+    return await response.json();
+  } catch {
+    return { status: "offline" };
+  }
+}
