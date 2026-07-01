@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { Search, Download } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Layout } from "../components/Layout.jsx";
 import { fetchFaculty } from "../utils/api.js";
@@ -37,9 +37,35 @@ export default function Faculty() {
     );
   }, [branch, faculty, query]);
 
+  const exportFacultyCSV = () => {
+    if (!results || !results.length) return;
+    const headers = ["Employee ID", "Faculty Name", "Department", "Cabin", "Room Number"];
+    const rows = results.map(entry => [
+      entry.empId || "",
+      entry.faculty || "",
+      entry.department || "",
+      entry.cabin || "",
+      entry.roomNo || ""
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `faculty_list_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <Layout title="Faculty Search" width="wide">
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+      <div className="grid gap-2 grid-cols-1 sm:grid-cols-[1fr_auto_auto]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/45" size={18} />
           <input
@@ -63,6 +89,16 @@ export default function Faculty() {
             ))}
           </select>
         </label>
+
+        <button
+          onClick={exportFacultyCSV}
+          disabled={!results.length}
+          title="Export CSV"
+          className="tap inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3.5 text-xs font-black text-ink/75 shadow-soft transition-colors hover:text-ink disabled:opacity-40"
+        >
+          <Download size={16} />
+          Export
+        </button>
       </div>
 
       <section className="mt-3 space-y-2 overflow-x-auto">
