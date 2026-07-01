@@ -56,21 +56,38 @@ export default function Settings() {
   const [captchaBusy, setCaptchaBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [toast, setToast] = useState(null);
+  const [permissionState, setPermissionState] = useState(() => {
+    if (!("Notification" in window)) return "unsupported";
+    return Notification.permission;
+  });
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    if (!("Notification" in window) || Notification.permission !== "granted") {
+      return false;
+    }
     return localStorage.getItem("kl-edge.notificationsEnabled") === "true";
   });
 
   const toggleNotifications = async () => {
+    if (!("Notification" in window)) {
+      alert("This browser does not support desktop notifications.");
+      return;
+    }
+    
+    const currentPermission = Notification.permission;
+    setPermissionState(currentPermission);
+    
+    if (currentPermission === "denied") {
+      alert("Notifications are blocked by your browser settings. Please click the site icon in your browser's address bar to reset and allow notification permissions.");
+      return;
+    }
+
     if (notificationsEnabled) {
       localStorage.setItem("kl-edge.notificationsEnabled", "false");
       setNotificationsEnabled(false);
     } else {
-      if (!("Notification" in window)) {
-        alert("This browser does not support desktop notifications.");
-        return;
-      }
-      
       const permission = await Notification.requestPermission();
+      setPermissionState(permission);
       if (permission === "granted") {
         localStorage.setItem("kl-edge.notificationsEnabled", "true");
         setNotificationsEnabled(true);
@@ -79,7 +96,7 @@ export default function Settings() {
           icon: "/favicon.ico"
         });
       } else {
-        alert("Notification permission denied. Please allow notifications in your browser settings.");
+        alert("Notification permission was not granted.");
       }
     }
   };
@@ -344,18 +361,29 @@ export default function Settings() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h4 className="text-sm font-black text-ink">Browser Notifications</h4>
-            <p className="text-xs font-semibold text-ink/50 mt-0.5">Receive alerts when attendance syncs or classes start.</p>
+            <p className="text-xs font-semibold mt-0.5">
+              {permissionState === "denied" ? (
+                <span className="text-coral font-bold">Blocked by browser settings. Please click the site icon in your address bar to allow notifications.</span>
+              ) : (
+                <span className="text-ink/50">Receive alerts when attendance syncs or classes start.</span>
+              )}
+            </p>
           </div>
           <button
             type="button"
             onClick={toggleNotifications}
-            className={`tap px-3 py-1.5 text-xs font-black rounded-lg transition-colors border ${
-              notificationsEnabled
-                ? "bg-mint/10 text-mint border-mint/20"
-                : "bg-surface text-ink/60 border-ink/10"
-            }`}
+            className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-mint/20"
+            style={{
+              backgroundColor: notificationsEnabled ? "var(--mint, #10b981)" : "rgba(18, 21, 31, 0.12)"
+            }}
           >
-            {notificationsEnabled ? "Enabled" : "Disabled"}
+            <span className="sr-only">Toggle Notifications</span>
+            <span
+              className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+              style={{
+                transform: notificationsEnabled ? "translateX(20px)" : "translateX(0px)"
+              }}
+            />
           </button>
         </div>
       </section>
