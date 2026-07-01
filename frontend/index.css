@@ -46,3 +46,18 @@ textarea {
   min-height: 36px;
   min-width: 36px;
 }
+
+@keyframes slide-in {
+  from {
+    transform: translate(-50%, -1.5rem);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

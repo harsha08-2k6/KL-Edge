@@ -5,6 +5,7 @@ import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
 import { SocialLinks } from "../components/SocialLinks.jsx";
 import { SubjectTable } from "../components/SubjectTable.jsx";
+import { Toast } from "../components/Toast.jsx";
 import { fetchCaptcha, syncAttendance } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
 import { calculateOverall } from '../utils/attendance.js';
@@ -164,9 +165,11 @@ export default function Home() {
 
           {/* Success Message */}
           {successMessage && (
-        <div className="mt-3 rounded-xl border border-mint/20 bg-mint/10 p-3 text-center text-sm font-black text-mint shadow-soft">
-              {successMessage}
-            </div>
+            <Toast
+              message={successMessage}
+              type="success"
+              onClose={() => setSuccessMessage("")}
+            />
           )}
 
       {/* Subjects */}

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Layout } from "../components/Layout.jsx";
 import { SocialLinks } from "../components/SocialLinks.jsx";
 import { Footer } from "../components/Footer.jsx";
+import { Toast } from "../components/Toast.jsx";
 import { fetchCaptcha, syncAttendance } from "../utils/api.js";
 import { readLocal, removeLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
 
@@ -54,6 +55,7 @@ export default function Settings() {
   const [busy, setBusy] = useState(false);
   const [captchaBusy, setCaptchaBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [toast, setToast] = useState(null);
   const initialCaptchaLoaded = useRef(false);
   const captchaRequestId = useRef(0);
 
@@ -130,7 +132,8 @@ export default function Settings() {
       setCaptcha("");
       setCaptchaImage("");
       setCaptchaSessionId("");
-      setMessage("Attendance synced successfully.");
+      setMessage("");
+      setToast({ message: "Attendance synced successfully! ✅", type: "success" });
     } catch (error) {
       if (error.status === 501) {
         setCaptcha("");
@@ -300,6 +303,15 @@ export default function Settings() {
 
         {message ? <p className="rounded-lg bg-paper px-3 py-2 text-sm font-bold text-ink/70">{message}</p> : null}
       </section>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       {/* Footer */}
       <Footer />
