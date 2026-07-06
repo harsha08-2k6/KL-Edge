@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Clock } from "lucide-react";
+import { readLocal, STORAGE_KEYS } from "../utils/storage.js";
+import {
+  buildSubjectNameMap,
+  formatSlotStartTime,
+  getShortSubjectName,
+  getSlotNumber,
+  getSlotTime,
+  parseSlotStartTime,
+  parseCellValue
+} from "../utils/timetable.js";
 
 // Day order mapping
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -131,111 +141,9 @@ function getTodayRows(grid, today) {
   return [];
 }
 
-const slotMap = {
-  "1": { hour: 7, minute: 10 },
-  "2": { hour: 8, minute: 0 },
-  "3": { hour: 9, minute: 20 },
-  "4": { hour: 10, minute: 10 },
-  "5": { hour: 11, minute: 10 },
-  "6": { hour: 12, minute: 0 },
-  "7": { hour: 13, minute: 50 },
-  "8": { hour: 14, minute: 40 },
-  "9": { hour: 15, minute: 40 },
-  "10": { hour: 16, minute: 30 },
-  "11": { hour: 17, minute: 30 },
-  "12": { hour: 18, minute: 20 }
-};
-
-const slotEndMap = {
-  "1": { hour: 8, minute: 0 },
-  "2": { hour: 8, minute: 50 },
-  "3": { hour: 10, minute: 10 },
-  "4": { hour: 11, minute: 0 },
-  "5": { hour: 12, minute: 0 },
-  "6": { hour: 12, minute: 50 },
-  "7": { hour: 14, minute: 40 },
-  "8": { hour: 15, minute: 30 },
-  "9": { hour: 16, minute: 30 },
-  "10": { hour: 17, minute: 30 },
-  "11": { hour: 18, minute: 20 },
-  "12": { hour: 19, minute: 10 }
-};
-
-function parseSlotStartTime(slot) {
-  if (!slot) return null;
-  const cleaned = slot.trim();
-  
-  // Try matching standard time format like "09:00 AM" or "14:00"
-  const match = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-  if (match) {
-    let hour = parseInt(match[1], 10);
-    const minute = parseInt(match[2], 10);
-    const ampm = match[3];
-    
-    if (ampm) {
-      if (ampm.toUpperCase() === "PM" && hour < 12) hour += 12;
-      if (ampm.toUpperCase() === "AM" && hour === 12) hour = 0;
-    } else {
-      if (hour >= 1 && hour <= 6) hour += 12;
-    }
-    return { hour, minute };
-  }
-  const cleanKey = String(parseInt(cleaned, 10));
-  return slotMap[cleanKey] || null;
-}
-
-function formatSlotTime(slot) {
-  if (!slot) return "";
-  const cleaned = slot.trim();
-  const time = parseSlotStartTime(cleaned);
-  if (time) {
-    const displayHour = time.hour > 12 ? time.hour - 12 : (time.hour === 0 ? 12 : time.hour);
-    return `${String(displayHour).padStart(2, "0")}:${String(time.minute).padStart(2, "0")}`;
-  }
-  return slot;
-}
-
-function getShortSubjectName(value, courseMap) {
-  let matchedName = value;
-  const valueUpper = value.toUpperCase();
-  
-  const sortedCodes = Object.keys(courseMap).sort((a, b) => b.length - a.length);
-  for (const code of sortedCodes) {
-    if (valueUpper.includes(code)) {
-      matchedName = courseMap[code];
-      break;
-    }
-  }
-  
-  const cleanUpper = matchedName.toUpperCase();
-  if (cleanUpper.includes("DESIGN AND ANALYSIS OF ALGORITHMS") || cleanUpper.includes("DAA")) {
-    return "DAA";
-  }
-  if (cleanUpper.includes("PYTHON") || cleanUpper.includes("FULL STACK")) {
-    return "Python";
-  }
-  if (cleanUpper.includes("CLOUD")) {
-    return "Cloud";
-  }
-  if (cleanUpper.includes("MATHEMATICAL OPTIMIZATION") || cleanUpper.includes("OPTIMIZATION")) {
-    return "Math Optimization";
-  }
-  if (cleanUpper.includes("BLOCK CHAIN") || cleanUpper.includes("BLOCKCHAIN")) {
-    return "Blockchain";
-  }
-  if (cleanUpper.includes("COMPUTER NETWORKS") || cleanUpper.includes("CN")) {
-    return "CN";
-  }
-  
-  const words = matchedName.split(" ").filter(w => w.length > 2 && w !== "AND" && w !== "FOR" && w !== "THE");
-  if (words.length > 0) {
-    return words.slice(0, 2).join(" ");
-  }
-  return matchedName;
-}
-
 export function TimetableWidget({ grid, attendance }) {
   const [now, setNow] = useState(new Date());
+  const [customSubjectNames, setCustomSubjectNames] = useState({});
   const lastNotifiedClass = useRef("");
 
   useEffect(() => {
@@ -245,15 +153,14 @@ export function TimetableWidget({ grid, attendance }) {
     return () => clearInterval(timer);
   }, []);
 
-  const courseMap = useMemo(() => {
-    const map = {};
-    attendance.forEach((item) => {
-      if (item.courseCode && item.subject) {
-        map[item.courseCode.trim().toUpperCase()] = item.subject.trim();
-      }
-    });
-    return map;
-  }, [attendance]);
+  useEffect(() => {
+    setCustomSubjectNames(readLocal(STORAGE_KEYS.subjectNames, {}));
+  }, []);
+
+  const subjectMap = useMemo(
+    () => buildSubjectNameMap(attendance, customSubjectNames),
+    [attendance, customSubjectNames]
+  );
 
   const today = getTodayName();
   const { schedule } = useMemo(() => buildWeekSchedule(grid), [grid]);
@@ -263,11 +170,14 @@ export function TimetableWidget({ grid, attendance }) {
   const classesWithTimes = useMemo(() => {
     return todayRows.map(item => {
       const time = parseSlotStartTime(item.slot);
-      const shortName = getShortSubjectName(item.value, courseMap);
+      const { courseCode, classroom } = parseCellValue(item.value);
+      const shortName = getShortSubjectName(courseCode, subjectMap);
       return {
         ...item,
         time,
-        shortName
+        shortName,
+        courseCode,
+        classroom
       };
     }).filter(item => item.time !== null)
       .sort((a, b) => {
@@ -275,7 +185,7 @@ export function TimetableWidget({ grid, attendance }) {
         const timeB = b.time.hour * 60 + b.time.minute;
         return timeA - timeB;
       });
-  }, [todayRows, courseMap]);
+  }, [todayRows, subjectMap]);
 
   const groupedClasses = useMemo(() => {
     if (!classesWithTimes.length) return [];
@@ -283,9 +193,12 @@ export function TimetableWidget({ grid, attendance }) {
     let current = null;
     
     classesWithTimes.forEach(item => {
-      const slotNum = String(parseInt(item.slot.trim(), 10));
+      const slotNum = getSlotNumber(item.slot);
       const start = item.time;
-      const end = slotEndMap[slotNum] || { hour: start.hour + 1, minute: start.minute };
+      const slotTime = getSlotTime(slotNum);
+      const end = slotTime
+        ? { hour: Math.floor(slotTime.endMinutes / 60), minute: slotTime.endMinutes % 60 }
+        : { hour: start.hour + 1, minute: start.minute };
       
       const startTimeInMinutes = start.hour * 60 + start.minute;
       const endTimeInMinutes = end.hour * 60 + end.minute;
@@ -376,11 +289,13 @@ export function TimetableWidget({ grid, attendance }) {
             <div className="mt-3 space-y-2">
               {classesWithTimes.map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between rounded-lg bg-surface/50 p-2 text-xs font-bold text-ink">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Clock size={12} className="text-ink/40" />
-                    <span>{formatSlotTime(item.slot)}</span>
+                    <span>{formatSlotStartTime(item.slot)}</span>
                   </div>
-                  <span className="font-black text-right truncate max-w-[180px]">{item.shortName}</span>
+                  <div className="text-right max-w-[180px]">
+                    <p className="font-black text-sm truncate">{item.shortName}{item.classroom ? ` - ${item.classroom}` : ""}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -404,8 +319,10 @@ export function TimetableWidget({ grid, attendance }) {
             <div className="mt-4 text-center space-y-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">Next Class</p>
-                <h4 className="text-lg font-black text-ink mt-0.5">{nextClassInfo.shortName}</h4>
-                <p className="text-[10px] font-bold text-ink/50 mt-0.5">{nextClassInfo.slot}</p>
+                <h4 className="text-lg font-black text-ink mt-0.5">
+                  {nextClassInfo.shortName}{nextClassInfo.classroom ? ` - ${nextClassInfo.classroom}` : ""}
+                </h4>
+                <p className="text-[10px] font-bold text-ink/40 mt-0.5 uppercase tracking-wide">{nextClassInfo.courseCode}</p>
               </div>
 
               <div className="rounded-xl bg-surface/60 py-3 px-4 inline-block">

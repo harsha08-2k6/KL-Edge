@@ -30,7 +30,13 @@ export default function Home() {
   const refreshFromBackend = useCallback(() => {
     return (async () => {
       try {
-        const latest = await fetchLatestSync();
+        const credentials = readLocal(STORAGE_KEYS.credentials, {});
+        if (!credentials.erpId) {
+          setRawSubjects(readLocal(STORAGE_KEYS.attendance, []));
+          setLastUpdated(readLocal(STORAGE_KEYS.lastUpdated, null));
+          return;
+        }
+        const latest = await fetchLatestSync(credentials.erpId);
         if (latest?.attendance) {
           writeLocal(STORAGE_KEYS.attendance, latest.attendance);
           writeLocal(STORAGE_KEYS.timetable, latest.timetable);

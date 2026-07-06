@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Layout } from "../components/Layout.jsx";
 import { readLocal, STORAGE_KEYS } from "../utils/storage.js";
+import { buildSubjectNameMap, formatSlotWithTime, getSubjectDisplayName, parseCellValue } from "../utils/timetable.js";
 
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -95,7 +96,7 @@ function buildWeekSchedule(grid) {
     .map((cell, index) => ({ day: findDay(cell), index }))
     .filter((entry) => entry.day);
 
-  if (headerDays.length >= 2) {
+  if (headerDays.length >= 3) {
     const slots = [];
     grid.slice(1).forEach((row, rowIndex) => {
       const slot = row?.[0] || `Slot ${rowIndex + 1}`;
@@ -114,7 +115,7 @@ function buildWeekSchedule(grid) {
     .map((row, index) => ({ day: findDay(row?.[0]), index }))
     .filter((entry) => entry.day);
 
-  if (dayRows.length >= 1) {
+  if (dayRows.length >= 3) {
     const slots = headerRow.slice(1).map((cell, index) => cell || `Slot ${index + 1}`);
     dayRows.forEach(({ day, index }) => {
       const row = grid[index] || [];
@@ -128,77 +129,24 @@ function buildWeekSchedule(grid) {
     return { schedule, slots, mode: "row" };
   }
 
-  const fallbackSlots = [];
-  const fallbackSchedule = Object.fromEntries(dayOrder.map((day) => [day, []]));
-  let activeDay = "";
-
-  grid.forEach((row, rowIndex) => {
-    const rowText = (row || []).map((cell) => normalizeDayText(cell)).join(" ");
-    const matchedDay = dayOrder.find((day) => cellHasDay(rowText, day));
-
-    if (matchedDay) {
-      activeDay = matchedDay;
-      return;
-    }
-
-    if (!activeDay || !row || row.length < 2) {
-      return;
-    }
-
-    const slot = row[0] || `Slot ${rowIndex}`;
-    const values = row.slice(1).filter(isSlotValue);
-    values.forEach((value) => {
-      fallbackSchedule[activeDay].push({ slot, value });
-    });
-    if (!fallbackSlots.includes(slot)) {
-      fallbackSlots.push(slot);
-    }
-  });
-
-  const fallbackDays = dayOrder.filter((day) => fallbackSchedule[day].length);
-  if (fallbackDays.length) {
-    return { schedule: fallbackSchedule, slots: fallbackSlots, mode: "fallback" };
-  }
-
   return { schedule, slots: [], mode: "unknown" };
 }
 
-const slotTimes = {
-  "1": "07:10 AM - 08:00 AM",
-  "2": "08:00 AM - 08:50 AM",
-  "3": "09:20 AM - 10:10 AM",
-  "4": "10:10 AM - 11:00 AM",
-  "5": "11:10 AM - 12:00 PM",
-  "6": "12:00 PM - 12:50 PM",
-  "7": "12:55 PM - 01:45 PM",
-  "8": "01:45 PM - 02:35 PM",
-  "9": "02:40 PM - 03:30 PM",
-  "10": "03:40 PM - 04:30 PM",
-  "11": "04:30 PM - 05:20 PM",
-  "12": "05:40 PM - 06:30 PM",
-  "13": "06:30 PM - 07:20 PM"
-};
-
-function formatSlotWithTime(slot) {
-  if (!slot) return "";
-  const cleaned = slot.trim();
-  const numKey = String(parseInt(cleaned, 10));
-  const timeRange = slotTimes[numKey];
-  if (timeRange) {
-    return `Slot ${numKey} • ${timeRange}`;
-  }
-  return slot;
+function getTodayRowsFallback(grid, today) {
+  return getTodayRows(grid, today);
 }
 
 export default function Timetable() {
   const [grid, setGrid] = useState([]);
   const [syncStatus, setSyncStatus] = useState(null);
   const [attendance, setAttendance] = useState([]);
+  const [customSubjectNames, setCustomSubjectNames] = useState({});
   const today = getTodayName();
   const { schedule } = useMemo(() => buildWeekSchedule(grid), [grid]);
   const daysWithData = dayOrder.filter((day) => schedule[day]?.length);
   const [selectedDay, setSelectedDay] = useState(today);
-  const todayRows = daysWithData.length ? schedule[today] || [] : getTodayRows(grid, today);
+  const selectedDayInitialized = useRef(false);
+  const todayRows = daysWithData.length ? schedule[today] || [] : getTodayRowsFallback(grid, today);
   const selectedRows = daysWithData.length
     ? schedule[selectedDay] || []
     : selectedDay === today
@@ -207,9 +155,16 @@ export default function Timetable() {
   const totalSlots = selectedRows.length;
 
   useEffect(() => {
+    if (selectedDayInitialized.current) return;
+    if (!grid.length) return;
+    selectedDayInitialized.current = true;
+  }, [grid.length]);
+
+  useEffect(() => {
     const data = readLocal(STORAGE_KEYS.timetable, { grid: [], mappings: [] });
     setSyncStatus(readLocal(STORAGE_KEYS.timetableStatus, null));
     setAttendance(readLocal(STORAGE_KEYS.attendance, []));
+    setCustomSubjectNames(readLocal(STORAGE_KEYS.subjectNames, {}));
     if (Array.isArray(data)) {
       setGrid(data);
     } else {
@@ -217,15 +172,10 @@ export default function Timetable() {
     }
   }, []);
 
-  const courseMap = useMemo(() => {
-    const map = {};
-    attendance.forEach((item) => {
-      if (item.courseCode && item.subject) {
-        map[item.courseCode.trim().toUpperCase()] = item.subject.trim();
-      }
-    });
-    return map;
-  }, [attendance]);
+  const subjectMap = useMemo(
+    () => buildSubjectNameMap(attendance, customSubjectNames),
+    [attendance, customSubjectNames]
+  );
 
   return (
     <Layout title="Timetable">
@@ -261,21 +211,18 @@ export default function Timetable() {
           {selectedRows.length ? (
             <div className="mt-3 space-y-2">
               {selectedRows.map((item, index) => {
-                let subjectName = null;
-                const valueUpper = item.value.toUpperCase();
-                const sortedCodes = Object.keys(courseMap).sort((a, b) => b.length - a.length);
-                for (const code of sortedCodes) {
-                  if (valueUpper.includes(code)) {
-                    subjectName = courseMap[code];
-                    break;
-                  }
-                }
+                const { courseCode, classroom } = parseCellValue(item.value);
+                const subjectName = getSubjectDisplayName(courseCode, subjectMap);
 
                 return (
                   <article key={`${selectedDay}-${item.slot}-${index}`} className="rounded-lg border border-ink/10 bg-paper p-2.5">
                     <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">{formatSlotWithTime(item.slot)}</p>
-                    <p className="mt-1 text-sm font-black text-ink">{item.value}</p>
-                    {subjectName && <p className="mt-0.5 text-xs font-semibold text-ink/60">{subjectName}</p>}
+                    <p className="mt-1 text-sm font-black text-ink">
+                      {subjectName || courseCode}{classroom ? ` - ${classroom}` : ""}
+                    </p>
+                    {subjectName && (
+                      <p className="mt-0.5 text-[10px] font-semibold text-ink/40 uppercase tracking-wide">{courseCode}</p>
+                    )}
                   </article>
                 );
               })}

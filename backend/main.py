@@ -25,12 +25,12 @@ import json
 # Redis key for faculty cache
 FACULTY_CACHE_KEY = "faculty_cache"
 FACULTY_CACHE_TTL_SECONDS = 86400  # 24 hours
-AUTO_SYNC_PROFILE_KEY = "auto_sync_profile"
-LATEST_SYNC_KEY = "latest_sync_result"
+AUTO_SYNC_USER_IDS_KEY = "auto_sync_user_ids"
 AUTO_SYNC_INTERVAL_SECONDS = int(os.getenv("ERP_AUTO_SYNC_INTERVAL_SECONDS", "600"))
 auto_sync_task = None
-auto_sync_profile_memory = None
-latest_sync_memory = None
+auto_sync_profiles_memory = {}
+latest_syncs_memory = {}
+auto_sync_user_ids_memory = set()
 
 
 def cached_faculty():
@@ -81,17 +81,21 @@ def set_cached_json(key: str, value):
         pass
 
 
-def get_auto_sync_profile():
-    cached = get_cached_json(AUTO_SYNC_PROFILE_KEY)
+def get_auto_sync_profile(erp_id: str):
+    if not erp_id:
+        return None
+    cached = get_cached_json(f"auto_sync_profile:{erp_id}")
     if cached is not None:
         return cached
-    return auto_sync_profile_memory
+    return auto_sync_profiles_memory.get(erp_id)
 
 
 def save_auto_sync_profile(payload: dict):
-    global auto_sync_profile_memory
+    erp_id = payload.get("erpId", "")
+    if not erp_id:
+        return
     profile = {
-        "erpId": payload.get("erpId", ""),
+        "erpId": erp_id,
         "password": payload.get("password", ""),
         "academicYear": payload.get("academicYear", ""),
         "semesterId": payload.get("semesterId", ""),
@@ -99,21 +103,32 @@ def save_auto_sync_profile(payload: dict):
     }
     if not all(profile.values()):
         return
-    auto_sync_profile_memory = profile
-    set_cached_json(AUTO_SYNC_PROFILE_KEY, profile)
+    auto_sync_profiles_memory[erp_id] = profile
+    set_cached_json(f"auto_sync_profile:{erp_id}", profile)
+    
+    # Add user ID to active list for auto-sync
+    auto_sync_user_ids_memory.add(erp_id)
+    if redis_client is not None:
+        try:
+            redis_client.sadd(AUTO_SYNC_USER_IDS_KEY, erp_id)
+        except Exception:
+            pass
 
 
-def get_latest_sync_result():
-    cached = get_cached_json(LATEST_SYNC_KEY)
+def get_latest_sync_result(erp_id: str):
+    if not erp_id:
+        return None
+    cached = get_cached_json(f"latest_sync_result:{erp_id}")
     if cached is not None:
         return cached
-    return latest_sync_memory
+    return latest_syncs_memory.get(erp_id)
 
 
-def save_latest_sync_result(result: dict):
-    global latest_sync_memory
-    latest_sync_memory = result
-    set_cached_json(LATEST_SYNC_KEY, result)
+def save_latest_sync_result(erp_id: str, result: dict):
+    if not erp_id:
+        return
+    latest_syncs_memory[erp_id] = result
+    set_cached_json(f"latest_sync_result:{erp_id}", result)
 
 
 def run_full_sync(payload: dict) -> dict:
@@ -128,7 +143,6 @@ def run_full_sync(payload: dict) -> dict:
             return fallback
         except Exception as exc:
             if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
-            
                 print(f"[erp:{label}] {exc}", flush=True)
             return fallback
 
@@ -149,27 +163,40 @@ def run_full_sync(payload: dict) -> dict:
 async def auto_sync_loop():
     while True:
         await asyncio.sleep(AUTO_SYNC_INTERVAL_SECONDS)
-        profile = get_auto_sync_profile()
-        if not profile:
-            continue
+        
+        user_ids = []
+        if redis_client is not None:
+            try:
+                members = redis_client.smembers(AUTO_SYNC_USER_IDS_KEY)
+                user_ids = [m.decode("utf-8") if isinstance(m, bytes) else str(m) for m in members]
+            except Exception:
+                pass
+        
+        if not user_ids:
+            user_ids = list(auto_sync_user_ids_memory)
 
-        captcha_session = get_captcha_session(profile.get("captchaSessionId") or "")
-        if not captcha_session:
-            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
-                print("[erp:auto-sync] captcha session expired; waiting for manual sync", flush=True)
-            continue
+        for erp_id in user_ids:
+            profile = get_auto_sync_profile(erp_id)
+            if not profile:
+                continue
 
-        try:
-            result = await asyncio.to_thread(run_full_sync, {**profile, "captcha": ""})
-            save_latest_sync_result(result)
-            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
-                print("[erp:auto-sync] refresh completed", flush=True)
-        except AppError as exc:
-            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
-                print(f"[erp:auto-sync] failed: {exc.message}", flush=True)
-        except Exception as exc:
-            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
-                print(f"[erp:auto-sync] failed: {exc}", flush=True)
+            captcha_session = get_captcha_session(profile.get("captchaSessionId") or "")
+            if not captcha_session:
+                if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                    print(f"[erp:auto-sync] captcha session expired for {erp_id}; waiting for manual sync", flush=True)
+                continue
+
+            try:
+                result = await asyncio.to_thread(run_full_sync, {**profile, "captcha": ""})
+                save_latest_sync_result(erp_id, result)
+                if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                    print(f"[erp:auto-sync] refresh completed for {erp_id}", flush=True)
+            except AppError as exc:
+                if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                    print(f"[erp:auto-sync] failed for {erp_id}: {exc.message}", flush=True)
+            except Exception as exc:
+                if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                    print(f"[erp:auto-sync] failed for {erp_id}: {exc}", flush=True)
 
 
 app = FastAPI()
@@ -280,13 +307,15 @@ def sync_attendance_route(body: SyncRequest):
     payload = body.model_dump()
     result = run_full_sync(payload)
     save_auto_sync_profile(payload)
-    save_latest_sync_result(result)
+    save_latest_sync_result(body.erpId, result)
     return result
 
 
 @app.get("/api/latest-sync")
-def latest_sync():
-    latest = get_latest_sync_result()
+def latest_sync(erpId: str = ""):
+    if not erpId:
+        raise AppError("ERP ID is required.", 400)
+    latest = get_latest_sync_result(erpId)
     if not latest:
         raise AppError("No synced data available yet.", 404)
     return JSONResponse(content=latest, headers={"Cache-Control": "no-store"})

@@ -37,8 +37,9 @@ export async function syncAttendance({ erpId, password, captcha, academicYear, s
   return payload;
 }
 
-export async function fetchLatestSync() {
-  const response = await fetch(`${API_BASE}/api/latest-sync`);
+export async function fetchLatestSync(erpId) {
+  if (!erpId) return null;
+  const response = await fetch(`${API_BASE}/api/latest-sync?erpId=${encodeURIComponent(erpId)}`);
   const payload = await response.json();
 
   if (!response.ok) {

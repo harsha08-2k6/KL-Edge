@@ -33,3 +33,16 @@ input {
   min-height: 44px;
   min-width: 44px;
 }
+
+.timetable-cell-name {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #12151f;
+  line-height: 1.4;
+}
+
+.timetable-cell-name .room {
+  display: block;
+  color: #000000;
+  font-weight: 900;
+}

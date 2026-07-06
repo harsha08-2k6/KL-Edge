@@ -370,6 +370,7 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
         raise AppError("Captcha session expired. Refresh captcha and try again.", 410)
 
     session = reconstruct_session(captcha_session.get("cookies", {}))
+    session.captcha_session_id = session_id
 
     # Check if already logged in to this session
     if captcha_session.get("is_logged_in", False):
@@ -481,6 +482,18 @@ def load_faculty() -> List[Dict[str, object]]:
     return []
 
 
+def check_session_expiry(session: requests.Session, requested_url: str, response: requests.Response) -> None:
+    if "site/login" in response.url.lower() or "site%2flogin" in response.url.lower():
+        if "site/login" not in requested_url.lower() and "site%2flogin" not in requested_url.lower():
+            session_id = getattr(session, "captcha_session_id", None)
+            if session_id:
+                captcha_session = get_captcha_session(session_id)
+                if captcha_session:
+                    captcha_session["is_logged_in"] = False
+                    save_captcha_session(session_id, captcha_session)
+            raise AppError("ERP session expired. Please re-authenticate.", 410)
+
+
 def request_page(
     session: requests.Session,
     url: str,
@@ -496,6 +509,7 @@ def request_page(
             verify=not ALLOW_INSECURE
         )
         response.raise_for_status()
+        check_session_expiry(session, url, response)
         return response
     except requests.RequestException as exc:
         if DEBUG_ENABLED:
@@ -572,6 +586,7 @@ def submit_form(session: requests.Session, form: Dict[str, object], data: Dict[s
             )
 
         response.raise_for_status()
+        check_session_expiry(session, url, response)
         return response
     except requests.RequestException as exc:
         if DEBUG_ENABLED:
@@ -2325,7 +2340,7 @@ def parse_cgpa_html(html: str, payload: Dict[str, str], is_overall_page: bool = 
                         "cgpa": cgpa_text
                     })
 
-    if cgpa_value is None and len(semesters) > 1:
+    if cgpa_value is None and semesters:
         valid_cgpas = [to_number(s["cgpa"]) for s in semesters if s.get("cgpa") and to_number(s["cgpa"]) is not None and 0.0 < to_number(s["cgpa"]) <= 10.0]
         if valid_cgpas:
             cgpa_value = valid_cgpas[-1]
@@ -2595,11 +2610,48 @@ def parse_timetable_html(html: str) -> Dict[str, object]:
 
 def find_timetable_table(soup: BeautifulSoup):
     tables = soup.find_all("table")
-    for table in tables:
+    if not tables:
+        return None
+
+    day_names = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    slot_keywords = ["slot", "period", "lecture", "class", "time"]
+
+    def score_table(table) -> int:
+        rows = table.find_all("tr")
+        if not rows:
+            return -100
+
+        cells_per_row = [len(row.find_all(["td", "th"])) for row in rows]
+        max_cells = max(cells_per_row) if cells_per_row else 0
         text = clean_text(table.get_text(" ")).lower()
-        if any(day.lower() in text for day in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]):
-            return table
-    return tables[0] if tables else None
+
+        day_hits = sum(1 for day in day_names if day in text)
+        slot_hits = sum(1 for keyword in slot_keywords if keyword in text)
+        time_hits = len(re.findall(r"\b\d{1,2}:\d{2}\s*(?:am|pm)?\b", text, re.IGNORECASE))
+
+        score = 0
+        score += day_hits * 8
+        score += min(len(rows), 12)
+        score += min(max_cells, 12)
+        score += min(slot_hits * 2, 8)
+        score += min(time_hits, 6)
+
+        if len(rows) < 2:
+            score -= 12
+        if max_cells < 2:
+            score -= 12
+        if day_hits == 0 and time_hits == 0 and slot_hits == 0:
+            score -= 8
+
+        return score
+
+    scored_tables = sorted(((score_table(table), table) for table in tables), key=lambda item: item[0], reverse=True)
+    best_score, best_table = scored_tables[0]
+
+    if best_score < 4:
+        return None
+
+    return best_table
 
 
 def find_index(headers: List[str], candidates: List[str]) -> int:

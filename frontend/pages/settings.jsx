@@ -170,14 +170,15 @@ export default function Settings() {
 
     try {
       const payload = await syncAttendance({ erpId, password, captcha, academicYear, semesterId, captchaSessionId });
+      const timetable = { ...(payload.timetable || {}), academicYear, semesterId };
       writeLocal(STORAGE_KEYS.attendance, payload.attendance);
-      writeLocal(STORAGE_KEYS.timetable, payload.timetable);
+      writeLocal(STORAGE_KEYS.timetable, timetable);
       // if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
       if (payload.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
       if (payload.cgpa) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
       writeLocal(STORAGE_KEYS.timetableStatus, {
-        status: payload.timetable?.status || (payload.timetable?.grid?.length ? "ok" : "empty"),
-        message: payload.timetable?.message || ""
+        status: timetable?.status || (timetable?.grid?.length ? "ok" : "empty"),
+        message: timetable?.message || ""
       });
       writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);
       if (captchaSessionId) {

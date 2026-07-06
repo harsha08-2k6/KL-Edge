@@ -3,6 +3,7 @@ export const STORAGE_KEYS = {
   syncOptions: "kl-edge.syncOptions",
   captchaSessionId: "kl-edge.captchaSessionId",
   attendance: "kl-edge.attendance",
+  subjectNames: "kl-edge.subjectNames",
   timetable: "kl-edge.timetable",
   timetableStatus: "kl-edge.timetableStatus",
   lastUpdated: "kl-edge.lastUpdated",
