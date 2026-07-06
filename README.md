@@ -1,6 +1,6 @@
 # KL Edge
 
-A modern student utility platform built for K L University students to simplify ERP usage, attendance tracking, academic management, and daily student activities in one place.
+A modern student utility platform built for K L University students to simplify ERP usage, attendance tracking, academic management, and daily student activities with automatic ERP synchronization every 10 minutes to keep information up to date.
 
 ## 🚀 Overview
 
@@ -43,7 +43,9 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
 - Organized faculty directory
 
 ### 🔄 ERP Synchronization
-- Sync latest academic data directly from ERP
+- Automatic ERP synchronization every 10 minutes
+- Keeps attendance, timetable, seating, and academic data up to date
+- Manual sync available whenever needed
 - Secure local storage based login flow
 - Faster access after initial login
 - Captcha-supported authentication flow
@@ -61,6 +63,20 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
 - Lightweight frontend
 - Efficient API handling
 - Optimized state management
+- Automatic background ERP synchronization every 10 minutes
+
+### ⏱️ Automatic Background Refresh
+- Automatically refreshes ERP data every 10 minutes
+- Reduces the need for manual syncing
+- Keeps academic information up to date while using the platform
+- Lightweight scheduled synchronization
+
+## 🆕 Latest Updates
+
+- Added automatic ERP synchronization every 10 minutes
+- Improved data freshness across attendance, timetable, and academic information
+- Reduced the need for frequent manual refreshes
+- Enhanced overall platform responsiveness
 
 ---
 
