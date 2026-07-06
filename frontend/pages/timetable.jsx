@@ -132,18 +132,19 @@ function buildWeekSchedule(grid) {
 }
 
 const slotTimes = {
-  "1": "07:10 - 08:00",
-  "2": "08:00 - 08:50",
-  "3": "09:20 - 10:10",
-  "4": "10:10 - 11:00",
-  "5": "11:10 - 12:00",
-  "6": "12:00 - 12:50",
-  "7": "01:50 - 02:40",
-  "8": "02:40 - 03:30",
-  "9": "03:40 - 04:30",
-  "10": "04:30 - 05:30",
-  "11": "05:30 - 06:20",
-  "12": "06:20 - 07:10"
+  "1": "07:10 AM - 08:00 AM",
+  "2": "08:00 AM - 08:50 AM",
+  "3": "09:20 AM - 10:10 AM",
+  "4": "10:10 AM - 11:00 AM",
+  "5": "11:10 AM - 12:00 PM",
+  "6": "12:00 PM - 12:50 PM",
+  "7": "12:55 PM - 01:45 PM",
+  "8": "01:45 PM - 02:35 PM",
+  "9": "02:40 PM - 03:30 PM",
+  "10": "03:40 PM - 04:30 PM",
+  "11": "04:30 PM - 05:20 PM",
+  "12": "05:40 PM - 06:30 PM",
+  "13": "06:30 PM - 07:20 PM"
 };
 
 function formatSlotWithTime(slot) {
@@ -171,6 +172,7 @@ export default function Timetable() {
     : selectedDay === today
       ? todayRows
       : [];
+  const totalSlots = selectedRows.length;
 
   useEffect(() => {
     const data = readLocal(STORAGE_KEYS.timetable, { grid: [], mappings: [] });
@@ -199,11 +201,11 @@ export default function Timetable() {
         <div className="rounded-xl border border-ink/10 bg-white p-3 shadow-soft">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-ink/40">Today</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-ink/40">Selected Day</p>
               <h2 className="text-xl font-black text-ink">{selectedDay}</h2>
             </div>
             <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-black text-ink/60">
-              {selectedRows.length} slot{selectedRows.length === 1 ? "" : "s"}
+              {totalSlots} slot{totalSlots === 1 ? "" : "s"}
             </span>
           </div>
 
@@ -238,8 +240,9 @@ export default function Timetable() {
                     break;
                   }
                 }
+
                 return (
-                  <article key={`${item.slot}-${index}`} className="rounded-lg border border-ink/10 bg-paper p-2.5">
+                  <article key={`${selectedDay}-${item.slot}-${index}`} className="rounded-lg border border-ink/10 bg-paper p-2.5">
                     <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">{formatSlotWithTime(item.slot)}</p>
                     <p className="mt-1 text-sm font-black text-ink">{item.value}</p>
                     {subjectName && <p className="mt-0.5 text-xs font-semibold text-ink/60">{subjectName}</p>}
