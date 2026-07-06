@@ -1,4 +1,5 @@
 import os
+import asyncio
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
@@ -9,8 +10,8 @@ from pydantic import BaseModel
 from erp_scraper import (
     AppError,
     LOGIN_URL,
-    close_captcha_session,
     create_captcha_session,
+    get_captcha_session,
     load_faculty,
     redis_client,
     sync_attendance,
@@ -24,6 +25,12 @@ import json
 # Redis key for faculty cache
 FACULTY_CACHE_KEY = "faculty_cache"
 FACULTY_CACHE_TTL_SECONDS = 86400  # 24 hours
+AUTO_SYNC_PROFILE_KEY = "auto_sync_profile"
+LATEST_SYNC_KEY = "latest_sync_result"
+AUTO_SYNC_INTERVAL_SECONDS = int(os.getenv("ERP_AUTO_SYNC_INTERVAL_SECONDS", "600"))
+auto_sync_task = None
+auto_sync_profile_memory = None
+latest_sync_memory = None
 
 
 def cached_faculty():
@@ -53,7 +60,138 @@ def cache_faculty(faculty_data):
         pass
 
 
+def get_cached_json(key: str):
+    if redis_client is None:
+        return None
+    try:
+        cached = redis_client.get(key)
+        if cached:
+            return json.loads(cached)
+    except Exception:
+        pass
+    return None
+
+
+def set_cached_json(key: str, value):
+    if redis_client is None:
+        return
+    try:
+        redis_client.set(key, json.dumps(value))
+    except Exception:
+        pass
+
+
+def get_auto_sync_profile():
+    cached = get_cached_json(AUTO_SYNC_PROFILE_KEY)
+    if cached is not None:
+        return cached
+    return auto_sync_profile_memory
+
+
+def save_auto_sync_profile(payload: dict):
+    global auto_sync_profile_memory
+    profile = {
+        "erpId": payload.get("erpId", ""),
+        "password": payload.get("password", ""),
+        "academicYear": payload.get("academicYear", ""),
+        "semesterId": payload.get("semesterId", ""),
+        "captchaSessionId": payload.get("captchaSessionId", "")
+    }
+    if not all(profile.values()):
+        return
+    auto_sync_profile_memory = profile
+    set_cached_json(AUTO_SYNC_PROFILE_KEY, profile)
+
+
+def get_latest_sync_result():
+    cached = get_cached_json(LATEST_SYNC_KEY)
+    if cached is not None:
+        return cached
+    return latest_sync_memory
+
+
+def save_latest_sync_result(result: dict):
+    global latest_sync_memory
+    latest_sync_memory = result
+    set_cached_json(LATEST_SYNC_KEY, result)
+
+
+def run_full_sync(payload: dict) -> dict:
+    attendance = sync_attendance(payload)
+
+    def safe_sync(label, handler, fallback):
+        try:
+            return handler()
+        except AppError as exc:
+            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                print(f"[erp:{label}] {exc.message}", flush=True)
+            return fallback
+        except Exception as exc:
+            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+            
+                print(f"[erp:{label}] {exc}", flush=True)
+            return fallback
+
+    timetable = safe_sync("timetable", lambda: sync_timetable(payload), {"grid": [], "mappings": [], "status": "empty", "message": "Timetable sync failed."})
+    seating_plan = safe_sync("seating-plan", lambda: sync_seating_plan(payload), [])
+    cgpa = safe_sync("cgpa", lambda: sync_cgpa(payload), {})
+
+    return {
+        "attendance": attendance,
+        "timetable": timetable,
+        "marks": [],
+        "seatingPlan": seating_plan,
+        "cgpa": cgpa,
+        "syncedAt": f"{datetime.utcnow().isoformat()}Z"
+    }
+
+
+async def auto_sync_loop():
+    while True:
+        await asyncio.sleep(AUTO_SYNC_INTERVAL_SECONDS)
+        profile = get_auto_sync_profile()
+        if not profile:
+            continue
+
+        captcha_session = get_captcha_session(profile.get("captchaSessionId") or "")
+        if not captcha_session:
+            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                print("[erp:auto-sync] captcha session expired; waiting for manual sync", flush=True)
+            continue
+
+        try:
+            result = await asyncio.to_thread(run_full_sync, {**profile, "captcha": ""})
+            save_latest_sync_result(result)
+            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                print("[erp:auto-sync] refresh completed", flush=True)
+        except AppError as exc:
+            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                print(f"[erp:auto-sync] failed: {exc.message}", flush=True)
+        except Exception as exc:
+            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                print(f"[erp:auto-sync] failed: {exc}", flush=True)
+
+
 app = FastAPI()
+
+
+@app.on_event("startup")
+async def startup_auto_sync():
+    global auto_sync_task
+    if AUTO_SYNC_INTERVAL_SECONDS > 0:
+        auto_sync_task = asyncio.create_task(auto_sync_loop())
+
+
+@app.on_event("shutdown")
+async def shutdown_auto_sync():
+    global auto_sync_task
+    if auto_sync_task:
+        auto_sync_task.cancel()
+        try:
+            await auto_sync_task
+        except Exception:
+            pass
+        auto_sync_task = None
 
 raw_origins = os.getenv("FRONTEND_ORIGIN", "*")
 origin_allow_list = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
@@ -126,43 +264,32 @@ def get_captcha():
 
 @app.post("/api/sync")
 def sync_attendance_route(body: SyncRequest):
-    if not all([body.erpId, body.password, body.captcha, body.academicYear, body.semesterId, body.captchaSessionId]):
+    if not all([body.erpId, body.password, body.academicYear, body.semesterId, body.captchaSessionId]):
         raise AppError(
-            "ERP ID, password, captcha, captcha session, academic year, and semester are required.",
+            "ERP ID, password, captcha session, academic year, and semester are required.",
             400
         )
 
-    def safe_sync(label, handler, fallback):
-        try:
-            return handler()
-        except AppError as exc:
-            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+    captcha_session = get_captcha_session(body.captchaSessionId)
+    if not captcha_session:
+        raise AppError("Captcha session expired. Open Settings and do one manual sync again.", 410)
 
-                print(f"[erp:{label}] {exc.message}", flush=True)
-            return fallback
-        except Exception as exc:
-            if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
-                print(f"[erp:{label}] {exc}", flush=True)
-            return fallback
+    if not body.captcha and not captcha_session.get("is_logged_in", False):
+        raise AppError("Captcha is required for the first login. Open Settings and complete a manual sync first.", 400)
 
-    try:
-        payload = body.model_dump()
-        attendance = sync_attendance(payload)
-        timetable = safe_sync("timetable", lambda: sync_timetable(payload), {"grid": [], "mappings": [], "status": "empty", "message": "Timetable sync failed."})
-        # marks = safe_sync("marks", lambda: sync_marks(payload), [])
-        seating_plan = safe_sync("seating-plan", lambda: sync_seating_plan(payload), [])
-        cgpa = safe_sync("cgpa", lambda: sync_cgpa(payload), {})
-        return {
-            "attendance": attendance,
-            "timetable": timetable,
-            "marks": [],
-            "seatingPlan": seating_plan,
-            "cgpa": cgpa,
-            "syncedAt": f"{datetime.utcnow().isoformat()}Z"
-        }
-    finally:
-        # We only close the session AFTER both sync operations are done
-        close_captcha_session(body.captchaSessionId)
+    payload = body.model_dump()
+    result = run_full_sync(payload)
+    save_auto_sync_profile(payload)
+    save_latest_sync_result(result)
+    return result
+
+
+@app.get("/api/latest-sync")
+def latest_sync():
+    latest = get_latest_sync_result()
+    if not latest:
+        raise AppError("No synced data available yet.", 404)
+    return JSONResponse(content=latest, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/faculty")

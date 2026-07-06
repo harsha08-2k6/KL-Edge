@@ -1,4 +1,3 @@
-const isProduction = import.meta.env.PROD;
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 class ApiError extends Error {
@@ -33,6 +32,17 @@ export async function syncAttendance({ erpId, password, captcha, academicYear, s
 
   if (!response.ok) {
     throw new ApiError(payload?.error || "Sync failed", response.status);
+  }
+
+  return payload;
+}
+
+export async function fetchLatestSync() {
+  const response = await fetch(`${API_BASE}/api/latest-sync`);
+  const payload = await response.json();
+
+  if (!response.ok) {
+    return null;
   }
 
   return payload;

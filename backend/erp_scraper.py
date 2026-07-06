@@ -86,7 +86,7 @@ if ALLOW_INSECURE:
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-CAPTCHA_SESSION_TTL_MS = int(os.getenv("ERP_CAPTCHA_SESSION_TTL_MS", "600000"))
+CAPTCHA_SESSION_TTL_MS = int(os.getenv("ERP_CAPTCHA_SESSION_TTL_MS", "3600000"))
 MAX_CAPTCHA_SESSIONS = int(os.getenv("ERP_MAX_CAPTCHA_SESSIONS", "5"))
 DEFAULT_TIMEOUT_MS = int(os.getenv("ERP_TIMEOUT_MS", "45000"))
 

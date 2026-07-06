@@ -56,17 +56,23 @@ export default function Settings() {
   const [captchaBusy, setCaptchaBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [toast, setToast] = useState(null);
-  const [permissionState, setPermissionState] = useState(() => {
-    if (!("Notification" in window)) return "unsupported";
-    return Notification.permission;
-  });
+  const [permissionState, setPermissionState] = useState("unsupported");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    if (!("Notification" in window) || Notification.permission !== "granted") {
-      return false;
+  useEffect(() => {
+    if (!("Notification" in window)) {
+      setPermissionState("unsupported");
+      return;
     }
-    return localStorage.getItem("kl-edge.notificationsEnabled") === "true";
-  });
+
+    const currentPermission = Notification.permission;
+    setPermissionState(currentPermission);
+    if (currentPermission === "granted") {
+      setNotificationsEnabled(localStorage.getItem("kl-edge.notificationsEnabled") === "true");
+    } else {
+      setNotificationsEnabled(false);
+    }
+  }, []);
 
   const toggleNotifications = async () => {
     if (!("Notification" in window)) {
@@ -174,9 +180,11 @@ export default function Settings() {
         message: payload.timetable?.message || ""
       });
       writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);
+      if (captchaSessionId) {
+        writeLocal(STORAGE_KEYS.captchaSessionId, captchaSessionId);
+      }
       setCaptcha("");
       setCaptchaImage("");
-      setCaptchaSessionId("");
       setMessage("");
       setToast({ message: "Attendance synced successfully! ✅", type: "success" });
 
@@ -217,6 +225,7 @@ export default function Settings() {
     removeLocal(STORAGE_KEYS.timetableStatus);
     removeLocal(STORAGE_KEYS.marks);
     removeLocal(STORAGE_KEYS.lastUpdated);
+    removeLocal(STORAGE_KEYS.captchaSessionId);
     setErpId("");
     setPassword("");
     setCaptcha("");

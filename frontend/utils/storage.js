@@ -1,6 +1,7 @@
 export const STORAGE_KEYS = {
   credentials: "kl-edge.credentials",
   syncOptions: "kl-edge.syncOptions",
+  captchaSessionId: "kl-edge.captchaSessionId",
   attendance: "kl-edge.attendance",
   timetable: "kl-edge.timetable",
   timetableStatus: "kl-edge.timetableStatus",
