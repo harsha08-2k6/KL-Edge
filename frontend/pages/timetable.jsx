@@ -95,7 +95,7 @@ function buildWeekSchedule(grid) {
     .map((cell, index) => ({ day: findDay(cell), index }))
     .filter((entry) => entry.day);
 
-  if (headerDays.length >= 3) {
+  if (headerDays.length >= 2) {
     const slots = [];
     grid.slice(1).forEach((row, rowIndex) => {
       const slot = row?.[0] || `Slot ${rowIndex + 1}`;
@@ -114,7 +114,7 @@ function buildWeekSchedule(grid) {
     .map((row, index) => ({ day: findDay(row?.[0]), index }))
     .filter((entry) => entry.day);
 
-  if (dayRows.length >= 3) {
+  if (dayRows.length >= 1) {
     const slots = headerRow.slice(1).map((cell, index) => cell || `Slot ${index + 1}`);
     dayRows.forEach(({ day, index }) => {
       const row = grid[index] || [];
@@ -126,6 +126,38 @@ function buildWeekSchedule(grid) {
       }
     });
     return { schedule, slots, mode: "row" };
+  }
+
+  const fallbackSlots = [];
+  const fallbackSchedule = Object.fromEntries(dayOrder.map((day) => [day, []]));
+  let activeDay = "";
+
+  grid.forEach((row, rowIndex) => {
+    const rowText = (row || []).map((cell) => normalizeDayText(cell)).join(" ");
+    const matchedDay = dayOrder.find((day) => cellHasDay(rowText, day));
+
+    if (matchedDay) {
+      activeDay = matchedDay;
+      return;
+    }
+
+    if (!activeDay || !row || row.length < 2) {
+      return;
+    }
+
+    const slot = row[0] || `Slot ${rowIndex}`;
+    const values = row.slice(1).filter(isSlotValue);
+    values.forEach((value) => {
+      fallbackSchedule[activeDay].push({ slot, value });
+    });
+    if (!fallbackSlots.includes(slot)) {
+      fallbackSlots.push(slot);
+    }
+  });
+
+  const fallbackDays = dayOrder.filter((day) => fallbackSchedule[day].length);
+  if (fallbackDays.length) {
+    return { schedule: fallbackSchedule, slots: fallbackSlots, mode: "fallback" };
   }
 
   return { schedule, slots: [], mode: "unknown" };
@@ -209,24 +241,22 @@ export default function Timetable() {
             </span>
           </div>
 
-          {daysWithData.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {dayOrder.map((day) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => setSelectedDay(day)}
-                  className={`rounded-full px-3 py-1 text-xs font-black transition-colors ${
-                    selectedDay === day
-                      ? "bg-ink text-paper"
-                      : "bg-surface text-ink/60 hover:text-ink"
-                  }`}
-                >
-                  {day}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {dayOrder.map((day) => (
+              <button
+                key={day}
+                type="button"
+                onClick={() => setSelectedDay(day)}
+                className={`rounded-full px-3 py-1 text-xs font-black transition-colors ${
+                  selectedDay === day
+                    ? "bg-ink text-paper"
+                    : "bg-surface text-ink/60 hover:text-ink"
+                }`}
+              >
+                {day}
+              </button>
+            ))}
+          </div>
 
           {selectedRows.length ? (
             <div className="mt-3 space-y-2">
