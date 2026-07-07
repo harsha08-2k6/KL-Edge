@@ -86,7 +86,7 @@ if ALLOW_INSECURE:
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-CAPTCHA_SESSION_TTL_MS = int(os.getenv("ERP_CAPTCHA_SESSION_TTL_MS", "3600000"))
+CAPTCHA_SESSION_TTL_MS = int(os.getenv("ERP_CAPTCHA_SESSION_TTL_MS", "604800000")) # Default to 7 days to avoid unnecessary expirations
 MAX_CAPTCHA_SESSIONS = int(os.getenv("ERP_MAX_CAPTCHA_SESSIONS", "5"))
 DEFAULT_TIMEOUT_MS = int(os.getenv("ERP_TIMEOUT_MS", "45000"))
 
@@ -278,6 +278,17 @@ def get_captcha_session(session_id: str) -> Optional[Dict]:
             return json.loads(raw)
         return None
     return captcha_sessions_memory.get(session_id)
+
+
+def touch_captcha_session(session: requests.Session) -> None:
+    session_id = getattr(session, "captcha_session_id", None)
+    if not session_id:
+        return
+    captcha_session = get_captcha_session(session_id)
+    if captcha_session:
+        captcha_session["cookies"] = serialize_cookies(session.cookies)
+        captcha_session["created_at"] = time.time()
+        save_captcha_session(session_id, captcha_session)
 
 def reconstruct_session(cookies: Dict[str, str]) -> requests.Session:
     session = requests.Session()
@@ -492,6 +503,7 @@ def check_session_expiry(session: requests.Session, requested_url: str, response
                     captcha_session["is_logged_in"] = False
                     save_captcha_session(session_id, captcha_session)
             raise AppError("ERP session expired. Please re-authenticate.", 410)
+    touch_captcha_session(session)
 
 
 def request_page(
@@ -2696,6 +2708,13 @@ def prune_captcha_sessions() -> None:
     for session_id in expired:
         close_captcha_session(session_id)
 
-    while len(captcha_sessions_memory) >= MAX_CAPTCHA_SESSIONS:
-        oldest = min(captcha_sessions_memory.items(), key=lambda item: item[1].get("created_at", 0))
+    # Prune only pending (unlogged-in) sessions to avoid terminating active logged-in sync sessions
+    pending_sessions = [
+        (session_id, entry)
+        for session_id, entry in captcha_sessions_memory.items()
+        if not entry.get("is_logged_in", False)
+    ]
+    while len(pending_sessions) >= MAX_CAPTCHA_SESSIONS:
+        oldest = min(pending_sessions, key=lambda item: item[1].get("created_at", 0))
         close_captcha_session(oldest[0])
+        pending_sessions.remove(oldest)
