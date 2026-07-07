@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
-from urllib.parse import quote, urljoin
+from urllib.parse import quote, urljoin, urlparse, parse_qsl
 
 import requests
 from bs4 import BeautifulSoup
@@ -667,9 +667,14 @@ def submit_form(session: requests.Session, form: Dict[str, object], data: Dict[s
 
     try:
         if method == "get":
+            parsed_url = urlparse(url)
+            url_params = dict(parse_qsl(parsed_url.query))
+            # Merge query parameters from url into data to avoid duplicate query string keys (like 'r')
+            merged_data = {**data, **url_params}
+            base_url_no_query = parsed_url._replace(query="").geturl()
             response = session.get(
-                url,
-                params=data,
+                base_url_no_query,
+                params=merged_data,
                 headers=headers,
                 timeout=get_timeout(),
                 verify=not ALLOW_INSECURE
@@ -1051,20 +1056,23 @@ def extract_attendance_form(html: str, base_url: str) -> Dict[str, object]:
     action = form.get("action") or base_url
     method = (form.get("method") or "post").lower()
 
-    # KLERP specific: Look for AJAX URL in scripts that might intercept this form
-    ajax_url = ""
-    scripts = soup.find_all("script")
-    form_id = form.get("id", "")
-    for script in scripts:
-        script_text = script.string or ""
-        if form_id and form_id in script_text and ".ajax" in script_text:
-            # Try to find the URL in the AJAX call
-            match = re.search(r"url\s*:\s*['\"]([^'\"]+)['\"]", script_text)
-            if match:
-                ajax_url = match.group(1)
-                if DEBUG_ENABLED:
-                    print(f"[erp:scraper] Detected AJAX interception for form {form_id}, URL: {ajax_url}")
-                break
+    # KLERP specific: Check form attributes for AJAX search URL first
+    ajax_url = form.get("data-ajax-search-url") or ""
+
+    # Look for AJAX URL in scripts that might intercept this form if not found in attributes
+    if not ajax_url:
+        scripts = soup.find_all("script")
+        form_id = form.get("id", "")
+        for script in scripts:
+            script_text = script.string or ""
+            if form_id and form_id in script_text and ".ajax" in script_text:
+                # Try to find the URL in the AJAX call
+                match = re.search(r"url\s*:\s*['\"]([^'\"]+)['\"]", script_text)
+                if match:
+                    ajax_url = match.group(1)
+                    if DEBUG_ENABLED:
+                        print(f"[erp:scraper] Detected AJAX interception for form {form_id}, URL: {ajax_url}")
+                    break
 
     return {
         "html": str(form),
@@ -2663,16 +2671,39 @@ def extract_timetable_form(html: str, base_url: str) -> Dict[str, object]:
 
     form = form or (forms[0] if forms else None)
     if not form:
-        return {"html": "", "actionUrl": base_url, "method": "post"}
+        return {
+            "html": "",
+            "actionUrl": base_url,
+            "method": "post",
+            "academicSelect": academic_select,
+            "semesterSelect": semester_select
+        }
 
     action = form.get("action") or base_url
     method = (form.get("method") or "post").lower()
+
+    # Check if there's a data-ajax-search-url attribute on the form
+    ajax_url = form.get("data-ajax-search-url") or ""
+
+    # Check if there is an AJAX script intercepting it
+    if not ajax_url:
+        scripts = soup.find_all("script")
+        form_id = form.get("id", "")
+        for script in scripts:
+            script_text = script.string or ""
+            if form_id and form_id in script_text and ".ajax" in script_text:
+                match = re.search(r"url\s*:\s*['\"]([^'\"]+)['\"]", script_text)
+                if match:
+                    ajax_url = match.group(1)
+                    break
+
     return {
         "html": str(form),
-        "actionUrl": urljoin(base_url, action),
+        "actionUrl": urljoin(base_url, ajax_url or action),
         "method": method,
         "academicSelect": academic_select,
-        "semesterSelect": semester_select
+        "semesterSelect": semester_select,
+        "isAjax": bool(ajax_url)
     }
 
 

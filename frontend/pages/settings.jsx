@@ -6,10 +6,11 @@ import { Footer } from "../components/Footer.jsx";
 import { Toast } from "../components/Toast.jsx";
 import { fetchCaptcha, syncAttendance } from "../utils/api.js";
 import { readLocal, removeLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
+import { showNotification } from "../utils/notifications.js";
 
 const academicYears = [
-  "2025-2026",
   "2026-2027",
+  "2025-2026",
   "2024-2025",
   "2023-2024",
   "2022-2023",
@@ -92,14 +93,18 @@ export default function Settings() {
       localStorage.setItem("kl-edge.notificationsEnabled", "false");
       setNotificationsEnabled(false);
     } else {
-      const permission = await Notification.requestPermission();
+      let permission = "default";
+      try {
+        permission = await Notification.requestPermission();
+      } catch (err) {
+        console.error("Failed to request notification permission:", err);
+      }
       setPermissionState(permission);
       if (permission === "granted") {
         localStorage.setItem("kl-edge.notificationsEnabled", "true");
         setNotificationsEnabled(true);
-        new Notification("KL-Edge Notifications Enabled! 🔔", {
-          body: "You will now receive alerts for class countdowns and sync updates.",
-          icon: "/favicon.ico"
+        showNotification("KL-Edge Notifications Enabled! 🔔", {
+          body: "You will now receive alerts for class countdowns and sync updates."
         });
       } else {
         alert("Notification permission was not granted.");
@@ -192,9 +197,8 @@ export default function Settings() {
       setToast({ message: "Attendance synced successfully! ✅", type: "success" });
 
       if (localStorage.getItem("kl-edge.notificationsEnabled") === "true") {
-        new Notification("KL-Edge Sync Complete", {
-          body: "Your attendance and timetable have been synced successfully.",
-          icon: "/favicon.ico"
+        showNotification("KL-Edge Sync Complete", {
+          body: "Your attendance and timetable have been synced successfully."
         });
       }
     } catch (error) {
@@ -305,7 +309,7 @@ export default function Settings() {
             value={captcha}
             onChange={(event) => setCaptcha(event.target.value)}
             className="mt-1 h-9 w-full rounded-lg border border-ink/15 bg-white px-3 text-sm font-bold focus:border-mint focus:ring-1 focus:ring-mint"
-            placeholder="Optional (Auto-solved if left blank)"
+            placeholder="Enter Captcha"
             autoComplete="off"
           />
         </label>

@@ -8,6 +8,7 @@ import { SubjectTable } from "../components/SubjectTable.jsx";
 import { Toast } from "../components/Toast.jsx";
 import { fetchLatestSync, syncAttendance } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
+import { showNotification } from "../utils/notifications.js";
 import { calculateOverall } from '../utils/attendance.js';
 import { enrichSubjects, getAttendanceStatus, classesNeededForTarget } from "../utils/attendance.js";
 
@@ -120,9 +121,8 @@ export default function Home() {
       setTimeout(() => setSuccessMessage(""), 3000);
 
       if (localStorage.getItem("kl-edge.notificationsEnabled") === "true") {
-        new Notification("KL-Edge Sync Complete", {
-          body: "Your attendance and timetable have been refreshed.",
-          icon: "/favicon.ico"
+        showNotification("KL-Edge Sync Complete", {
+          body: "Your attendance and timetable have been refreshed."
         });
       }
     } catch (error) {
