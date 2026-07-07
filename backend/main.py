@@ -180,11 +180,21 @@ async def auto_sync_loop():
             if not profile:
                 continue
 
-            captcha_session = get_captcha_session(profile.get("captchaSessionId") or "")
+            session_id = profile.get("captchaSessionId") or ""
+            captcha_session = get_captcha_session(session_id)
             if not captcha_session:
                 if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
-                    print(f"[erp:auto-sync] captcha session expired for {erp_id}; waiting for manual sync", flush=True)
-                continue
+                    print(f"[erp:auto-sync] captcha session expired/missing for {erp_id}; generating new one...", flush=True)
+                try:
+                    captcha_res = create_captcha_session()
+                    session_id = captcha_res["sessionId"]
+                    profile["captchaSessionId"] = session_id
+                    save_auto_sync_profile(profile)
+                    captcha_session = get_captcha_session(session_id)
+                except Exception as exc:
+                    if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
+                        print(f"[erp:auto-sync] failed creating captcha session for {erp_id}: {exc}", flush=True)
+                    continue
 
             try:
                 result = await asyncio.to_thread(run_full_sync, {**profile, "captcha": ""})
@@ -235,10 +245,10 @@ app.add_middleware(
 class SyncRequest(BaseModel):
     erpId: str
     password: str
-    captcha: str
+    captcha: str = ""
     academicYear: str
     semesterId: str
-    captchaSessionId: str
+    captchaSessionId: str = ""
 
 
 @app.exception_handler(AppError)
@@ -291,23 +301,36 @@ def get_captcha():
 
 @app.post("/api/sync")
 def sync_attendance_route(body: SyncRequest):
-    if not all([body.erpId, body.password, body.academicYear, body.semesterId, body.captchaSessionId]):
+    if not all([body.erpId, body.password, body.academicYear, body.semesterId]):
         raise AppError(
-            "ERP ID, password, captcha session, academic year, and semester are required.",
+            "ERP ID, password, academic year, and semester are required.",
             400
         )
 
-    captcha_session = get_captcha_session(body.captchaSessionId)
-    if not captcha_session:
-        raise AppError("Captcha session expired. Open Settings and do one manual sync again.", 410)
+    session_id = body.captchaSessionId
+    if not session_id:
+        try:
+            captcha_res = create_captcha_session()
+            session_id = captcha_res["sessionId"]
+        except Exception as exc:
+            raise AppError(f"Failed to initialize CAPTCHA session: {str(exc)}", 502)
 
-    if not body.captcha and not captcha_session.get("is_logged_in", False):
-        raise AppError("Captcha is required for the first login. Open Settings and complete a manual sync first.", 400)
+    captcha_session = get_captcha_session(session_id)
+    if not captcha_session:
+        try:
+            captcha_res = create_captcha_session()
+            session_id = captcha_res["sessionId"]
+        except Exception as exc:
+            raise AppError(f"Failed to re-initialize CAPTCHA session: {str(exc)}", 502)
 
     payload = body.model_dump()
+    payload["captchaSessionId"] = session_id
+    
     result = run_full_sync(payload)
     save_auto_sync_profile(payload)
     save_latest_sync_result(body.erpId, result)
+    
+    result["captchaSessionId"] = session_id
     return result
 
 

@@ -181,7 +181,9 @@ export default function Settings() {
         message: timetable?.message || ""
       });
       writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);
-      if (captchaSessionId) {
+      if (payload.captchaSessionId) {
+        writeLocal(STORAGE_KEYS.captchaSessionId, payload.captchaSessionId);
+      } else if (captchaSessionId) {
         writeLocal(STORAGE_KEYS.captchaSessionId, captchaSessionId);
       }
       setCaptcha("");
@@ -303,7 +305,7 @@ export default function Settings() {
             value={captcha}
             onChange={(event) => setCaptcha(event.target.value)}
             className="mt-1 h-9 w-full rounded-lg border border-ink/15 bg-white px-3 text-sm font-bold focus:border-mint focus:ring-1 focus:ring-mint"
-            placeholder="Enter fresh captcha before every sync"
+            placeholder="Optional (Auto-solved if left blank)"
             autoComplete="off"
           />
         </label>
@@ -347,7 +349,7 @@ export default function Settings() {
         <button
           type="button"
           onClick={handleSync}
-          disabled={busy || !erpId || !password || !captcha || !captchaSessionId || !academicYear || !semesterId}
+          disabled={busy || !erpId || !password || !academicYear || !semesterId}
           className="tap inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-paper disabled:cursor-not-allowed disabled:opacity-45"
         >
           <RefreshCw size={18} className={busy ? "animate-spin" : ""} />

@@ -331,6 +331,56 @@ def get_timeout() -> float:
     return max(5.0, DEFAULT_TIMEOUT_MS / 1000.0)
 
 
+_ocr_client = None
+
+def get_ocr_client():
+    global _ocr_client
+    if _ocr_client is None:
+        try:
+            import ddddocr
+            _ocr_client = ddddocr.DdddOcr(show_ad=False)
+        except ImportError:
+            raise AppError("ddddocr package is not installed. Please install it with 'pip install ddddocr' or complete CAPTCHA manually.", 501)
+        except Exception as e:
+            raise AppError(f"Failed to initialize CAPTCHA solver: {str(e)}. Please complete CAPTCHA manually.", 501)
+    return _ocr_client
+
+
+def verify_session(session: requests.Session) -> bool:
+    try:
+        test_response = session.get(
+            ATTENDANCE_URL,
+            headers=build_headers(ATTENDANCE_URL),
+            timeout=get_timeout(),
+            verify=not ALLOW_INSECURE
+        )
+        if "site/login" in test_response.url.lower() or "site%2flogin" in test_response.url.lower():
+            return False
+        return True
+    except Exception:
+        return False
+
+
+def refresh_login_captcha(session: requests.Session) -> tuple[str, str]:
+    login_response = session.get(LOGIN_URL, headers=build_headers(LOGIN_URL), verify=not ALLOW_INSECURE, timeout=get_timeout())
+    login_html = login_response.text or ""
+    
+    captcha_url = extract_captcha_url(login_html, LOGIN_URL)
+    if not captcha_url:
+        raise AppError("Captcha URL not found on ERP login page.", 502)
+        
+    captcha_response = session.get(captcha_url, headers=build_headers(LOGIN_URL), verify=not ALLOW_INSECURE, timeout=get_timeout())
+    image_bytes = captcha_response.content or b""
+    if not image_bytes:
+        raise AppError("Captcha image was empty.", 502)
+        
+    ocr = get_ocr_client()
+    solved_text = ocr.classification(image_bytes)
+    
+    solved_text = re.sub(r'[^a-zA-Z0-9]', '', solved_text).lower()
+    return solved_text, login_html
+
+
 def create_captcha_session() -> Dict[str, str]:
 
     prune_captcha_sessions()
@@ -385,100 +435,136 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
 
     # Check if already logged in to this session
     if captcha_session.get("is_logged_in", False):
-        return session
+        if verify_session(session):
+            return session
+        else:
+            if DEBUG_ENABLED:
+                print("[erp:login] Saved session expired on ERP server, performing automatic re-login...", flush=True)
+            captcha_session["is_logged_in"] = False
+            save_captcha_session(session_id, captcha_session)
 
     try:
-        login_form = extract_login_form(captcha_session.get("login_html", ""), LOGIN_URL)
-        login_data = build_login_form_data(login_form, payload)
-
-        if DEBUG_ENABLED:
-            erp_id = payload.get("erpId", "") or ""
-            masked_id = f"{erp_id[:2]}***{erp_id[-2:]}" if len(erp_id) >= 4 else "***"
-            print("[erp:login] submit", {
-                "action": login_form.get("actionUrl"),
-                "method": login_form.get("method"),
-                "isAjax": bool(login_form.get("isAjax")),
-                "pjaxContainer": login_form.get("pjaxContainer") or "",
-                "fields": list(login_data.keys()),
-                "erpId": masked_id,
-                "passwordLen": len(payload.get("password", "") or ""),
-                "captchaLen": len(payload.get("captcha", "") or "")
-            }, flush=True)
+        max_attempts = 5
+        attempt = 0
+        login_html = captcha_session.get("login_html", "")
+        user_captcha = payload.get("captcha", "")
         
-        csrf_token = (login_form.get("hiddenFields") or {}).get("_csrf", "")
-        prepare_login_stakeholder(session, payload.get("erpId", ""), csrf_token)
-
-        login_response = submit_form(
-            session,
-            login_form,
-            login_data,
-            referer=LOGIN_URL
-        )
-
-        # Handle Yii2 PJAX X-Redirect
-        redirect_url = login_response.headers.get("X-Redirect") or login_response.headers.get("X-Pjax-Url")
-        if redirect_url:
-            login_response = request_page(session, urljoin(LOGIN_URL, redirect_url), headers=build_headers(LOGIN_URL))
-
-        login_html = login_response.text or ""
-
-        if DEBUG_ENABLED:
-            print("[erp:login] response", {
-                "status": login_response.status_code,
-                "url": login_response.url,
-                "history": [resp.status_code for resp in login_response.history],
-                "contentType": login_response.headers.get("Content-Type", ""),
-                "isLoginPage": looks_like_login_page(login_html),
-                "hasCaptcha": "captcha" in login_html.lower()
-            }, flush=True)
-
-        has_app_redirect = False
-        for resp in login_response.history:
-            location = (resp.headers.get('Location') or resp.url).lower()
-            if location and "site/login" not in location and "site%2flogin" not in location:
-                has_app_redirect = True
-
-        if has_app_redirect and looks_like_login_page(login_html):
-            raise AppError("Invalid credentials. Check username, password and captcha.", 401)
+        while attempt < max_attempts:
+            attempt += 1
             
-        if looks_like_login_failure(login_response.url, login_html, login_form):
-            # Fallback: try a full form submit without PJAX headers
-            if login_form.get("isAjax"):
+            if attempt == 1 and user_captcha:
+                captcha_code = user_captcha
+            else:
                 if DEBUG_ENABLED:
-                    print("[erp:login] retrying without PJAX headers", flush=True)
-                fallback_form = dict(login_form)
-                fallback_form["isAjax"] = False
-                fallback_form["pjaxContainer"] = ""
-                login_response = submit_form(
-                    session,
-                    fallback_form,
-                    login_data,
-                    referer=LOGIN_URL
-                )
-                redirect_url = login_response.headers.get("X-Redirect") or login_response.headers.get("X-Pjax-Url")
-                if redirect_url:
-                    login_response = request_page(session, urljoin(LOGIN_URL, redirect_url), headers=build_headers(LOGIN_URL))
-                login_html = login_response.text or ""
+                    print(f"[erp:login] Auto-solving captcha, attempt {attempt}/{max_attempts}...", flush=True)
+                try:
+                    captcha_code, login_html = refresh_login_captcha(session)
+                    if DEBUG_ENABLED:
+                        print(f"[erp:login] Solved captcha: '{captcha_code}'", flush=True)
+                except Exception as e:
+                    if DEBUG_ENABLED:
+                        print(f"[erp:login] Failed to refresh/solve captcha: {e}", flush=True)
+                    if attempt == max_attempts:
+                        raise AppError(f"Failed to refresh/solve captcha: {str(e)}", 500)
+                    continue
 
-            if not looks_like_login_failure(login_response.url, login_html, login_form):
-                captcha_session["is_logged_in"] = True
-                captcha_session["dashboard_html"] = login_html
-                captcha_session["cookies"] = serialize_cookies(session.cookies)
-                save_captcha_session(session_id, captcha_session)
-                return session
+            login_form = extract_login_form(login_html, LOGIN_URL)
+            temp_payload = {**payload, "captcha": captcha_code}
+            login_data = build_login_form_data(login_form, temp_payload)
 
-            # Show simple error message for invalid login attempt
             if DEBUG_ENABLED:
-                print(f"[erp:login] Login failed. User will be prompted to check credentials.", flush=True)
-                save_debug_html("last_login_failure.html", login_html, login_response.url)
-            raise AppError("Invalid credentials. Check username, password and captcha.", 401)
+                erp_id = payload.get("erpId", "") or ""
+                masked_id = f"{erp_id[:2]}***{erp_id[-2:]}" if len(erp_id) >= 4 else "***"
+                print(f"[erp:login] submit attempt {attempt}", {
+                    "action": login_form.get("actionUrl"),
+                    "method": login_form.get("method"),
+                    "fields": list(login_data.keys()),
+                    "erpId": masked_id,
+                    "captcha": captcha_code
+                }, flush=True)
+            
+            csrf_token = (login_form.get("hiddenFields") or {}).get("_csrf", "")
+            prepare_login_stakeholder(session, payload.get("erpId", ""), csrf_token)
 
-        captcha_session["is_logged_in"] = True
-        captcha_session["dashboard_html"] = login_html
-        captcha_session["cookies"] = serialize_cookies(session.cookies)
-        save_captcha_session(session_id, captcha_session)
-        
-        return session
+            login_response = submit_form(
+                session,
+                login_form,
+                login_data,
+                referer=LOGIN_URL
+            )
+
+            # Handle Yii2 PJAX X-Redirect
+            redirect_url = login_response.headers.get("X-Redirect") or login_response.headers.get("X-Pjax-Url")
+            if redirect_url:
+                login_response = request_page(session, urljoin(LOGIN_URL, redirect_url), headers=build_headers(LOGIN_URL))
+
+            res_html = login_response.text or ""
+
+            if DEBUG_ENABLED:
+                print(f"[erp:login] response attempt {attempt}", {
+                    "status": login_response.status_code,
+                    "url": login_response.url,
+                    "isLoginPage": looks_like_login_page(res_html)
+                }, flush=True)
+
+            has_app_redirect = False
+            for resp in login_response.history:
+                location = (resp.headers.get('Location') or resp.url).lower()
+                if location and "site/login" not in location and "site%2flogin" not in location:
+                    has_app_redirect = True
+
+            if has_app_redirect and looks_like_login_page(res_html):
+                raise AppError("Invalid credentials. Check username, password and captcha.", 401)
+                
+            if looks_like_login_failure(login_response.url, res_html, login_form):
+                # Fallback: try a full form submit without PJAX headers
+                if login_form.get("isAjax"):
+                    if DEBUG_ENABLED:
+                        print("[erp:login] retrying without PJAX headers", flush=True)
+                    fallback_form = dict(login_form)
+                    fallback_form["isAjax"] = False
+                    fallback_form["pjaxContainer"] = ""
+                    login_response = submit_form(
+                        session,
+                        fallback_form,
+                        login_data,
+                        referer=LOGIN_URL
+                    )
+                    redirect_url = login_response.headers.get("X-Redirect") or login_response.headers.get("X-Pjax-Url")
+                    if redirect_url:
+                        login_response = request_page(session, urljoin(LOGIN_URL, redirect_url), headers=build_headers(LOGIN_URL))
+                    res_html = login_response.text or ""
+
+                if not looks_like_login_failure(login_response.url, res_html, login_form):
+                    captcha_session["is_logged_in"] = True
+                    captcha_session["dashboard_html"] = res_html
+                    captcha_session["cookies"] = serialize_cookies(session.cookies)
+                    save_captcha_session(session_id, captcha_session)
+                    return session
+
+                # Inspect error type
+                error_type = detect_login_error_type(res_html)
+                error_msg = extract_login_error_message(res_html) or "Invalid credentials."
+                
+                if error_type == "credentials":
+                    if DEBUG_ENABLED:
+                        print(f"[erp:login] Credentials error detected: {error_msg}. Aborting retry.", flush=True)
+                        save_debug_html("last_login_failure.html", res_html, login_response.url)
+                    raise AppError(error_msg, 401)
+
+                if attempt == max_attempts:
+                    if DEBUG_ENABLED:
+                        print(f"[erp:login] Login failed after max attempts.", flush=True)
+                        save_debug_html("last_login_failure.html", res_html, login_response.url)
+                    raise AppError(error_msg, 401)
+                continue
+
+            captcha_session["is_logged_in"] = True
+            captcha_session["dashboard_html"] = res_html
+            captcha_session["cookies"] = serialize_cookies(session.cookies)
+            save_captcha_session(session_id, captcha_session)
+            return session
+            
     except AppError as e:
         raise e
     except Exception as e:

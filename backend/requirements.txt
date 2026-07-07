@@ -6,3 +6,4 @@ beautifulsoup4
 python-dotenv
 urllib3
 redis
+ddddocr

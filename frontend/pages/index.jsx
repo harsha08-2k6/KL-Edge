@@ -95,16 +95,15 @@ export default function Home() {
       return;
     }
     const captchaSessionId = readLocal(STORAGE_KEYS.captchaSessionId, "");
-    if (!captchaSessionId) {
-      setMessage("Do one manual sync in Settings first so resync can reuse the logged-in ERP session.");
-      return;
-    }
     syncInProgressRef.current = true;
     setSyncBusy(true);
     setMessage("");
     try {
       setMessage("Syncing ERP data...");
       const payload = await syncAttendance({ ...credentials, ...syncOptions, captcha: "", captchaSessionId });
+      if (payload.captchaSessionId) {
+        writeLocal(STORAGE_KEYS.captchaSessionId, payload.captchaSessionId);
+      }
       writeLocal(STORAGE_KEYS.attendance, payload.attendance);
       writeLocal(STORAGE_KEYS.timetable, payload.timetable);
       // if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
@@ -143,9 +142,8 @@ export default function Home() {
   useEffect(() => {
     const credentials = readLocal(STORAGE_KEYS.credentials, {});
     const syncOptions = readLocal(STORAGE_KEYS.syncOptions, {});
-    const captchaSessionId = readLocal(STORAGE_KEYS.captchaSessionId, "");
 
-    if (!credentials.erpId || !credentials.password || !syncOptions.academicYear || !syncOptions.semesterId || !captchaSessionId) {
+    if (!credentials.erpId || !credentials.password || !syncOptions.academicYear || !syncOptions.semesterId) {
       return undefined;
     }
 
