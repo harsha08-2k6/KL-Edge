@@ -265,18 +265,54 @@ def dedupe_cookie(jar: requests.cookies.RequestsCookieJar, name: str) -> None:
         except KeyError:
             continue
 
+import sqlite3
+
+def get_db_connection():
+    db_path = Path(__file__).resolve().parent / "campus_map.db"
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def save_captcha_session(session_id: str, data: Dict):
     if redis_client:
-        redis_client.setex(f"captcha_session:{session_id}", CAPTCHA_SESSION_TTL_MS // 1000, json.dumps(data))
-    else:
-        captcha_sessions_memory[session_id] = data
+        try:
+            redis_client.setex(f"captcha_session:{session_id}", CAPTCHA_SESSION_TTL_MS // 1000, json.dumps(data))
+            return
+        except Exception:
+            pass
+            
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS kv_cache (key TEXT PRIMARY KEY, value TEXT)")
+        cursor.execute("INSERT OR REPLACE INTO kv_cache (key, value) VALUES (?, ?)", (f"captcha_session:{session_id}", json.dumps(data)))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[captcha:save] SQLite error: {e}", flush=True)
+    captcha_sessions_memory[session_id] = data
 
 def get_captcha_session(session_id: str) -> Optional[Dict]:
     if redis_client:
-        raw = redis_client.get(f"captcha_session:{session_id}")
-        if raw:
-            return json.loads(raw)
-        return None
+        try:
+            raw = redis_client.get(f"captcha_session:{session_id}")
+            if raw:
+                return json.loads(raw)
+        except Exception:
+            pass
+            
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS kv_cache (key TEXT PRIMARY KEY, value TEXT)")
+        cursor.execute("SELECT value FROM kv_cache WHERE key = ?", (f"captcha_session:{session_id}",))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return json.loads(row["value"])
+    except Exception as e:
+        pass
+        
     return captcha_sessions_memory.get(session_id)
 
 
@@ -649,8 +685,9 @@ def prepare_login_stakeholder(session: requests.Session, erp_id: str, csrf_token
 
 
 def submit_form(session: requests.Session, form: Dict[str, object], data: Dict[str, str], referer: str) -> requests.Response:
-    url = form.get("actionUrl")
-    method = form.get("method", "post")
+    action_url = form.get("actionUrl") or ""
+    url = urljoin(referer or LOGIN_URL, action_url)
+    method = str(form.get("method") or "post").lower()
     
     headers_extra = {"Content-Type": "application/x-www-form-urlencoded"}
     if form.get("isAjax"):

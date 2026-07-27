@@ -10,13 +10,14 @@ const navItems = [
     href: "/more",
     label: "More",
     icon: MoreHorizontal,
-    aliases: ["/marks", "/seating-plan", "/settings", "/cgpa"]
+    aliases: ["/marks", "/seating-plan", "/settings", "/cgpa", "/map"]
   }
 ];
 
 const widthClasses = {
   default: "max-w-2xl",
-  wide: "max-w-3xl"
+  wide: "max-w-3xl",
+  full: "max-w-7xl"
 };
 
 export function Layout({ children, title, action, width = "default" }) {

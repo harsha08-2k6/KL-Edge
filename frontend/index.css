@@ -61,3 +61,40 @@ textarea {
 .animate-slide-in {
   animation: slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Fix Leaflet DivIcon default styling background and border box outlines */
+.custom-leaflet-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Style Leaflet Popups to match premium theme colors and borders */
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #12151f !important;
+  border-radius: 12px !important;
+  box-shadow: 0 14px 36px rgba(18,21,31,0.15) !important;
+  font-family: inherit !important;
+  padding: 4px !important;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  box-shadow: 0 14px 36px rgba(18,21,31,0.15) !important;
+}
+
+/* Custom animation for block panels sliding in without translating horizontally */
+@keyframes panel-slide-in {
+  from {
+    transform: translateY(1.5rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-panel-slide-in {
+  animation: panel-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

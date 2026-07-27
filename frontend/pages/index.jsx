@@ -1,6 +1,6 @@
 import { RefreshCw, Settings } from "lucide-react";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
 import { SocialLinks } from "../components/SocialLinks.jsx";
@@ -15,6 +15,16 @@ import { enrichSubjects, getAttendanceStatus, classesNeededForTarget } from "../
 const AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000;
 
 export default function Home() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const credentials = readLocal(STORAGE_KEYS.credentials, {});
+    const syncOptions = readLocal(STORAGE_KEYS.syncOptions, {});
+    if (!credentials.erpId || !credentials.password || !syncOptions.academicYear || !syncOptions.semesterId) {
+      navigate("/settings");
+    }
+  }, [navigate]);
+
   const [rawSubjects, setRawSubjects] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [target, setTarget] = useState(() => readLocal("kl-edge.target", 75));

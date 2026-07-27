@@ -1,6 +1,7 @@
 import os
 import asyncio
 from datetime import datetime
+import sqlite3
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +22,8 @@ from erp_scraper import (
     sync_timetable
 )
 import json
+from routes.map import router as map_router
+
 
 # Redis key for faculty cache
 FACULTY_CACHE_KEY = "faculty_cache"
@@ -60,25 +63,51 @@ def cache_faculty(faculty_data):
         pass
 
 
+def get_db_connection():
+    db_path = os.path.join(os.path.dirname(__file__), "campus_map.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 def get_cached_json(key: str):
-    if redis_client is None:
-        return None
+    if redis_client is not None:
+        try:
+            cached = redis_client.get(key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
     try:
-        cached = redis_client.get(key)
-        if cached:
-            return json.loads(cached)
-    except Exception:
-        pass
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS kv_cache (key TEXT PRIMARY KEY, value TEXT)")
+        cursor.execute("SELECT value FROM kv_cache WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return json.loads(row["value"])
+    except Exception as e:
+        print(f"[cache:get] SQLite error: {e}", flush=True)
     return None
 
 
 def set_cached_json(key: str, value):
-    if redis_client is None:
-        return
+    if redis_client is not None:
+        try:
+            redis_client.set(key, json.dumps(value))
+            return
+        except Exception:
+            pass
     try:
-        redis_client.set(key, json.dumps(value))
-    except Exception:
-        pass
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS kv_cache (key TEXT PRIMARY KEY, value TEXT)")
+        cursor.execute("INSERT OR REPLACE INTO kv_cache (key, value) VALUES (?, ?)", (key, json.dumps(value)))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[cache:set] SQLite error: {e}", flush=True)
 
 
 def get_auto_sync_profile(erp_id: str):
@@ -113,6 +142,12 @@ def save_auto_sync_profile(payload: dict):
             redis_client.sadd(AUTO_SYNC_USER_IDS_KEY, erp_id)
         except Exception:
             pass
+    
+    # Save the updated list of users to SQLite cache list to survive restarts
+    user_list = get_cached_json(AUTO_SYNC_USER_IDS_KEY) or []
+    if erp_id not in user_list:
+        user_list.append(erp_id)
+        set_cached_json(AUTO_SYNC_USER_IDS_KEY, user_list)
 
 
 def get_latest_sync_result(erp_id: str):
@@ -173,6 +208,9 @@ async def auto_sync_loop():
                 pass
         
         if not user_ids:
+            user_ids = get_cached_json(AUTO_SYNC_USER_IDS_KEY) or []
+            
+        if not user_ids:
             user_ids = list(auto_sync_user_ids_memory)
 
         for erp_id in user_ids:
@@ -214,6 +252,8 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup_auto_sync():
+    from services.map_db import init_db
+    init_db()
     global auto_sync_task
     if AUTO_SYNC_INTERVAL_SECONDS > 0:
         auto_sync_task = asyncio.create_task(auto_sync_loop())
@@ -240,6 +280,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+app.include_router(map_router)
 
 
 class SyncRequest(BaseModel):

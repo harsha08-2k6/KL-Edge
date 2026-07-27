@@ -10,7 +10,12 @@ class ApiError extends Error {
 
 export async function fetchCaptcha() {
   const response = await fetch(`${API_BASE}/api/captcha`);
-  const payload = await response.json();
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (e) {
+    throw new ApiError("Failed to parse captcha response from server", response.status);
+  }
 
   if (!response.ok) {
     throw new ApiError(payload?.error || "Could not load ERP captcha", response.status);
@@ -28,7 +33,12 @@ export async function syncAttendance({ erpId, password, captcha, academicYear, s
     body: JSON.stringify({ erpId, password, captcha, academicYear, semesterId, captchaSessionId })
   });
 
-  const payload = await response.json();
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (e) {
+    throw new ApiError("Failed to parse sync response from server", response.status);
+  }
 
   if (!response.ok) {
     throw new ApiError(payload?.error || "Sync failed", response.status);

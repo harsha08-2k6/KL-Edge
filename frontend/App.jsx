@@ -11,6 +11,7 @@ import Faculty from "./pages/faculty.jsx";
 import Settings from "./pages/settings.jsx";
 import Privacy from "./pages/privacy.jsx";
 import Documentation from "./pages/documentation.jsx";
+import Map from "./pages/map.jsx";
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/documentation" element={<Documentation />} />
+        <Route path="/map" element={<Map />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

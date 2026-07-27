@@ -1,8 +1,9 @@
-import { Armchair, BookMarked, ChevronRight, GraduationCap, ListChecks, Settings } from "lucide-react";
+import { Armchair, BookMarked, ChevronRight, GraduationCap, ListChecks, Settings, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
 
 const moreLinks = [
+  { href: "/map", label: "Campus Map", description: "Interactive map navigation with AI Assistant support.", icon: MapPin },
   { href: "/marks", label: "Marks", description: "View internal exam marks (Coming Soon).", icon: ListChecks },
   { href: "/cgpa", label: "CGPA", description: "Check your semester-wise CGPA.", icon: GraduationCap },
   { href: "/seating-plan", label: "Seating Plan", description: "Find your exam seating arrangements.", icon: Armchair },
