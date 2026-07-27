@@ -276,7 +276,7 @@ origin_allow_list = [origin.strip() for origin in raw_origins.split(",") if orig
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if "*" in origin_allow_list else origin_allow_list,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"]
 )
