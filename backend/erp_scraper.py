@@ -34,9 +34,14 @@ REDIS_URL = os.getenv("KV_URL") or os.getenv("REDIS_URL")
 
 if REDIS_URL:
     REDIS_URL = REDIS_URL.strip()
-    if not REDIS_URL.startswith(("redis://", "rediss://", "unix://")):
-        if "://" not in REDIS_URL:
-            REDIS_URL = f"redis://{REDIS_URL}"
+    if "redis://" in REDIS_URL:
+        idx = REDIS_URL.find("redis://")
+        REDIS_URL = REDIS_URL[idx:].split()[0]
+    elif "rediss://" in REDIS_URL:
+        idx = REDIS_URL.find("rediss://")
+        REDIS_URL = REDIS_URL[idx:].split()[0]
+    elif "://" not in REDIS_URL:
+        REDIS_URL = f"redis://{REDIS_URL}"
 
 if HAS_REDIS and REDIS_URL and REDIS_URL.startswith(("redis://", "rediss://", "unix://")):
     try:

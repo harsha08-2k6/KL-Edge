@@ -266,7 +266,7 @@ async def shutdown_auto_sync():
         auto_sync_task.cancel()
         try:
             await auto_sync_task
-        except Exception:
+        except (Exception, asyncio.CancelledError):
             pass
         auto_sync_task = None
 
