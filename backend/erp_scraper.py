@@ -32,12 +32,22 @@ except ImportError:
 
 REDIS_URL = os.getenv("KV_URL") or os.getenv("REDIS_URL")
 
+if REDIS_URL:
+    REDIS_URL = REDIS_URL.strip()
+    if not REDIS_URL.startswith(("redis://", "rediss://", "unix://")):
+        if "://" not in REDIS_URL:
+            REDIS_URL = f"redis://{REDIS_URL}"
+
 if HAS_REDIS and REDIS_URL and REDIS_URL.startswith(("redis://", "rediss://", "unix://")):
-    redis_client = redis.Redis.from_url(REDIS_URL)
+    try:
+        redis_client = redis.Redis.from_url(REDIS_URL)
+    except Exception as e:
+        print(f"Error connecting to Redis: {e}", flush=True)
+        redis_client = None
 else:
     redis_client = None
     if REDIS_URL:
-        print("Warning: Invalid REDIS_URL scheme. Must start with redis:// or rediss://. Falling back to memory.")
+        print(f"Warning: Invalid REDIS_URL scheme. Must start with redis:// or rediss://. Found: {REDIS_URL[:20]}... Falling back to memory.", flush=True)
 
 
 def selector_to_id(selector: str) -> str:
