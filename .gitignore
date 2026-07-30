@@ -5,3 +5,14 @@ frontend/dist
 .env.local
 .dist
 *.log
+
+# Python
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Backend scraper debug files
+backend/last_*_failure.html
+backend/last_*.html
+backend/file.tmp
