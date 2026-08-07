@@ -1,4 +1,4 @@
-import { RefreshCw, Settings } from "lucide-react";
+import { RefreshCw, Settings, Bell } from "lucide-react";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
@@ -8,22 +8,24 @@ import { SubjectTable } from "../components/SubjectTable.jsx";
 import { Toast } from "../components/Toast.jsx";
 import { fetchLatestSync, syncAttendance } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
-import { showNotification } from "../utils/notifications.js";
+import { showNotification, processSyncUpdates } from "../utils/notifications.js";
 import { calculateOverall } from '../utils/attendance.js';
 import { enrichSubjects, getAttendanceStatus, classesNeededForTarget } from "../utils/attendance.js";
-
-const AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000;
 
 export default function Home() {
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const hasCredentials = useMemo(() => {
     const credentials = readLocal(STORAGE_KEYS.credentials, {});
     const syncOptions = readLocal(STORAGE_KEYS.syncOptions, {});
-    if (!credentials.erpId || !credentials.password || !syncOptions.academicYear || !syncOptions.semesterId) {
-      navigate("/settings");
+    return !!(credentials.erpId && credentials.password && syncOptions.academicYear && syncOptions.semesterId);
+  }, []);
+
+  useEffect(() => {
+    if (!hasCredentials) {
+      navigate("/settings", { replace: true });
     }
-  }, [navigate]);
+  }, [hasCredentials, navigate]);
 
   const [rawSubjects, setRawSubjects] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -31,7 +33,15 @@ export default function Home() {
   const [syncBusy, setSyncBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [notifications, setNotifications] = useState(() => readLocal("kl-edge.recentUpdates", []));
+  const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
   const syncInProgressRef = useRef(false);
+
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+
+  if (!hasCredentials) {
+    return null;
+  }
 
   const selectTarget = (t) => {
     setTarget(t);
@@ -49,6 +59,8 @@ export default function Home() {
         }
         const latest = await fetchLatestSync(credentials.erpId);
         if (latest?.attendance) {
+          processSyncUpdates(latest);
+          setNotifications(readLocal("kl-edge.recentUpdates", []));
           writeLocal(STORAGE_KEYS.attendance, latest.attendance);
           writeLocal(STORAGE_KEYS.timetable, latest.timetable);
           if (latest.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, latest.seatingPlan);
@@ -76,6 +88,7 @@ export default function Home() {
     const syncWhenActive = () => {
       if (document.visibilityState === "visible") {
         void refreshFromBackend();
+        setNotifications(readLocal("kl-edge.recentUpdates", []));
       }
     };
 
@@ -115,6 +128,8 @@ export default function Home() {
       if (payload.captchaSessionId) {
         writeLocal(STORAGE_KEYS.captchaSessionId, payload.captchaSessionId);
       }
+      processSyncUpdates(payload);
+      setNotifications(readLocal("kl-edge.recentUpdates", []));
       writeLocal(STORAGE_KEYS.attendance, payload.attendance);
       writeLocal(STORAGE_KEYS.timetable, payload.timetable);
       // if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
@@ -138,9 +153,9 @@ export default function Home() {
     } catch (error) {
       setMessage(
         error.status === 401
-          ? `${error.message} Please re-run a manual sync in Settings.`
+          ? "ERP sync failed: Invalid credentials. Check your Settings."
           : error.status === 410
-            ? "Saved ERP session expired. Open Settings and do one manual sync again."
+            ? "ERP sync failed: Session expired. Check your Settings."
           : error.message
       );
     } finally {
@@ -153,16 +168,26 @@ export default function Home() {
     const credentials = readLocal(STORAGE_KEYS.credentials, {});
     const syncOptions = readLocal(STORAGE_KEYS.syncOptions, {});
 
-    if (!credentials.erpId || !credentials.password || !syncOptions.academicYear || !syncOptions.semesterId) {
-      return undefined;
+    if (credentials.erpId && credentials.password && syncOptions.academicYear && syncOptions.semesterId) {
+      const lastUpdated = readLocal(STORAGE_KEYS.lastUpdated, null);
+      const lastSyncTime = lastUpdated ? new Date(lastUpdated).getTime() : 0;
+      if (isNaN(lastSyncTime) || Date.now() - lastSyncTime > 10 * 60 * 1000) {
+        handleResync();
+      }
     }
-
-    const timerId = window.setInterval(() => {
-      handleResync();
-    }, AUTO_SYNC_INTERVAL_MS);
-
-    return () => window.clearInterval(timerId);
   }, [handleResync]);
+
+  const toggleNotificationsPanel = useCallback(() => {
+    setShowNotificationsPanel((prev) => {
+      const next = !prev;
+      if (next) {
+        const updated = notifications.map((n) => ({ ...n, read: true }));
+        writeLocal("kl-edge.recentUpdates", updated);
+        setNotifications(updated);
+      }
+      return next;
+    });
+  }, [notifications]);
 
   const subjects = useMemo(() => enrichSubjects(rawSubjects, target), [rawSubjects, target]);
   const overall = calculateOverall(rawSubjects);
@@ -179,6 +204,17 @@ export default function Home() {
       action={
         <div className="flex flex-wrap items-center justify-end gap-2">
           <SocialLinks showLinkedIn={false} />
+          <button
+            onClick={toggleNotificationsPanel}
+            aria-label="Recent Updates"
+            title="Recent Updates"
+            className="tap relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-ink/10 bg-white text-ink/70 shadow-soft transition-colors hover:text-ink"
+          >
+            <Bell size={16} />
+            {unreadCount > 0 && (
+              <span className="absolute right-2 top-2 flex h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-white animate-pulse" />
+            )}
+          </button>
           <Link
             to="/settings"
             aria-label="Settings"
@@ -201,6 +237,72 @@ export default function Home() {
       {message && (
         <div className="mb-3 rounded-xl border border-ink/10 bg-white/80 px-3 py-2 text-sm font-bold text-ink/70 shadow-soft">
           {message}
+        </div>
+      )}
+
+      {showNotificationsPanel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-ink/10 bg-white p-5 shadow-lg animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-ink/5 pb-3">
+              <h3 className="text-base font-black text-ink flex items-center gap-2">
+                <Bell size={18} className="text-ink/70" />
+                Recent Updates
+              </h3>
+              <button
+                onClick={() => setShowNotificationsPanel(false)}
+                className="tap rounded-lg bg-surface px-2.5 py-1 text-xs font-bold text-ink/60 hover:bg-ink/10 hover:text-ink"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 max-h-[350px] overflow-y-auto space-y-2.5 pr-1">
+              {notifications.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-sm font-black text-ink/40">No recent changes detected</p>
+                  <p className="mt-1 text-xs text-ink/30">Changes to your timetable or seating plan will appear here.</p>
+                </div>
+              ) : (
+                notifications.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`rounded-xl border p-3 shadow-soft transition-colors ${
+                      item.type === "room_change"
+                        ? "border-coral/20 bg-coral/5"
+                        : "border-mint/20 bg-mint/5"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-ink/40">
+                        {item.type === "room_change" ? "🏫 Timetable" : "🎟️ Seating Plan"}
+                      </span>
+                      <span className="text-[9px] font-semibold text-ink/30">
+                        {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <h5 className="mt-1 text-xs font-black text-ink">{item.title}</h5>
+                    <p className="mt-1.5 text-[11px] font-semibold text-ink/70 leading-relaxed">
+                      {item.message}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {notifications.length > 0 && (
+              <div className="mt-4 border-t border-ink/5 pt-3 text-right">
+                <button
+                  onClick={() => {
+                    writeLocal("kl-edge.recentUpdates", []);
+                    setNotifications([]);
+                  }}
+                  className="tap text-xs font-bold text-coral hover:underline"
+                >
+                  Clear All History
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -261,7 +363,7 @@ export default function Home() {
         ) : (
           <div className="rounded-xl border border-dashed border-ink/15 bg-white/70 p-5 text-center shadow-soft">
             <p className="font-black text-ink/70">No attendance synced yet</p>
-            <p className="mt-1 text-sm font-semibold text-ink/45">Go to Settings and run a sync.</p>
+            <p className="mt-1 text-sm font-semibold text-ink/45">Go to Settings and configure your credentials.</p>
           </div>
         )}
       </section>

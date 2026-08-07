@@ -196,3 +196,107 @@ export function getShortSubjectName(value, subjectMap = {}) {
 
   return words.length ? words.slice(0, 2).join(" ") : matchedName;
 }
+
+export function detectRoomChanges(oldTimetable, newTimetable) {
+  const oldGrid = oldTimetable?.grid;
+  const newGrid = newTimetable?.grid;
+  if (!Array.isArray(oldGrid) || !oldGrid.length || !Array.isArray(newGrid) || !newGrid.length) {
+    return [];
+  }
+
+  const changes = [];
+  const minRows = Math.min(oldGrid.length, newGrid.length);
+  for (let r = 0; r < minRows; r++) {
+    const oldRow = oldGrid[r];
+    const newRow = newGrid[r];
+    if (!Array.isArray(oldRow) || !Array.isArray(newRow)) continue;
+
+    const minCols = Math.min(oldRow.length, newRow.length);
+    for (let c = 0; c < minCols; c++) {
+      const oldCell = String(oldRow[c] || "").trim();
+      const newCell = String(newRow[c] || "").trim();
+      if (!oldCell || !newCell || oldCell === newCell) continue;
+
+      const oldParsed = parseCellValue(oldCell);
+      const newParsed = parseCellValue(newCell);
+
+      const oldCodes = extractCourseCodesFromText(oldParsed.courseCode);
+      const newCodes = extractCourseCodesFromText(newParsed.courseCode);
+      const commonCode = oldCodes.find((code) => newCodes.includes(code));
+
+      if (
+        commonCode &&
+        oldParsed.classroom !== newParsed.classroom &&
+        newParsed.classroom
+      ) {
+        const rowHeader = String(newRow[0] || "").trim();
+        const colHeader = String(newGrid[0]?.[c] || "").trim();
+
+        changes.push({
+          courseCode: commonCode,
+          oldRoom: oldParsed.classroom || "No Room",
+          newRoom: newParsed.classroom,
+          day: rowHeader,
+          slot: colHeader
+        });
+      }
+    }
+  }
+  return changes;
+}
+
+export function detectSeatingChanges(oldPlan, newPlan) {
+  const oldEntries = Array.isArray(oldPlan) ? oldPlan : (oldPlan?.entries || []);
+  const newEntries = Array.isArray(newPlan) ? newPlan : (newPlan?.entries || []);
+
+  const changes = [];
+
+  newEntries.forEach((newEntry) => {
+    const oldEntry = oldEntries.find(
+      (old) =>
+        (old.courseCode || "").trim().toUpperCase() === (newEntry.courseCode || "").trim().toUpperCase() &&
+        (old.examType || "").trim().toUpperCase() === (newEntry.examType || "").trim().toUpperCase() &&
+        (old.date || "") === (newEntry.date || "")
+    );
+
+    if (oldEntry) {
+      const roomChanged = (oldEntry.room || "") !== (newEntry.room || "");
+      const seatChanged = (oldEntry.seat || "") !== (newEntry.seat || "");
+      const blockChanged = (oldEntry.block || "") !== (newEntry.block || "");
+
+      if (roomChanged || seatChanged || blockChanged) {
+        changes.push({
+          type: "seating_update",
+          courseCode: newEntry.courseCode || "",
+          subject: newEntry.subject || newEntry.courseCode || "",
+          examType: newEntry.examType || "Exam",
+          date: newEntry.date || "",
+          time: newEntry.time || "",
+          oldRoom: oldEntry.room || "N/A",
+          newRoom: newEntry.room || "N/A",
+          oldSeat: oldEntry.seat || "N/A",
+          newSeat: newEntry.seat || "N/A",
+          oldBlock: oldEntry.block || "N/A",
+          newBlock: newEntry.block || "N/A",
+          roomChanged,
+          seatChanged,
+          blockChanged
+        });
+      }
+    } else if (oldEntries.length > 0) {
+      changes.push({
+        type: "seating_new",
+        courseCode: newEntry.courseCode || "",
+        subject: newEntry.subject || newEntry.courseCode || "",
+        examType: newEntry.examType || "Exam",
+        date: newEntry.date || "",
+        time: newEntry.time || "",
+        room: newEntry.room || "N/A",
+        seat: newEntry.seat || "N/A",
+        block: newEntry.block || "N/A"
+      });
+    }
+  });
+
+  return changes;
+}

@@ -1,5 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
-import { BookOpenCheck, Calendar, Home, MoreHorizontal, Users } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { BookOpenCheck, Calendar, Home, MoreHorizontal, Users, ArrowLeft } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -10,7 +10,7 @@ const navItems = [
     href: "/more",
     label: "More",
     icon: MoreHorizontal,
-    aliases: ["/marks", "/seating-plan", "/settings", "/cgpa", "/map"]
+    aliases: ["/marks", "/seating-plan", "/settings", "/cgpa", "/map", "/subject-names", "/privacy", "/documentation"]
   }
 ];
 
@@ -20,16 +20,43 @@ const widthClasses = {
   full: "max-w-7xl"
 };
 
-export function Layout({ children, title, action, width = "default" }) {
+export function Layout({ children, title, action, width = "default", backTo }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const shellWidth = widthClasses[width] || widthClasses.default;
+
+  const rootPaths = ["/", "/subjects", "/timetable", "/faculty", "/more"];
+  const isSubPage = !rootPaths.includes(location.pathname);
+
+  const handleBack = () => {
+    if (backTo) {
+      navigate(backTo);
+    } else {
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate("/more");
+      }
+    }
+  };
 
   return (
     <main className={`app-shell mx-auto flex w-full ${shellWidth} flex-col px-3 pt-3 sm:px-4`}>
       <header className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-mint">KL Edge</p>
-          <h1 className="mt-0.5 text-xl font-black tracking-normal text-ink">{title}</h1>
+        <div className="flex items-center gap-3">
+          {isSubPage && (
+            <button
+              onClick={handleBack}
+              aria-label="Go back"
+              className="tap flex h-9 w-9 items-center justify-center rounded-lg border border-ink/10 bg-white text-ink/70 shadow-soft transition-colors hover:text-ink active:scale-95"
+            >
+              <ArrowLeft size={16} />
+            </button>
+          )}
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-mint">KL Edge</p>
+            <h1 className="mt-0.5 text-xl font-black tracking-normal text-ink">{title}</h1>
+          </div>
         </div>
         {action}
       </header>

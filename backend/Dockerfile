@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Install system dependencies required for onnxruntime, opencv, and general python builds
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libglib2.0-0 \
@@ -12,12 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy requirements and install
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend files
+# Copy application
 COPY . .
 
-# Run the app using uvicorn, reading PORT from environment
+# Start FastAPI
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}"]

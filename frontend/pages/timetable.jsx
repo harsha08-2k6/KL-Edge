@@ -243,7 +243,7 @@ export default function Timetable() {
             {syncStatus?.status === "empty" ? "Timetable not available from ERP" : "No timetable synced yet"}
           </p>
           <p className="mt-2 text-sm text-ink/40">
-            {syncStatus?.message || "Sync from Settings to fetch your timetable."}
+            {syncStatus?.message || "Configure credentials in Settings to fetch your timetable."}
           </p>
           {syncStatus?.status === "empty" && (
             <p className="mt-2 text-xs font-semibold text-ink/35">

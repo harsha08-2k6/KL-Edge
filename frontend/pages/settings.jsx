@@ -6,7 +6,7 @@ import { Footer } from "../components/Footer.jsx";
 import { Toast } from "../components/Toast.jsx";
 import { fetchCaptcha, syncAttendance } from "../utils/api.js";
 import { readLocal, removeLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
-import { showNotification } from "../utils/notifications.js";
+import { showNotification, processSyncUpdates } from "../utils/notifications.js";
 
 const academicYears = [
   "2026-2027",
@@ -175,6 +175,7 @@ export default function Settings() {
 
     try {
       const payload = await syncAttendance({ erpId, password, captcha, academicYear, semesterId, captchaSessionId });
+      processSyncUpdates(payload);
       const timetable = { ...(payload.timetable || {}), academicYear, semesterId };
       writeLocal(STORAGE_KEYS.attendance, payload.attendance);
       writeLocal(STORAGE_KEYS.timetable, timetable);
