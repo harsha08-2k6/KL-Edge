@@ -212,7 +212,9 @@ export default function Home() {
           >
             <Bell size={16} />
             {unreadCount > 0 && (
-              <span className="absolute right-2 top-2 flex h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-white animate-pulse" />
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-coral px-1 text-[9px] font-black text-white ring-2 ring-white">
+                {unreadCount}
+              </span>
             )}
           </button>
           <Link
