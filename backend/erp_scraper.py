@@ -898,6 +898,15 @@ def detect_login_error_type(html: str) -> str:
     lowered = html.lower()
     
     # Strong evidence of captcha error: look for "verification code" or "captcha" with "incorrect"/"invalid"
+    captcha_keywords = ["verification", "captcha", "security code", "verification code", "code"]
+    error_keywords = ["incorrect", "invalid", "wrong", "mismatch", "expired"]
+    
+    has_captcha_kw = any(kw in lowered for kw in captcha_keywords)
+    has_error_kw = any(kw in lowered for kw in error_keywords)
+    
+    if has_captcha_kw and has_error_kw:
+        return "captcha"
+        
     if re.search(r"verification code.*?(?:incorrect|invalid)", lowered, re.IGNORECASE):
         return "captcha"
     if re.search(r"captcha.*?incorrect.*?code", lowered, re.IGNORECASE):

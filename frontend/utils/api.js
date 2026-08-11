@@ -101,3 +101,43 @@ export async function fetchPortalStatus() {
     return { status: "offline" };
   }
 }
+
+export async function fetchNotice() {
+  try {
+    const response = await fetch(`${API_BASE}/api/notice`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.notice;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateNotice(erpId, title, content, expiresInHours, pdfFile) {
+  const formData = new FormData();
+  formData.append("erpId", erpId);
+  formData.append("title", title);
+  formData.append("content", content);
+  formData.append("expiresInHours", String(expiresInHours));
+  if (pdfFile) {
+    formData.append("pdf", pdfFile);
+  }
+
+  const response = await fetch(`${API_BASE}/api/notice/update`, {
+    method: "POST",
+    body: formData
+  });
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (e) {
+    throw new ApiError("Failed to parse update notice response from server", response.status);
+  }
+
+  if (!response.ok) {
+    throw new ApiError(payload?.error || "Failed to update notice", response.status);
+  }
+
+  return payload;
+}

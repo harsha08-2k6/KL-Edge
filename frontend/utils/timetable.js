@@ -300,3 +300,179 @@ export function detectSeatingChanges(oldPlan, newPlan) {
 
   return changes;
 }
+
+export const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+export const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+export const dayAliases = {
+  Monday: ["monday", "mon"],
+  Tuesday: ["tuesday", "tue", "tues"],
+  Wednesday: ["wednesday", "wed"],
+  Thursday: ["thursday", "thu", "thur", "thurs"],
+  Friday: ["friday", "fri"],
+  Saturday: ["saturday", "sat"],
+  Sunday: ["sunday", "sun"]
+};
+
+function normalize(value = "") {
+  return String(value).trim().toLowerCase();
+}
+
+function normalizeDayText(value = "") {
+  return normalize(value).replace(/[^a-z]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchesAlias(text, alias) {
+  if (!text || !alias) return false;
+  return new RegExp(`\\b${escapeRegExp(alias)}\\b`, "i").test(text);
+}
+
+function cellHasDay(cell, day) {
+  const text = normalizeDayText(cell);
+  const aliases = dayAliases[day] || [day.toLowerCase()];
+  return aliases.some((alias) => matchesAlias(text, alias));
+}
+
+function findDay(cell) {
+  for (const day of dayOrder) {
+    if (cellHasDay(cell, day)) return day;
+  }
+  return "";
+}
+
+function isSlotValue(value) {
+  const text = normalize(value);
+  if (!text) return false;
+  return text !== "-" && text !== "--" && text !== "na" && text !== "n/a";
+}
+
+export function buildWeekSchedule(grid) {
+  const schedule = Object.fromEntries(dayOrder.map((day) => [day, []]));
+  if (!Array.isArray(grid) || !grid.length) {
+    return { schedule, slots: [], mode: "empty" };
+  }
+
+  const headerRow = grid[0] || [];
+  const headerDays = headerRow
+    .map((cell, index) => ({ day: findDay(cell), index }))
+    .filter((entry) => entry.day);
+
+  if (headerDays.length >= 3) {
+    const slots = [];
+    grid.slice(1).forEach((row, rowIndex) => {
+      const slot = row?.[0] || `Slot ${rowIndex + 1}`;
+      slots.push(slot);
+      headerDays.forEach(({ day, index }) => {
+        const value = row?.[index] ?? "";
+        if (isSlotValue(value)) {
+          schedule[day].push({ slot, value });
+        }
+      });
+    });
+    return { schedule, slots, mode: "column" };
+  }
+
+  const dayRows = grid
+    .map((row, index) => ({ day: findDay(row?.[0]), index }))
+    .filter((entry) => entry.day);
+
+  if (dayRows.length >= 3) {
+    const slots = headerRow.slice(1).map((cell, index) => cell || `Slot ${index + 1}`);
+    dayRows.forEach(({ day, index }) => {
+      const row = grid[index] || [];
+      for (let col = 1; col < row.length; col += 1) {
+        const value = row[col];
+        if (isSlotValue(value)) {
+          schedule[day].push({ slot: slots[col - 1] || `Slot ${col}`, value });
+        }
+      }
+    });
+    return { schedule, slots, mode: "row" };
+  }
+
+  return { schedule, slots: [], mode: "unknown" };
+}
+
+export function getTodayRows(grid, today) {
+  if (!Array.isArray(grid) || !grid.length) return [];
+
+  const rowIndex = grid.findIndex((row) => row.some((cell) => cellHasDay(cell, today)));
+  if (rowIndex > 0) {
+    const headers = grid[0] || [];
+    const row = grid[rowIndex] || [];
+    return row
+      .map((cell, index) => ({
+        slot: headers[index] || (index === 0 ? "Day" : `Slot ${index}`),
+        value: cell
+      }))
+      .filter((item, index) => index > 0 && normalize(item.value) && normalize(item.value) !== "-");
+  }
+
+  const headerRow = grid[0] || [];
+  const dayColumnIndex = headerRow.findIndex((cell) => cellHasDay(cell, today));
+  if (dayColumnIndex > 0) {
+    return grid
+      .slice(1)
+      .map((row) => ({
+        slot: row[0] || "Slot",
+        value: row[dayColumnIndex]
+      }))
+      .filter((item) => normalize(item.value) && normalize(item.value) !== "-");
+  }
+
+  return [];
+}
+
+export function getCurrentAndNextClass(grid, attendance = [], customSubjectNames = {}) {
+  const now = new Date();
+  const today = dayNames[now.getDay()];
+  
+  const { schedule } = buildWeekSchedule(grid);
+  const todayRows = schedule[today] || [];
+  
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  
+  let presentClass = null;
+  let nextClass = null;
+  
+  // Sort today's classes by slot start time
+  const todayClasses = todayRows.map((item) => {
+    const slotNum = getSlotNumber(item.slot);
+    const times = SLOT_TIMES[slotNum];
+    return {
+      ...item,
+      times,
+      startMinutes: times ? times.startMinutes : 0,
+      endMinutes: times ? times.endMinutes : 0
+    };
+  }).filter(c => c.times).sort((a, b) => a.startMinutes - b.startMinutes);
+  
+  // Find present class
+  presentClass = todayClasses.find(c => currentMinutes >= c.startMinutes && currentMinutes < c.endMinutes) || null;
+  
+  // Find next class (strict start time after current time)
+  nextClass = todayClasses.find(c => c.startMinutes > currentMinutes) || null;
+  
+  const subjectMap = buildSubjectNameMap(attendance, customSubjectNames);
+  
+  const formatClassInfo = (classItem) => {
+    if (!classItem) return null;
+    const { courseCode, classroom } = parseCellValue(classItem.value);
+    const subjectName = getSubjectDisplayName(courseCode, subjectMap);
+    return {
+      courseCode,
+      classroom,
+      subjectName: subjectName || courseCode,
+      slot: classItem.slot,
+      timeString: classItem.times ? `${classItem.times.start} - ${classItem.times.end}` : ""
+    };
+  };
+  
+  return {
+    present: formatClassInfo(presentClass),
+    next: formatClassInfo(nextClass)
+  };
+}

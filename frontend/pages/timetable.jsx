@@ -1,139 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Layout } from "../components/Layout.jsx";
 import { readLocal, STORAGE_KEYS } from "../utils/storage.js";
-import { buildSubjectNameMap, formatSlotWithTime, getSubjectDisplayName, parseCellValue } from "../utils/timetable.js";
-
-const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const dayAliases = {
-  Monday: ["monday", "mon"],
-  Tuesday: ["tuesday", "tue", "tues"],
-  Wednesday: ["wednesday", "wed"],
-  Thursday: ["thursday", "thu", "thur", "thurs"],
-  Friday: ["friday", "fri"],
-  Saturday: ["saturday", "sat"],
-  Sunday: ["sunday", "sun"]
-};
-
-function normalize(value = "") {
-  return String(value).trim().toLowerCase();
-}
-
-function normalizeDayText(value = "") {
-  return normalize(value).replace(/[^a-z]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function matchesAlias(text, alias) {
-  if (!text || !alias) return false;
-  return new RegExp(`\\b${escapeRegExp(alias)}\\b`, "i").test(text);
-}
-
-function cellHasDay(cell, day) {
-  const text = normalizeDayText(cell);
-  const aliases = dayAliases[day] || [day.toLowerCase()];
-  return aliases.some((alias) => matchesAlias(text, alias));
-}
-
-function findDay(cell) {
-  for (const day of dayOrder) {
-    if (cellHasDay(cell, day)) return day;
-  }
-  return "";
-}
-
-function isSlotValue(value) {
-  const text = normalize(value);
-  if (!text) return false;
-  return text !== "-" && text !== "--" && text !== "na" && text !== "n/a";
-}
+import { 
+  buildSubjectNameMap, 
+  formatSlotWithTime, 
+  getSubjectDisplayName, 
+  parseCellValue,
+  dayNames,
+  dayOrder,
+  buildWeekSchedule,
+  getTodayRows
+} from "../utils/timetable.js";
 
 function getTodayName() {
   return dayNames[new Date().getDay()];
-}
-
-function getTodayRows(grid, today) {
-  if (!Array.isArray(grid) || !grid.length) return [];
-
-  const rowIndex = grid.findIndex((row) => row.some((cell) => cellHasDay(cell, today)));
-  if (rowIndex > 0) {
-    const headers = grid[0] || [];
-    const row = grid[rowIndex] || [];
-    return row
-      .map((cell, index) => ({
-        slot: headers[index] || (index === 0 ? "Day" : `Slot ${index}`),
-        value: cell
-      }))
-      .filter((item, index) => index > 0 && normalize(item.value) && normalize(item.value) !== "-");
-  }
-
-  const headerRow = grid[0] || [];
-  const dayColumnIndex = headerRow.findIndex((cell) => cellHasDay(cell, today));
-  if (dayColumnIndex > 0) {
-    return grid
-      .slice(1)
-      .map((row) => ({
-        slot: row[0] || "Slot",
-        value: row[dayColumnIndex]
-      }))
-      .filter((item) => normalize(item.value) && normalize(item.value) !== "-");
-  }
-
-  return [];
-}
-
-function buildWeekSchedule(grid) {
-  const schedule = Object.fromEntries(dayOrder.map((day) => [day, []]));
-  if (!Array.isArray(grid) || !grid.length) {
-    return { schedule, slots: [], mode: "empty" };
-  }
-
-  const headerRow = grid[0] || [];
-  const headerDays = headerRow
-    .map((cell, index) => ({ day: findDay(cell), index }))
-    .filter((entry) => entry.day);
-
-  if (headerDays.length >= 3) {
-    const slots = [];
-    grid.slice(1).forEach((row, rowIndex) => {
-      const slot = row?.[0] || `Slot ${rowIndex + 1}`;
-      slots.push(slot);
-      headerDays.forEach(({ day, index }) => {
-        const value = row?.[index] ?? "";
-        if (isSlotValue(value)) {
-          schedule[day].push({ slot, value });
-        }
-      });
-    });
-    return { schedule, slots, mode: "column" };
-  }
-
-  const dayRows = grid
-    .map((row, index) => ({ day: findDay(row?.[0]), index }))
-    .filter((entry) => entry.day);
-
-  if (dayRows.length >= 3) {
-    const slots = headerRow.slice(1).map((cell, index) => cell || `Slot ${index + 1}`);
-    dayRows.forEach(({ day, index }) => {
-      const row = grid[index] || [];
-      for (let col = 1; col < row.length; col += 1) {
-        const value = row[col];
-        if (isSlotValue(value)) {
-          schedule[day].push({ slot: slots[col - 1] || `Slot ${col}`, value });
-        }
-      }
-    });
-    return { schedule, slots, mode: "row" };
-  }
-
-  return { schedule, slots: [], mode: "unknown" };
-}
-
-function getTodayRowsFallback(grid, today) {
-  return getTodayRows(grid, today);
 }
 
 export default function Timetable() {
@@ -146,7 +26,7 @@ export default function Timetable() {
   const daysWithData = dayOrder.filter((day) => schedule[day]?.length);
   const [selectedDay, setSelectedDay] = useState(today);
   const selectedDayInitialized = useRef(false);
-  const todayRows = daysWithData.length ? schedule[today] || [] : getTodayRowsFallback(grid, today);
+  const todayRows = daysWithData.length ? schedule[today] || [] : getTodayRows(grid, today);
   const selectedRows = daysWithData.length
     ? schedule[selectedDay] || []
     : selectedDay === today

@@ -3,7 +3,7 @@ import { BookOpenCheck, Calendar, Home, MoreHorizontal, Users, ArrowLeft } from 
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/subjects", label: "Subjects", icon: BookOpenCheck },
+  { href: "/subjects", label: "Attendance", icon: BookOpenCheck },
   { href: "/timetable", label: "Timetable", icon: Calendar },
   { href: "/faculty", label: "Faculty", icon: Users },
   {
