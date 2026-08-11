@@ -5,7 +5,7 @@ import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
 import { SocialLinks } from "../components/SocialLinks.jsx";
 import { Toast } from "../components/Toast.jsx";
-import { fetchLatestSync, syncAttendance, fetchNotice, updateNotice } from "../utils/api.js";
+import { fetchLatestSync, syncAttendance } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
 import { showNotification, processSyncUpdates } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
@@ -37,38 +37,12 @@ export default function Home() {
     return Array.isArray(timetableData) ? timetableData : timetableData.grid || [];
   });
   const [customSubjectNames, setCustomSubjectNames] = useState(() => readLocal(STORAGE_KEYS.subjectNames, {}));
-  const [notice, setNotice] = useState(null);
-  const [showNoticeModal, setShowNoticeModal] = useState(false);
-  const [noticeTitle, setNoticeTitle] = useState("");
-  const [noticeContent, setNoticeContent] = useState("");
-  const [expiresInHours, setExpiresInHours] = useState(24);
-  const [pdfFile, setPdfFile] = useState(null);
-  const [noticeBusy, setNoticeBusy] = useState(false);
   const syncInProgressRef = useRef(false);
   const autoSyncAttemptedRef = useRef(false);
 
   const credentials = useMemo(() => readLocal(STORAGE_KEYS.credentials, {}), []);
-  const isAdmin = useMemo(() => credentials.erpId === "2400030361", [credentials]);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
-
-  const loadNoticeData = useCallback(async () => {
-    try {
-      const data = await fetchNotice();
-      setNotice(data);
-      if (data) {
-        setNoticeTitle(data.title || "");
-        setNoticeContent(data.content || "");
-        setExpiresInHours(data.expiresInHours || 24);
-      } else {
-        setNoticeTitle("");
-        setNoticeContent("");
-        setExpiresInHours(24);
-      }
-    } catch {
-      // Ignore errors
-    }
-  }, []);
 
   if (!hasCredentials) {
     return null;
@@ -114,19 +88,13 @@ export default function Home() {
       const timetableData = readLocal(STORAGE_KEYS.timetable, { grid: [], mappings: [] });
       setTimetableGrid(Array.isArray(timetableData) ? timetableData : timetableData.grid || []);
       setCustomSubjectNames(readLocal(STORAGE_KEYS.subjectNames, {}));
-      void loadNoticeData();
     })();
-  }, [loadNoticeData]);
+  }, []);
 
   useEffect(() => {
     void refreshFromBackend();
   }, [refreshFromBackend]);
 
-
-
-  useEffect(() => {
-    void loadNoticeData();
-  }, [loadNoticeData]);
 
   useEffect(() => {
     const syncWhenActive = () => {
@@ -232,29 +200,6 @@ export default function Home() {
   const { present: presentClass, next: nextClass } = useMemo(() => {
     return getCurrentAndNextClass(timetableGrid, rawSubjects, customSubjectNames);
   }, [timetableGrid, rawSubjects, customSubjectNames]);
-
-  const handleSaveNotice = async (e) => {
-    e.preventDefault();
-    if (!noticeTitle.trim() || !noticeContent.trim()) {
-      alert("Please fill in both title and content.");
-      return;
-    }
-    setNoticeBusy(true);
-    try {
-      const result = await updateNotice(credentials.erpId, noticeTitle, noticeContent, expiresInHours, pdfFile);
-      setNotice(result.notice);
-      setShowNoticeModal(false);
-      setPdfFile(null);
-      const fileInput = document.getElementById("notice-pdf-input");
-      if (fileInput) fileInput.value = "";
-      setSuccessMessage("Notice posted successfully! 📢");
-      setTimeout(() => setSuccessMessage(""), 3000);
-    } catch (err) {
-      alert(err.message || "Failed to update notice.");
-    } finally {
-      setNoticeBusy(false);
-    }
-  };
 
   return (
     <Layout
@@ -447,60 +392,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Notice Board Section */}
-      <section className="mt-3.5">
-        <div className="rounded-xl border border-ink/10 bg-white/80 p-4 shadow-soft">
-          <div className="flex items-center justify-between border-b border-ink/5 pb-2.5">
-            <h3 className="text-sm font-black text-ink flex items-center gap-1.5">
-              📢 Notice Board
-            </h3>
-            {isAdmin && (
-              <button
-                onClick={() => setShowNoticeModal(true)}
-                className="tap rounded-lg bg-ink px-3 py-1 text-xs font-bold text-paper transition-transform hover:-translate-y-0.5"
-              >
-                Update Notice
-              </button>
-            )}
-          </div>
-
-          <div className="mt-3">
-            {notice ? (
-              <div className="space-y-2">
-                <h4 className="text-base font-black text-ink">{notice.title}</h4>
-                <p className="text-xs text-ink/75 whitespace-pre-wrap leading-relaxed">
-                  {notice.content}
-                </p>
-                
-                {notice.pdfBase64 && (
-                  <div className="mt-3.5 pt-2.5 border-t border-ink/5 flex items-center justify-between">
-                    <span className="text-[10px] font-semibold text-ink/40 flex items-center gap-1">
-                      📄 {notice.pdfName || "attached_document.pdf"}
-                    </span>
-                    <a
-                      href={notice.pdfBase64}
-                      download={notice.pdfName || "Notice.pdf"}
-                      className="tap inline-flex items-center gap-1 rounded-lg bg-surface px-2.5 py-1 text-xs font-bold text-ink/70 hover:bg-ink/10 hover:text-ink transition-colors"
-                    >
-                      Download PDF
-                    </a>
-                  </div>
-                )}
-                
-                <p className="text-[9px] text-ink/30 text-right mt-1.5">
-                  Posted on {new Date(notice.uploadedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                </p>
-              </div>
-            ) : (
-              <div className="py-4 text-center">
-                <p className="text-xs font-black text-ink/40">No active announcements</p>
-                <p className="mt-0.5 text-[10px] text-ink/30">Check back later for updates.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
       {/* Last Sync */}
       <section className="mt-3">
         <MetricCard
@@ -526,101 +417,6 @@ export default function Home() {
           type="success"
           onClose={() => setSuccessMessage("")}
         />
-      )}
-
-      {/* Notice Update Modal */}
-      {showNoticeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm animate-fade-in">
-          <form
-            onSubmit={handleSaveNotice}
-            className="w-full max-w-md rounded-2xl border border-ink/10 bg-white p-5 shadow-lg animate-in fade-in zoom-in-95 duration-150"
-          >
-            <h3 className="text-base font-black text-ink flex items-center gap-2 border-b border-ink/5 pb-3">
-              📢 Update Notice Board
-            </h3>
-            
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-ink/40">Notice Title</label>
-                <input
-                  type="text"
-                  required
-                  value={noticeTitle}
-                  onChange={(e) => setNoticeTitle(e.target.value)}
-                  placeholder="e.g. Exam Schedule Postponed"
-                  className="mt-1 block w-full rounded-lg border border-ink/10 bg-surface px-3 py-2 text-xs font-bold text-ink placeholder:text-ink/30 focus:border-ink/20 focus:outline-none"
-                />
-              </div>
-              
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-ink/40">Notice Content</label>
-                <textarea
-                  required
-                  rows={4}
-                  value={noticeContent}
-                  onChange={(e) => setNoticeContent(e.target.value)}
-                  placeholder="Type the announcement details here..."
-                  className="mt-1 block w-full rounded-lg border border-ink/10 bg-surface px-3 py-2 text-xs font-bold text-ink placeholder:text-ink/30 focus:border-ink/20 focus:outline-none resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-ink/40">Attach PDF (Optional)</label>
-                <input
-                  id="notice-pdf-input"
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => setPdfFile(e.target.files[0] || null)}
-                  className="mt-1 block w-full text-xs text-ink/50 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[10px] file:font-black file:bg-ink file:text-paper file:cursor-pointer hover:file:opacity-90"
-                />
-                {notice?.pdfName && !pdfFile && (
-                  <p className="mt-1.5 text-[9px] font-semibold text-mint">
-                    Current attachment: {notice.pdfName} (will be kept unless overwritten)
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-ink/40">Visible For</label>
-                <select
-                  value={expiresInHours}
-                  onChange={(e) => setExpiresInHours(parseInt(e.target.value))}
-                  className="mt-1 block w-full rounded-lg border border-ink/10 bg-surface px-3 py-2 text-xs font-bold text-ink focus:border-ink/20 focus:outline-none"
-                >
-                  <option value={1}>1 Hour</option>
-                  <option value={3}>3 Hours</option>
-                  <option value={6}>6 Hours</option>
-                  <option value={12}>12 Hours</option>
-                  <option value={24}>24 Hours (1 Day)</option>
-                  <option value={48}>48 Hours (2 Days)</option>
-                  <option value={72}>72 Hours (3 Days)</option>
-                  <option value={168}>168 Hours (1 Week)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center justify-end gap-2 border-t border-ink/5 pt-3">
-              <button
-                type="button"
-                disabled={noticeBusy}
-                onClick={() => {
-                  setShowNoticeModal(false);
-                  setPdfFile(null);
-                }}
-                className="tap rounded-lg bg-surface px-3 py-1.5 text-xs font-bold text-ink/60 hover:bg-ink/10 hover:text-ink"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={noticeBusy}
-                className="tap rounded-lg bg-ink px-4 py-1.5 text-xs font-bold text-paper hover:opacity-90 disabled:opacity-50"
-              >
-                {noticeBusy ? "Saving..." : "Save Notice"}
-              </button>
-            </div>
-          </form>
-        </div>
       )}
 
     </Layout>

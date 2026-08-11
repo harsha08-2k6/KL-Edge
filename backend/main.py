@@ -665,58 +665,6 @@ def get_faculty():
         headers={"Cache-Control": "public, max-age=3600, s-maxage=86400"}
     )
 
-
-@app.get("/api/notice")
-def get_notice():
-    notice = get_cached_json("notice_board")
-    if not notice:
-        return JSONResponse(content={"notice": None})
-    try:
-        uploaded_at = datetime.fromisoformat(notice["uploadedAt"].replace("Z", ""))
-        expires_in = int(notice.get("expiresInHours", 24))
-        # Check custom hour expiration
-        if datetime.utcnow() - uploaded_at > timedelta(hours=expires_in):
-            set_cached_json("notice_board", None)
-            return JSONResponse(content={"notice": None})
-    except Exception:
-        pass
-    return JSONResponse(content={"notice": notice})
-
-
-@app.post("/api/notice/update")
-async def update_notice(
-    erpId: str = Form(...),
-    title: str = Form(...),
-    content: str = Form(...),
-    expiresInHours: int = Form(24),
-    pdf: UploadFile = File(None)
-):
-    if erpId != "2400030361":
-        raise AppError("Unauthorized. Only user 2400030361 can update notices.", 403)
-        
-    notice_data = {
-        "title": title,
-        "content": content,
-        "expiresInHours": expiresInHours,
-        "uploadedAt": f"{datetime.utcnow().isoformat()}Z",
-        "pdfName": None,
-        "pdfBase64": None
-    }
-    
-    if pdf:
-        filename = pdf.filename
-        if not filename.lower().endswith(".pdf"):
-            raise AppError("Only PDF files are allowed.", 400)
-        
-        pdf_bytes = await pdf.read()
-        encoded = base64.b64encode(pdf_bytes).decode("utf-8")
-        notice_data["pdfName"] = filename
-        notice_data["pdfBase64"] = f"data:application/pdf;base64,{encoded}"
-        
-    set_cached_json("notice_board", notice_data)
-    return {"status": "success", "notice": notice_data}
-
-
 if __name__ == "__main__":
     import uvicorn
     # Use reload=True for development, which might be causing the issue on Windows.
