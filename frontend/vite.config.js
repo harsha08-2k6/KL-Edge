@@ -6,7 +6,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   server: {
     proxy: {
-      '/api': 'http://127.0.0.1:8000'
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
+      }
     }
   },
   plugins: [

@@ -5,10 +5,31 @@ import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
 import { SocialLinks } from "../components/SocialLinks.jsx";
 import { Toast } from "../components/Toast.jsx";
-import { fetchLatestSync, syncAttendance } from "../utils/api.js";
+import { syncAttendance } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
-import { showNotification, processSyncUpdates } from "../utils/notifications.js";
+import { showNotification, processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
+
+function getRelativeTimeString(timestamp) {
+  if (!timestamp) return "Never updated";
+  try {
+    const timeMs = new Date(timestamp).getTime();
+    if (isNaN(timeMs)) return "Never updated";
+    const diffMs = Date.now() - timeMs;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "just now";
+    if (diffMins === 1) return "1 min ago";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return "1 hour ago";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "yesterday";
+    return `${diffDays} days ago`;
+  } catch (e) {
+    return "Never updated";
+  }
+}
 
 export default function Home() {
   const navigate = useNavigate();
@@ -28,8 +49,12 @@ export default function Home() {
   const [rawSubjects, setRawSubjects] = useState(() => readLocal(STORAGE_KEYS.attendance, []));
   const [lastUpdated, setLastUpdated] = useState(() => readLocal(STORAGE_KEYS.lastUpdated, null));
   const [syncBusy, setSyncBusy] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle");
+  const [relativeTime, setRelativeTime] = useState(() => getRelativeTimeString(readLocal(STORAGE_KEYS.lastUpdated, null)));
   const [message, setMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [syncChanges, setSyncChanges] = useState([]);
+  const [showChangesPopup, setShowChangesPopup] = useState(false);
   const [notifications, setNotifications] = useState(() => readLocal("kl-edge.recentUpdates", []));
   const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
   const [timetableGrid, setTimetableGrid] = useState(() => {
@@ -40,111 +65,62 @@ export default function Home() {
   const syncInProgressRef = useRef(false);
   const autoSyncAttemptedRef = useRef(false);
 
-  const credentials = useMemo(() => readLocal(STORAGE_KEYS.credentials, {}), []);
-
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
-  if (!hasCredentials) {
-    return null;
-  }
-
-  const refreshFromBackend = useCallback(() => {
-    return (async () => {
-      try {
-        const credentials = readLocal(STORAGE_KEYS.credentials, {});
-        if (!credentials.erpId) {
-          setRawSubjects(readLocal(STORAGE_KEYS.attendance, []));
-          setLastUpdated(readLocal(STORAGE_KEYS.lastUpdated, null));
-          return;
-        }
-        const latest = await fetchLatestSync(credentials.erpId);
-        if (latest?.attendance) {
-          processSyncUpdates(latest);
-          setNotifications(readLocal("kl-edge.recentUpdates", []));
-          writeLocal(STORAGE_KEYS.attendance, latest.attendance);
-          
-          const localTimetable = readLocal(STORAGE_KEYS.timetable, null);
-          const hasLocalTimetable = localTimetable && (Array.isArray(localTimetable) ? localTimetable.length > 0 : localTimetable.grid?.length > 0);
-          const hasNewTimetable = latest.timetable && (Array.isArray(latest.timetable) ? latest.timetable.length > 0 : latest.timetable.grid?.length > 0);
-          
-          if (hasNewTimetable || !hasLocalTimetable) {
-            writeLocal(STORAGE_KEYS.timetable, latest.timetable);
-            writeLocal(STORAGE_KEYS.timetableStatus, {
-              status: latest.timetable?.status || (latest.timetable?.grid?.length ? "ok" : "empty"),
-              message: latest.timetable?.message || ""
-            });
-          }
-          
-          if (latest.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, latest.seatingPlan);
-          if (latest.cgpa) writeLocal(STORAGE_KEYS.cgpa, latest.cgpa);
-          writeLocal(STORAGE_KEYS.lastUpdated, latest.syncedAt);
-        }
-      } catch {
-        // Ignore backend cache misses or temporary downtime and fall back to local data.
-      }
-
-      setRawSubjects(readLocal(STORAGE_KEYS.attendance, []));
-      setLastUpdated(readLocal(STORAGE_KEYS.lastUpdated, null));
-      const timetableData = readLocal(STORAGE_KEYS.timetable, { grid: [], mappings: [] });
-      setTimetableGrid(Array.isArray(timetableData) ? timetableData : timetableData.grid || []);
-      setCustomSubjectNames(readLocal(STORAGE_KEYS.subjectNames, {}));
-    })();
+  const loadLocalData = useCallback(() => {
+    setRawSubjects(readLocal(STORAGE_KEYS.attendance, []));
+    const up = readLocal(STORAGE_KEYS.lastUpdated, null);
+    setLastUpdated(up);
+    setRelativeTime(getRelativeTimeString(up));
+    const timetableData = readLocal(STORAGE_KEYS.timetable, { grid: [], mappings: [] });
+    setTimetableGrid(Array.isArray(timetableData) ? timetableData : timetableData.grid || []);
+    setCustomSubjectNames(readLocal(STORAGE_KEYS.subjectNames, {}));
+    setNotifications(readLocal("kl-edge.recentUpdates", []));
   }, []);
 
-  useEffect(() => {
-    void refreshFromBackend();
-  }, [refreshFromBackend]);
-
-
-  useEffect(() => {
-    const syncWhenActive = () => {
-      if (document.visibilityState === "visible") {
-        void refreshFromBackend();
-        setNotifications(readLocal("kl-edge.recentUpdates", []));
-      }
-    };
-
-    window.addEventListener("focus", syncWhenActive);
-    window.addEventListener("online", syncWhenActive);
-    document.addEventListener("visibilitychange", syncWhenActive);
-
-    return () => {
-      window.removeEventListener("focus", syncWhenActive);
-      window.removeEventListener("online", syncWhenActive);
-      document.removeEventListener("visibilitychange", syncWhenActive);
-    };
-  }, [refreshFromBackend]);
-
-  const handleResync = useCallback(async () => {
-    if (syncInProgressRef.current) {
-      return;
-    }
+  const performBackgroundSync = useCallback(async (isManual = false) => {
+    if (syncInProgressRef.current) return;
 
     const credentials = readLocal(STORAGE_KEYS.credentials, {});
     const syncOptions = readLocal(STORAGE_KEYS.syncOptions, {});
     if (!credentials.erpId || !credentials.password) {
-      setMessage("Please set credentials in Settings first.");
+      if (isManual) {
+        setMessage("Please set credentials in Settings first.");
+      }
       return;
     }
     if (!syncOptions.academicYear || !syncOptions.semesterId) {
-      setMessage("Please choose academic year and semester in Settings first.");
+      if (isManual) {
+        setMessage("Please choose academic year and semester in Settings first.");
+      }
       return;
     }
+
     const captchaSessionId = readLocal(STORAGE_KEYS.captchaSessionId, "");
     syncInProgressRef.current = true;
     setSyncBusy(true);
+    setSyncStatus("syncing");
     setMessage("");
+
     try {
-      setMessage("Syncing ERP data...");
-      const payload = await syncAttendance({ ...credentials, ...syncOptions, captcha: "", captchaSessionId });
+      const payload = await syncAttendance({
+        ...credentials,
+        ...syncOptions,
+        captcha: "",
+        captchaSessionId
+      });
+
       if (payload.captchaSessionId) {
         writeLocal(STORAGE_KEYS.captchaSessionId, payload.captchaSessionId);
       }
-      processSyncUpdates(payload);
-      setNotifications(readLocal("kl-edge.recentUpdates", []));
+
+      const changes = processSyncUpdates(payload);
+      if (changes && changes.length > 0) {
+        setSyncChanges(changes);
+        setShowChangesPopup(true);
+      }
       writeLocal(STORAGE_KEYS.attendance, payload.attendance);
       writeLocal(STORAGE_KEYS.timetable, payload.timetable);
-      // if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
       if (payload.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
       if (payload.cgpa) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
       writeLocal(STORAGE_KEYS.timetableStatus, {
@@ -152,10 +128,14 @@ export default function Home() {
         message: payload.timetable?.message || ""
       });
       writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);
-      void refreshFromBackend();
-      setMessage("");
-      setSuccessMessage("Resync successful! ✅");
-      setTimeout(() => setSuccessMessage(""), 3000);
+
+      loadLocalData();
+      setSyncStatus("success");
+
+      if (isManual) {
+        setSuccessMessage("Resync successful! ✅");
+        setTimeout(() => setSuccessMessage(""), 3000);
+      }
 
       if (localStorage.getItem("kl-edge.notificationsEnabled") === "true") {
         showNotification("KL-Edge Sync Complete", {
@@ -163,27 +143,74 @@ export default function Home() {
         });
       }
     } catch (error) {
-      setMessage(
-        error.status === 401
-          ? "ERP sync failed: Invalid credentials. Check your Settings."
-          : error.status === 410
-            ? "ERP sync failed: Session expired. Check your Settings."
-          : error.message
-      );
+      console.error("Sync failed:", error);
+      setSyncStatus("failed");
+      if (isManual) {
+        setMessage(
+          error.status === 401
+            ? "ERP sync failed: Invalid credentials. Check your Settings."
+            : error.status === 410
+              ? "ERP sync failed: Session expired. Check your Settings."
+              : error.message || "Failed to sync ERP data."
+        );
+      }
     } finally {
       syncInProgressRef.current = false;
       setSyncBusy(false);
+      setTimeout(() => {
+        setSyncStatus("idle");
+      }, 5000);
     }
-  }, [refreshFromBackend]);
+  }, [loadLocalData]);
+
+  const checkFreshnessAndSync = useCallback(async () => {
+    if (syncInProgressRef.current) return;
+
+    const lastUp = readLocal(STORAGE_KEYS.lastUpdated, null);
+    const SYNC_INTERVAL = 15 * 60 * 1000; // 15 minutes
+    const now = Date.now();
+
+    if (!lastUp || (now - new Date(lastUp).getTime() > SYNC_INTERVAL)) {
+      await performBackgroundSync(false);
+    }
+  }, [performBackgroundSync]);
 
   useEffect(() => {
-    if (hasCredentials && !lastUpdated && !syncBusy && !autoSyncAttemptedRef.current) {
+    loadLocalData();
+  }, [loadLocalData]);
+
+  useEffect(() => {
+    if (hasCredentials && !autoSyncAttemptedRef.current) {
       autoSyncAttemptedRef.current = true;
-      void handleResync();
+      void checkFreshnessAndSync();
     }
-  }, [hasCredentials, lastUpdated, syncBusy, handleResync]);
+  }, [hasCredentials, checkFreshnessAndSync]);
 
+  useEffect(() => {
+    const handleCheck = () => {
+      if (document.visibilityState === "visible") {
+        void checkFreshnessAndSync();
+      }
+    };
 
+    window.addEventListener("focus", handleCheck);
+    window.addEventListener("online", handleCheck);
+    document.addEventListener("visibilitychange", handleCheck);
+
+    return () => {
+      window.removeEventListener("focus", handleCheck);
+      window.removeEventListener("online", handleCheck);
+      document.removeEventListener("visibilitychange", handleCheck);
+    };
+  }, [checkFreshnessAndSync]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const up = readLocal(STORAGE_KEYS.lastUpdated, null);
+      setRelativeTime(getRelativeTimeString(up));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const toggleNotificationsPanel = useCallback(() => {
     setShowNotificationsPanel((prev) => {
@@ -200,6 +227,10 @@ export default function Home() {
   const { present: presentClass, next: nextClass } = useMemo(() => {
     return getCurrentAndNextClass(timetableGrid, rawSubjects, customSubjectNames);
   }, [timetableGrid, rawSubjects, customSubjectNames]);
+
+  if (!hasCredentials) {
+    return null;
+  }
 
   return (
     <Layout
@@ -229,7 +260,7 @@ export default function Home() {
             <Settings size={16} aria-hidden="true" />
           </Link>
           <button
-            onClick={handleResync}
+            onClick={() => performBackgroundSync(true)}
             disabled={syncBusy}
             className="tap inline-flex h-10 items-center gap-1.5 rounded-lg bg-ink px-3 text-sm font-bold text-paper shadow-soft transition-transform hover:-translate-y-0.5 active:translate-y-0"
           >
@@ -239,6 +270,166 @@ export default function Home() {
         </div>
       }
     >
+      {/* In-Website Changes Popup Modal */}
+      {showChangesPopup && syncChanges.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-md rounded-2xl border border-ink/10 bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            {/* Close button */}
+            <button
+              onClick={() => setShowChangesPopup(false)}
+              className="absolute right-4 top-4 tap flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-ink/50 hover:bg-ink/10 hover:text-ink transition-colors"
+              aria-label="Close popup"
+            >
+              ×
+            </button>
+
+            {syncChanges.length === 1 ? (
+              // Single Change Layout
+              <div>
+                <h3 className="text-base font-black text-ink flex items-center gap-2">
+                  <span className="text-amber">🔔</span> Class Schedule Updated
+                </h3>
+                
+                {(() => {
+                  const ch = syncChanges[0];
+                  const relativeDay = formatNotificationDay(ch.day);
+                  const timeStr = ch.slot ? getSlotTimeText(ch.slot) : (ch.newSlot ? getSlotTimeText(ch.newSlot) : "");
+                  
+                  return (
+                    <div className="mt-4 space-y-3">
+                      <div className="text-sm font-black text-ink/80 flex items-center gap-1.5">
+                        <span>📅</span> {relativeDay}{timeStr ? `, ${timeStr}` : ""}
+                      </div>
+                      <div className="text-lg font-black text-ink leading-tight">
+                        {ch.subject || ch.newSubject || ch.courseCode}
+                      </div>
+                      
+                      <div className="rounded-xl bg-surface p-3 text-xs font-bold text-ink/70 border border-ink/5 space-y-1.5">
+                        {ch.type === "room_changed" && (
+                          <div>Room: <span className="line-through text-coral">{ch.oldRoom}</span> → <span className="text-mint">{ch.newRoom}</span></div>
+                        )}
+                        {ch.type === "rescheduled" && (
+                          <div>Moved from <span className="line-through text-coral">{getSlotTimeText(ch.oldSlot)}</span> → <span className="text-mint">{getSlotTimeText(ch.newSlot)}</span></div>
+                        )}
+                        {ch.type === "subject_changed" && (
+                          <div>Subject: <span className="line-through text-coral">{ch.oldSubject}</span> → <span className="text-mint">{ch.newSubject}</span></div>
+                        )}
+                        {ch.type === "added" && (
+                          <div className="text-mint">New class added in Room {ch.room}</div>
+                        )}
+                        {ch.type === "cancelled" && (
+                          <div className="text-coral">Class is cancelled</div>
+                        )}
+                        {ch.type === "faculty_changed" && (
+                          <div>Faculty: <span className="line-through text-coral">{ch.oldFaculty}</span> → <span className="text-mint">{ch.newFaculty}</span></div>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-ink/40 font-semibold text-right mt-1">
+                        Updated just now
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              // Multiple Changes Layout
+              <div>
+                <h3 className="text-base font-black text-ink flex items-center gap-2">
+                  <span className="text-amber">🔔</span> {syncChanges.length} Class Changes
+                </h3>
+                
+                <div className="mt-4 max-h-[250px] overflow-y-auto space-y-2.5 pr-1">
+                  {syncChanges.map((ch, idx) => {
+                    const relativeDay = formatNotificationDay(ch.day);
+                    const timeStr = ch.slot ? getSlotTimeText(ch.slot) : (ch.newSlot ? getSlotTimeText(ch.newSlot) : "");
+                    
+                    let changeDesc = "";
+                    if (ch.type === "room_changed") changeDesc = "Room changed";
+                    else if (ch.type === "rescheduled") changeDesc = "Class rescheduled";
+                    else if (ch.type === "subject_changed") changeDesc = "Subject changed";
+                    else if (ch.type === "added") changeDesc = "Class added";
+                    else if (ch.type === "cancelled") changeDesc = "Class cancelled";
+                    else if (ch.type === "faculty_changed") changeDesc = "Faculty changed";
+
+                    return (
+                      <div key={idx} className="rounded-xl border border-ink/5 bg-surface p-3 text-xs font-bold text-ink/80 shadow-soft">
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-[10px] text-ink/40 font-black uppercase tracking-wider">{relativeDay}</span>
+                          <span className="text-[10px] text-coral font-bold">{changeDesc}</span>
+                        </div>
+                        <h4 className="mt-1 text-sm font-black text-ink leading-tight">
+                          {ch.subject || ch.newSubject || ch.courseCode}
+                        </h4>
+                        <div className="mt-2 text-[11px] text-ink/60 space-y-1">
+                          {ch.type === "room_changed" && (
+                            <div>Room: <span className="line-through text-coral/75">{ch.oldRoom}</span> → <span className="text-mint font-bold">{ch.newRoom}</span></div>
+                          )}
+                          {ch.type === "rescheduled" && (
+                            <div>Moved: <span className="line-through text-coral/75">{getSlotTimeText(ch.oldSlot)}</span> → <span className="text-mint font-bold">{getSlotTimeText(ch.newSlot)}</span></div>
+                          )}
+                          {ch.type === "subject_changed" && (
+                            <div>Subject: <span className="line-through text-coral/75">{ch.oldSubject}</span> → <span className="text-mint font-bold">{ch.newSubject}</span></div>
+                          )}
+                          {ch.type === "added" && (
+                            <div>Room: <span className="text-mint font-bold">{ch.room}</span></div>
+                          )}
+                          {ch.type === "cancelled" && (
+                            <div className="text-coral/80 font-bold">Cancelled</div>
+                          )}
+                          {ch.type === "faculty_changed" && (
+                            <div>Faculty: <span className="line-through text-coral/75">{ch.oldFaculty}</span> → <span className="text-mint font-bold">{ch.newFaculty}</span></div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div className="mt-5 flex justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setShowChangesPopup(false);
+                      toggleNotificationsPanel();
+                    }}
+                    className="tap flex items-center justify-center rounded-lg bg-ink px-4 text-xs font-black text-paper hover:bg-ink/90 active:scale-95 transition-all"
+                  >
+                    View History
+                  </button>
+                  <button
+                    onClick={() => setShowChangesPopup(false)}
+                    className="tap flex items-center justify-center rounded-lg bg-surface px-4 text-xs font-bold text-ink/75 hover:bg-ink/10 active:scale-95 transition-all"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Sync Status Banner */}
+      <div className="mb-3 flex items-center justify-between rounded-xl border border-ink/10 bg-white/80 px-4 py-2.5 text-xs font-bold text-ink/70 shadow-soft backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <span className={`inline-block h-2 w-2 rounded-full ${
+            syncStatus === "syncing" ? "bg-amber animate-pulse" :
+            syncStatus === "success" ? "bg-mint" :
+            syncStatus === "failed" ? "bg-coral" : "bg-mint/60"
+          }`} />
+          <span>
+            {syncStatus === "syncing" && "Updating data..."}
+            {syncStatus === "success" && "Updated just now"}
+            {syncStatus === "failed" && "Couldn't refresh. Showing your last saved data."}
+            {syncStatus === "idle" && `Last updated ${relativeTime}`}
+          </span>
+        </div>
+        {syncStatus === "idle" && (
+          <span className="text-[10px] text-ink/40">
+            Auto-refreshing in background
+          </span>
+        )}
+      </div>
+
       {message && (
         <div className="mb-3 rounded-xl border border-ink/10 bg-white/80 px-3 py-2 text-sm font-bold text-ink/70 shadow-soft">
           {message}

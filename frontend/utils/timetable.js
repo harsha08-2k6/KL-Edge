@@ -197,52 +197,192 @@ export function getShortSubjectName(value, subjectMap = {}) {
   return words.length ? words.slice(0, 2).join(" ") : matchedName;
 }
 
-export function detectRoomChanges(oldTimetable, newTimetable) {
+export function parseClassDetails(value = "") {
+  const parsed = parseCellValue(value);
+  let courseCode = parsed.courseCode;
+  let classroom = parsed.classroom;
+  let faculty = "";
+  let type = "";
+
+  // If courseCode contains dashes (e.g. "20CS3101 - L - DR. JOHN DOE")
+  const parts = parsed.courseCode.split(/\s*-\s*/);
+  if (parts.length >= 2) {
+    courseCode = parts[0].trim();
+    // Check if the second part is a short class type indicator (L, T, P)
+    if (/^[LTP]$/i.test(parts[1].trim())) {
+      type = parts[1].trim().toUpperCase();
+      if (parts[2]) {
+        faculty = parts.slice(2).join(" - ").trim();
+      }
+    } else {
+      faculty = parts.slice(1).join(" - ").trim();
+    }
+  }
+
+  return {
+    raw: value,
+    courseCode,
+    classroom,
+    faculty,
+    type
+  };
+}
+
+export function detectTimetableChanges(oldTimetable, newTimetable, subjectMap = {}) {
   const oldGrid = oldTimetable?.grid;
   const newGrid = newTimetable?.grid;
   if (!Array.isArray(oldGrid) || !oldGrid.length || !Array.isArray(newGrid) || !newGrid.length) {
     return [];
   }
 
-  const changes = [];
-  const minRows = Math.min(oldGrid.length, newGrid.length);
-  for (let r = 0; r < minRows; r++) {
-    const oldRow = oldGrid[r];
-    const newRow = newGrid[r];
-    if (!Array.isArray(oldRow) || !Array.isArray(newRow)) continue;
+  const { schedule: oldSchedule } = buildWeekSchedule(oldGrid);
+  const { schedule: newSchedule } = buildWeekSchedule(newGrid);
 
-    const minCols = Math.min(oldRow.length, newRow.length);
-    for (let c = 0; c < minCols; c++) {
-      const oldCell = String(oldRow[c] || "").trim();
-      const newCell = String(newRow[c] || "").trim();
-      if (!oldCell || !newCell || oldCell === newCell) continue;
+  const allChanges = [];
 
-      const oldParsed = parseCellValue(oldCell);
-      const newParsed = parseCellValue(newCell);
+  dayOrder.forEach((day) => {
+    const oldClasses = {};
+    (oldSchedule[day] || []).forEach((item) => {
+      oldClasses[item.slot] = {
+        slot: item.slot,
+        ...parseClassDetails(item.value)
+      };
+    });
 
-      const oldCodes = extractCourseCodesFromText(oldParsed.courseCode);
-      const newCodes = extractCourseCodesFromText(newParsed.courseCode);
-      const commonCode = oldCodes.find((code) => newCodes.includes(code));
+    const newClasses = {};
+    (newSchedule[day] || []).forEach((item) => {
+      newClasses[item.slot] = {
+        slot: item.slot,
+        ...parseClassDetails(item.value)
+      };
+    });
 
-      if (
-        commonCode &&
-        oldParsed.classroom !== newParsed.classroom &&
-        newParsed.classroom
-      ) {
-        const rowHeader = String(newRow[0] || "").trim();
-        const colHeader = String(newGrid[0]?.[c] || "").trim();
+    const addedList = [];
+    const cancelledList = [];
 
-        changes.push({
-          courseCode: commonCode,
-          oldRoom: oldParsed.classroom || "No Room",
-          newRoom: newParsed.classroom,
-          day: rowHeader,
-          slot: colHeader
+    // Find added and modified
+    Object.keys(newClasses).forEach((slot) => {
+      const newClass = newClasses[slot];
+      const oldClass = oldClasses[slot];
+
+      if (!oldClass) {
+        addedList.push(newClass);
+      } else {
+        if (newClass.raw !== oldClass.raw) {
+          if (newClass.courseCode !== oldClass.courseCode) {
+            allChanges.push({
+              type: "subject_changed",
+              day,
+              slot,
+              courseCode: newClass.courseCode,
+              oldCourseCode: oldClass.courseCode,
+              oldSubject: getSubjectDisplayName(oldClass.courseCode, subjectMap) || oldClass.courseCode,
+              newSubject: getSubjectDisplayName(newClass.courseCode, subjectMap) || newClass.courseCode
+            });
+          } else {
+            if (newClass.classroom !== oldClass.classroom) {
+              allChanges.push({
+                type: "room_changed",
+                day,
+                slot,
+                courseCode: newClass.courseCode,
+                subject: getSubjectDisplayName(newClass.courseCode, subjectMap) || newClass.courseCode,
+                oldRoom: oldClass.classroom || "No Room",
+                newRoom: newClass.classroom
+              });
+            }
+            if (newClass.faculty !== oldClass.faculty) {
+              allChanges.push({
+                type: "faculty_changed",
+                day,
+                slot,
+                courseCode: newClass.courseCode,
+                subject: getSubjectDisplayName(newClass.courseCode, subjectMap) || newClass.courseCode,
+                oldFaculty: oldClass.faculty || "No Faculty",
+                newFaculty: newClass.faculty
+              });
+            }
+          }
+        }
+      }
+    });
+
+    // Find cancelled
+    Object.keys(oldClasses).forEach((slot) => {
+      if (!newClasses[slot]) {
+        cancelledList.push(oldClasses[slot]);
+      }
+    });
+
+    // Match rescheduling (same courseCode added and cancelled on the same day)
+    const pairedAddedIdx = new Set();
+    const pairedCancelledIdx = new Set();
+
+    cancelledList.forEach((oldClass, oldIdx) => {
+      const matchingAddedIdx = addedList.findIndex(
+        (newClass, newIdx) =>
+          !pairedAddedIdx.has(newIdx) && newClass.courseCode === oldClass.courseCode
+      );
+
+      if (matchingAddedIdx !== -1) {
+        const newClass = addedList[matchingAddedIdx];
+        pairedAddedIdx.add(matchingAddedIdx);
+        pairedCancelledIdx.add(oldIdx);
+
+        allChanges.push({
+          type: "rescheduled",
+          day,
+          courseCode: oldClass.courseCode,
+          subject: getSubjectDisplayName(oldClass.courseCode, subjectMap) || oldClass.courseCode,
+          oldSlot: oldClass.slot,
+          newSlot: newClass.slot,
+          oldRoom: oldClass.classroom || "No Room",
+          newRoom: newClass.classroom || "No Room"
         });
       }
-    }
-  }
-  return changes;
+    });
+
+    // Add remaining additions and cancellations
+    addedList.forEach((newClass, idx) => {
+      if (!pairedAddedIdx.has(idx)) {
+        allChanges.push({
+          type: "added",
+          day,
+          slot: newClass.slot,
+          courseCode: newClass.courseCode,
+          subject: getSubjectDisplayName(newClass.courseCode, subjectMap) || newClass.courseCode,
+          room: newClass.classroom || "No Room"
+        });
+      }
+    });
+
+    cancelledList.forEach((oldClass, idx) => {
+      if (!pairedCancelledIdx.has(idx)) {
+        allChanges.push({
+          type: "cancelled",
+          day,
+          slot: oldClass.slot,
+          courseCode: oldClass.courseCode,
+          subject: getSubjectDisplayName(oldClass.courseCode, subjectMap) || oldClass.courseCode
+        });
+      }
+    });
+  });
+
+  return allChanges;
+}
+
+export function detectRoomChanges(oldTimetable, newTimetable) {
+  const changes = detectTimetableChanges(oldTimetable, newTimetable);
+  return changes
+    .filter((ch) => ch.type === "room_changed")
+    .map((ch) => ({
+      courseCode: ch.courseCode,
+      oldRoom: ch.oldRoom,
+      newRoom: ch.newRoom,
+      day: ch.day,
+      slot: ch.slot
+    }));
 }
 
 export function detectSeatingChanges(oldPlan, newPlan) {
