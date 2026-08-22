@@ -1,0 +1,2 @@
+/api/*  https://kl-edge.onrender.com/api/:splat  200
+/*      /index.html  200
