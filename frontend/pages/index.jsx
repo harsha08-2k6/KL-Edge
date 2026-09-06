@@ -119,16 +119,17 @@ export default function Home() {
         setSyncChanges(changes);
         setShowChangesPopup(true);
       }
-      if (payload.attendance) writeLocal(STORAGE_KEYS.attendance, payload.attendance);
-      if (payload.timetable) {
-        writeLocal(STORAGE_KEYS.timetable, payload.timetable);
+      if (payload.attendance && payload.attendance.length > 0) writeLocal(STORAGE_KEYS.attendance, payload.attendance);
+      if (payload.timetable && payload.timetable.grid && payload.timetable.grid.length > 0) {
+        const timetableToSave = { ...payload.timetable, academicYear: syncOptions.academicYear, semesterId: syncOptions.semesterId };
+        writeLocal(STORAGE_KEYS.timetable, timetableToSave);
         writeLocal(STORAGE_KEYS.timetableStatus, {
-          status: payload.timetable.status || (payload.timetable.grid?.length ? "ok" : "empty"),
+          status: payload.timetable.status || "ok",
           message: payload.timetable.message || ""
         });
       }
-      if (payload.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
-      if (payload.cgpa) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
+      if (payload.seatingPlan && payload.seatingPlan.length > 0) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
+      if (payload.cgpa && (payload.cgpa.value || (payload.cgpa.semesters && payload.cgpa.semesters.length > 0))) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
       writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);
 
       loadLocalData();
