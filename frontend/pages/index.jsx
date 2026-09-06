@@ -119,14 +119,16 @@ export default function Home() {
         setSyncChanges(changes);
         setShowChangesPopup(true);
       }
-      writeLocal(STORAGE_KEYS.attendance, payload.attendance);
-      writeLocal(STORAGE_KEYS.timetable, payload.timetable);
+      if (payload.attendance) writeLocal(STORAGE_KEYS.attendance, payload.attendance);
+      if (payload.timetable) {
+        writeLocal(STORAGE_KEYS.timetable, payload.timetable);
+        writeLocal(STORAGE_KEYS.timetableStatus, {
+          status: payload.timetable.status || (payload.timetable.grid?.length ? "ok" : "empty"),
+          message: payload.timetable.message || ""
+        });
+      }
       if (payload.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
       if (payload.cgpa) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
-      writeLocal(STORAGE_KEYS.timetableStatus, {
-        status: payload.timetable?.status || (payload.timetable?.grid?.length ? "ok" : "empty"),
-        message: payload.timetable?.message || ""
-      });
       writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);
 
       loadLocalData();
@@ -165,6 +167,7 @@ export default function Home() {
 
   const checkFreshnessAndSync = useCallback(async () => {
     if (syncInProgressRef.current) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
 
     const lastUp = readLocal(STORAGE_KEYS.lastUpdated, null);
     const SYNC_INTERVAL = 15 * 60 * 1000; // 15 minutes
@@ -187,9 +190,13 @@ export default function Home() {
   }, [hasCredentials, checkFreshnessAndSync]);
 
   useEffect(() => {
+    let timeoutId;
     const handleCheck = () => {
       if (document.visibilityState === "visible") {
-        void checkFreshnessAndSync();
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          void checkFreshnessAndSync();
+        }, 2000); // Wait 2s for network to stabilize after device wake
       }
     };
 
@@ -198,6 +205,7 @@ export default function Home() {
     document.addEventListener("visibilitychange", handleCheck);
 
     return () => {
+      clearTimeout(timeoutId);
       window.removeEventListener("focus", handleCheck);
       window.removeEventListener("online", handleCheck);
       document.removeEventListener("visibilitychange", handleCheck);
@@ -208,9 +216,14 @@ export default function Home() {
     const interval = setInterval(() => {
       const up = readLocal(STORAGE_KEYS.lastUpdated, null);
       setRelativeTime(getRelativeTimeString(up));
+
+      // Fallback periodic sync check if wake-up events were missed or failed
+      if (document.visibilityState === "visible") {
+        void checkFreshnessAndSync();
+      }
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [checkFreshnessAndSync]);
 
   const toggleNotificationsPanel = useCallback(() => {
     setShowNotificationsPanel((prev) => {

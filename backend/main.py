@@ -124,9 +124,9 @@ def run_full_sync(payload: dict) -> dict:
                 print(f"[erp:{label}] {exc}", flush=True)
             return fallback
 
-    timetable = safe_sync("timetable", lambda: sync_timetable(payload), {"grid": [], "mappings": [], "status": "empty", "message": "Timetable sync failed."})
-    seating_plan = safe_sync("seating-plan", lambda: sync_seating_plan(payload), [])
-    cgpa = safe_sync("cgpa", lambda: sync_cgpa(payload), {})
+    timetable = safe_sync("timetable", lambda: sync_timetable(payload), None)
+    seating_plan = safe_sync("seating-plan", lambda: sync_seating_plan(payload), None)
+    cgpa = safe_sync("cgpa", lambda: sync_cgpa(payload), None)
 
     return {
         "attendance": attendance,
