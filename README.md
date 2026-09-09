@@ -56,6 +56,13 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
 - Automatic Captcha resolution for seamless authentication
 - Faster access after initial login
 
+### 📚 LMS Integration (Moodle)
+- Connect securely to the university LMS without storing passwords
+- Live dashboard displaying upcoming assignments and deadlines
+- Smart urgency indicators (Due soon, Overdue, etc.)
+- Direct links to assignment submission portals
+- Automatic and background LMS synchronization
+
 ### 📱 Responsive & PWA Design
 - Fully optimized as a Progressive Web App (PWA) for:
   - Mobile devices
@@ -192,7 +199,6 @@ uvicorn main:app --reload
 - AI-based attendance predictions
 - Exam scheduler
 - Notes sharing system
-- Assignment tracker
 - Dark mode enhancements
 - Offline support capabilities expansion
 
