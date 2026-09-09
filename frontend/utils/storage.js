@@ -9,7 +9,10 @@ export const STORAGE_KEYS = {
   lastUpdated: "kl-edge.lastUpdated",
   marks: "kl-edge.marks",
   seatingPlan: "kl-edge.seatingPlan",
-  cgpa: "kl-edge.cgpa"
+  cgpa: "kl-edge.cgpa",
+  lmsToken: "kl-edge.lmsToken",
+  lmsAssignments: "kl-edge.lmsAssignments",
+  lmsLastSynced: "kl-edge.lmsLastSynced"
 };
 
 export function readLocal(key, fallback) {

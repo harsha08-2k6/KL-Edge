@@ -24,6 +24,8 @@ from erp_scraper import (
 )
 import json
 from routes.map import router as map_router
+from services.lms_scraper import authenticate_lms, get_lms_assignments
+from fastapi import Header
 
 
 # Redis key for faculty cache
@@ -529,6 +531,37 @@ def get_faculty():
         content=faculty_data,
         headers={"Cache-Control": "public, max-age=3600, s-maxage=86400"}
     )
+
+class LmsConnectRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/api/lms/connect")
+def connect_lms(body: LmsConnectRequest):
+    try:
+        result = authenticate_lms(body.username, body.password)
+        return result
+    except Exception as e:
+        raise AppError(str(e), 401)
+
+@app.get("/api/lms/assignments")
+def lms_assignments(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise AppError("Missing or invalid authorization header", 401)
+    
+    token = authorization.split(" ")[1]
+    try:
+        assignments = get_lms_assignments(token)
+        return {"assignments": assignments, "syncedAt": f"{datetime.utcnow().isoformat()}Z"}
+    except Exception as e:
+        raise AppError("Failed to fetch assignments", 500)
+
+@app.post("/api/lms/disconnect")
+def disconnect_lms(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise AppError("Missing or invalid authorization header", 401)
+    
+    return {"message": "Disconnected successfully"}
 
 if __name__ == "__main__":
     import uvicorn

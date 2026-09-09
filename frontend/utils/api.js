@@ -92,3 +92,61 @@ export async function fetchPortalStatus() {
   }
 }
 
+export async function connectLMS(username, password) {
+  const response = await fetch(`${API_BASE}/api/lms/connect`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ username, password })
+  });
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (e) {
+    throw new ApiError("Failed to parse LMS connect response", response.status);
+  }
+
+  if (!response.ok) {
+    throw new ApiError(payload?.error || "LMS Connection failed", response.status);
+  }
+
+  return payload;
+}
+
+export async function fetchAssignments(lmsToken) {
+  const response = await fetch(`${API_BASE}/api/lms/assignments`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${lmsToken}`
+    }
+  });
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (e) {
+    throw new ApiError("Failed to parse LMS assignments response", response.status);
+  }
+
+  if (!response.ok) {
+    throw new ApiError(payload?.error || "Failed to fetch assignments", response.status);
+  }
+
+  return payload;
+}
+
+export async function disconnectLMS(lmsToken) {
+  const response = await fetch(`${API_BASE}/api/lms/disconnect`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${lmsToken}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new ApiError("Failed to disconnect LMS", response.status);
+  }
+  return { success: true };
+}

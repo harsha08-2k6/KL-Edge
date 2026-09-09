@@ -5,8 +5,8 @@ import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
 import { SocialLinks } from "../components/SocialLinks.jsx";
 import { Toast } from "../components/Toast.jsx";
-import { syncAttendance } from "../utils/api.js";
-import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
+import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS } from "../utils/api.js";
+import { readLocal, STORAGE_KEYS, writeLocal, removeLocal } from "../utils/storage.js";
 import { showNotification, processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
 
@@ -64,6 +64,17 @@ export default function Home() {
   const [customSubjectNames, setCustomSubjectNames] = useState(() => readLocal(STORAGE_KEYS.subjectNames, {}));
   const syncInProgressRef = useRef(false);
   const autoSyncAttemptedRef = useRef(false);
+
+  // LMS State
+  const [lmsToken, setLmsToken] = useState(() => readLocal(STORAGE_KEYS.lmsToken, null));
+  const [lmsAssignments, setLmsAssignments] = useState(() => readLocal(STORAGE_KEYS.lmsAssignments, []));
+  const [lmsLastSynced, setLmsLastSynced] = useState(() => readLocal(STORAGE_KEYS.lmsLastSynced, null));
+  const [showLmsModal, setShowLmsModal] = useState(false);
+  const [lmsUsername, setLmsUsername] = useState("");
+  const [lmsPassword, setLmsPassword] = useState("");
+  const [lmsBusy, setLmsBusy] = useState(false);
+  const [lmsError, setLmsError] = useState("");
+  const [showAllLms, setShowAllLms] = useState(false);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
@@ -241,6 +252,75 @@ export default function Home() {
   const { present: presentClass, next: nextClass } = useMemo(() => {
     return getCurrentAndNextClass(timetableGrid, rawSubjects, customSubjectNames);
   }, [timetableGrid, rawSubjects, customSubjectNames]);
+
+  // LMS Handlers
+  const handleLmsConnect = async (e) => {
+    e.preventDefault();
+    if (!lmsUsername || !lmsPassword) return;
+    setLmsBusy(true);
+    setLmsError("");
+    try {
+      const res = await connectLMS(lmsUsername, lmsPassword);
+      writeLocal(STORAGE_KEYS.lmsToken, res.lmsToken);
+      setLmsToken(res.lmsToken);
+      setShowLmsModal(false);
+      setLmsUsername("");
+      setLmsPassword("");
+      await handleLmsSync(res.lmsToken);
+    } catch (err) {
+      setLmsError(err.message || "Failed to connect to LMS");
+    } finally {
+      setLmsBusy(false);
+    }
+  };
+
+  const handleLmsSync = async (token = lmsToken) => {
+    if (!token) return;
+    setLmsBusy(true);
+    try {
+      const res = await fetchAssignments(token);
+      writeLocal(STORAGE_KEYS.lmsAssignments, res.assignments);
+      writeLocal(STORAGE_KEYS.lmsLastSynced, res.syncedAt);
+      setLmsAssignments(res.assignments);
+      setLmsLastSynced(res.syncedAt);
+      setLmsError(""); // Clear any previous errors on success
+    } catch (err) {
+      setLmsError(err.message || "Failed to sync assignments. The LMS might be down.");
+      if (err.status === 401) {
+          handleLmsDisconnect();
+      }
+    } finally {
+      setLmsBusy(false);
+    }
+  };
+
+  const handleLmsDisconnect = async () => {
+    if (lmsToken) {
+      try { await disconnectLMS(lmsToken); } catch(e) {}
+    }
+    removeLocal(STORAGE_KEYS.lmsToken);
+    removeLocal(STORAGE_KEYS.lmsAssignments);
+    removeLocal(STORAGE_KEYS.lmsLastSynced);
+    setLmsToken(null);
+    setLmsAssignments([]);
+    setLmsLastSynced(null);
+  };
+  
+  const getUrgency = (dueDateStr) => {
+      if (!dueDateStr) return { color: "border-ink/10 bg-ink/5", text: "text-ink/60", label: "No Date", dot: "⚪" };
+      const due = new Date(dueDateStr).getTime();
+      const now = Date.now();
+      const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 1) return { color: "border-coral/20 bg-coral/5", text: "text-coral font-bold", label: diffDays <= 0 ? "Due today" : "Due tomorrow", dot: "🔴" };
+      if (diffDays <= 3) return { color: "border-amber/20 bg-amber/5", text: "text-amber font-bold", label: `Due in ${diffDays} days`, dot: "🟠" };
+      if (diffDays <= 7) return { color: "border-yellow-500/30 bg-yellow-500/10", text: "text-yellow-600 font-bold", label: `Due in ${diffDays} days`, dot: "🟡" };
+      return { color: "border-mint/20 bg-mint/5", text: "text-mint font-bold", label: `Due in ${diffDays} days`, dot: "🟢" };
+  };
+
+  const urgentAssignmentsCount = lmsAssignments.filter(a => {
+      const diffDays = Math.ceil((new Date(a.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 3;
+  }).length;
 
   if (!hasCredentials) {
     return null;
@@ -516,6 +596,61 @@ export default function Home() {
         </div>
       )}
 
+
+      {/* LMS Connection Modal */}
+      {showLmsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-ink/10 bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="text-lg font-black text-ink mb-1">Connect KL University LMS</h3>
+            <p className="text-xs font-semibold text-ink/60 mb-5">Login with your LMS credentials.</p>
+            
+            <form onSubmit={handleLmsConnect} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-ink/70">LMS Username</label>
+                <input
+                  type="text"
+                  value={lmsUsername}
+                  onChange={(e) => setLmsUsername(e.target.value)}
+                  className="w-full rounded-xl border border-ink/10 bg-surface px-4 py-3 text-sm font-semibold outline-none transition-colors focus:border-mint"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-ink/70">LMS Password</label>
+                <input
+                  type="password"
+                  value={lmsPassword}
+                  onChange={(e) => setLmsPassword(e.target.value)}
+                  className="w-full rounded-xl border border-ink/10 bg-surface px-4 py-3 text-sm font-semibold outline-none transition-colors focus:border-mint"
+                  required
+                />
+              </div>
+              {lmsError && (
+                <p className="text-xs font-bold text-coral">{lmsError}</p>
+              )}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={lmsBusy}
+                  className="tap w-full rounded-xl bg-ink py-3.5 text-sm font-black text-white hover:bg-ink/90 transition-colors disabled:opacity-50"
+                >
+                  {lmsBusy ? "Connecting..." : "Connect LMS"}
+                </button>
+              </div>
+              <div className="flex justify-center items-center mt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setShowLmsModal(false)}
+                  className="text-xs font-bold text-ink/40 hover:text-ink"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Current and Next Class */}
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* Ongoing Class Card */}
@@ -614,6 +749,114 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* LMS Section */}
+      <section className="mt-4 mb-4">
+        {!lmsToken ? (
+          <div className="rounded-xl border border-ink/10 bg-white/80 p-5 shadow-soft">
+            <h3 className="text-base font-black text-ink mb-1">Assignment Deadlines</h3>
+            <p className="text-sm font-semibold text-ink/60 mb-4">
+              Connect your LMS to see your upcoming assignment deadlines.
+            </p>
+            <button
+              onClick={() => setShowLmsModal(true)}
+              className="tap w-full rounded-lg bg-ink py-3 text-sm font-black text-paper hover:bg-ink/90 transition-colors md:w-auto md:px-8"
+            >
+              Connect LMS
+            </button>
+            <p className="mt-3 text-[10px] font-semibold text-ink/40">
+              Your LMS credentials are used securely to retrieve your assignment details.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-ink/10 bg-white/80 p-5 shadow-soft">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/5 pb-3 mb-4">
+              <div>
+                <h3 className="text-base font-black text-ink flex items-center gap-2">
+                  Assignments
+                  {urgentAssignmentsCount > 0 && (
+                    <span className="text-[10px] bg-coral text-white px-2 py-0.5 rounded-full font-bold">
+                      {urgentAssignmentsCount} need attention
+                    </span>
+                  )}
+                </h3>
+                <div className="flex items-center gap-2 mt-1 text-[10px] font-bold text-ink/50">
+                  <span className="text-mint flex items-center gap-1">✓ LMS Connected</span>
+                  <span>|</span>
+                  <span>Last synced: {getRelativeTimeString(lmsLastSynced)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleLmsSync()}
+                  disabled={lmsBusy}
+                  className="tap rounded-lg bg-surface px-3 py-1.5 text-xs font-bold text-ink/70 hover:bg-ink/10 transition-colors"
+                >
+                  {lmsBusy ? "Syncing..." : "Sync Now"}
+                </button>
+                <button
+                  onClick={handleLmsDisconnect}
+                  className="tap rounded-lg border border-coral/20 bg-coral/5 px-3 py-1.5 text-xs font-bold text-coral hover:bg-coral/10 transition-colors"
+                >
+                  Disconnect
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {lmsError ? (
+                <div className="rounded-xl border border-coral/20 bg-coral/5 p-4 text-center">
+                  <p className="text-sm font-black text-coral">LMS Error</p>
+                  <p className="mt-1 text-xs font-semibold text-coral/80">{lmsError}</p>
+                </div>
+              ) : lmsAssignments.length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-sm font-black text-ink/40">No pending assignments</p>
+                  <p className="mt-1 text-xs font-semibold text-ink/30">You're all caught up!</p>
+                </div>
+              ) : (
+                (showAllLms ? lmsAssignments : lmsAssignments.slice(0, 3)).map((assignment) => {
+                  const urgency = getUrgency(assignment.dueDate);
+                  return (
+                    <div key={assignment.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-4 transition-colors ${urgency.color}`}>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">{assignment.course}</p>
+                        <h4 className="mt-0.5 text-sm font-black text-ink">{assignment.title}</h4>
+                        <div className="mt-1 flex items-center gap-2 text-xs">
+                          <span className="font-semibold text-ink/60">
+                            Due: {assignment.dueDateText || new Date(assignment.dueDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className={urgency.text}>
+                            {urgency.dot} {urgency.label}
+                          </span>
+                        </div>
+                      </div>
+                      <a
+                        href={assignment.lmsLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="tap flex items-center justify-center whitespace-nowrap rounded-lg bg-ink px-4 py-2 text-xs font-bold text-white hover:bg-ink/90 transition-colors"
+                      >
+                        Open LMS
+                      </a>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            {lmsAssignments.length > 3 && (
+              <div className="mt-4 text-center">
+                <button 
+                  onClick={() => setShowAllLms(!showAllLms)} 
+                  className="text-xs font-bold text-ink/60 hover:text-ink"
+                >
+                  {showAllLms ? "View Less" : `View all ${lmsAssignments.length} assignments`}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* Success Message */}
       {successMessage && (
