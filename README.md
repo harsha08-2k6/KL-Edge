@@ -12,13 +12,19 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
 
 ## ✨ Features
 
-### 📊 Attendance Management
+### 📊 Attendance & Academic Management
 - Real-time attendance tracking
 - Attendance percentage calculator
 - Subject-wise attendance analysis
 - Required classes calculation for safe attendance percentage
 - Shortage prediction system
-- Attendance sync with ERP
+- Detailed marks and results tracking
+
+### 🗺️ Interactive Campus Map
+- Complete campus layout with categorical POIs (academic, hostel, food, library, etc.)
+- Shortest path routing and navigation between locations
+- Location reviews, ratings, and student feedback
+- Nearby facilities recommendations and filtering
 
 ### 📅 Timetable Access
 - Daily timetable view
@@ -42,58 +48,47 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
 - Quick faculty access system
 - Organized faculty directory
 
-### 🔄 ERP Synchronization
+### 🔄 ERP Synchronization & Authentication
 - Automatic ERP synchronization every 10 minutes
 - Keeps attendance, timetable, seating, and academic data up to date
 - Manual sync available whenever needed
 - Secure local storage based login flow
+- Automatic Captcha resolution for seamless authentication
 - Faster access after initial login
-- Captcha-supported authentication flow
 
-### 📱 Responsive Design
-- Fully optimized for:
+### 📱 Responsive & PWA Design
+- Fully optimized as a Progressive Web App (PWA) for:
   - Mobile devices
   - Tablets
   - Desktop systems
-- Modern responsive UI
+- Modern responsive UI with Tailwind CSS
 - Smooth user experience across all screen sizes
 
 ### ⚡ Performance Optimizations
-- Fast loading pages
+- Fast loading pages powered by Vite
 - Lightweight frontend
-- Efficient API handling
+- Efficient API handling with Redis caching
 - Optimized state management
-- Automatic background ERP synchronization every 10 minutes
-
-### ⏱️ Automatic Background Refresh
-- Automatically refreshes ERP data every 10 minutes
-- Reduces the need for manual syncing
-- Keeps academic information up to date while using the platform
-- Lightweight scheduled synchronization
-
-## 🆕 Latest Updates
-
-- Added automatic ERP synchronization every 10 minutes
-- Improved data freshness across attendance, timetable, and academic information
-- Reduced the need for frequent manual refreshes
-- Enhanced overall platform responsiveness
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- React.js
-- JavaScript
-- HTML5
-- CSS3
+- **React.js** (built with **Vite**)
+- **Tailwind CSS** (Styling & responsive design)
+- **React Leaflet** (Interactive Campus Maps)
+- **PWA** (Installable Progressive Web App)
 
 ### Backend
-- FastAPI
+- **FastAPI** (Python web framework)
+- **BeautifulSoup4** (ERP web scraping)
+- **ddddocr** (Optical Character Recognition for automated Captcha bypassing)
+- **Redis** (Data caching & session management)
 
 ### Deployment
-- Vercel (Frontend)
-- Render / Cloud Hosting (Backend)
+- **Netlify / Vercel** (Frontend Hosting)
+- **Render / Cloud Hosting** (Backend API Hosting)
 
 ### Storage
 - Browser Local Storage
@@ -106,7 +101,7 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
 - Credentials remain on the user's device
 - Local storage based session management
 - ERP authentication handled securely
-- Captcha verification required during ERP sync
+- Captcha verification automated securely on the backend
 
 ---
 
@@ -120,6 +115,7 @@ KL-Edge/
 │   ├── routes/
 │   ├── services/
 │   ├── utils/
+│   ├── requirements.txt
 │   └── main.py
 │
 ├── frontend/
@@ -130,13 +126,13 @@ KL-Edge/
 │   │   ├── services/
 │   │   ├── hooks/
 │   │   ├── styles/
-│   │   └── App.js
-│   │
-│   └── package.json
+│   │   └── App.jsx
+│   ├── package.json
+│   ├── tailwind.config.js
+│   └── vite.config.js
 │
-├── assets/
 ├── README.md
-└── requirements.txt
+└── vercel.json
 ```
 
 ---
@@ -194,12 +190,11 @@ uvicorn main:app --reload
 
 - Push notifications
 - AI-based attendance predictions
-- GPA calculator enhancements
 - Exam scheduler
 - Notes sharing system
 - Assignment tracker
 - Dark mode enhancements
-- Offline support
+- Offline support capabilities expansion
 
 ---
 
