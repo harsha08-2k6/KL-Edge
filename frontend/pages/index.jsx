@@ -177,66 +177,6 @@ export default function Home() {
     }
   }, [loadLocalData]);
 
-  const checkFreshnessAndSync = useCallback(async () => {
-    if (syncInProgressRef.current) return;
-    if (typeof navigator !== "undefined" && !navigator.onLine) return;
-
-    const lastUp = readLocal(STORAGE_KEYS.lastUpdated, null);
-    const SYNC_INTERVAL = 15 * 60 * 1000; // 15 minutes
-    const now = Date.now();
-
-    if (!lastUp || (now - new Date(lastUp).getTime() > SYNC_INTERVAL)) {
-      await performBackgroundSync(false);
-    }
-  }, [performBackgroundSync]);
-
-  useEffect(() => {
-    loadLocalData();
-  }, [loadLocalData]);
-
-  useEffect(() => {
-    if (hasCredentials && !autoSyncAttemptedRef.current) {
-      autoSyncAttemptedRef.current = true;
-      void checkFreshnessAndSync();
-    }
-  }, [hasCredentials, checkFreshnessAndSync]);
-
-  useEffect(() => {
-    let timeoutId;
-    const handleCheck = () => {
-      if (document.visibilityState === "visible") {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          void checkFreshnessAndSync();
-        }, 2000); // Wait 2s for network to stabilize after device wake
-      }
-    };
-
-    window.addEventListener("focus", handleCheck);
-    window.addEventListener("online", handleCheck);
-    document.addEventListener("visibilitychange", handleCheck);
-
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener("focus", handleCheck);
-      window.removeEventListener("online", handleCheck);
-      document.removeEventListener("visibilitychange", handleCheck);
-    };
-  }, [checkFreshnessAndSync]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const up = readLocal(STORAGE_KEYS.lastUpdated, null);
-      setRelativeTime(getRelativeTimeString(up));
-
-      // Fallback periodic sync check if wake-up events were missed or failed
-      if (document.visibilityState === "visible") {
-        void checkFreshnessAndSync();
-      }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [checkFreshnessAndSync]);
-
   const toggleNotificationsPanel = useCallback(() => {
     setShowNotificationsPanel((prev) => {
       const next = !prev;
@@ -248,10 +188,6 @@ export default function Home() {
       return next;
     });
   }, [notifications]);
-
-  const { present: presentClass, next: nextClass } = useMemo(() => {
-    return getCurrentAndNextClass(timetableGrid, rawSubjects, customSubjectNames);
-  }, [timetableGrid, rawSubjects, customSubjectNames]);
 
   // LMS Handlers
   const handleLmsConnect = async (e) => {
@@ -274,7 +210,7 @@ export default function Home() {
     }
   };
 
-  const handleLmsSync = async (token = lmsToken) => {
+  const handleLmsSync = useCallback(async (token = lmsToken) => {
     if (!token) return;
     setLmsBusy(true);
     try {
@@ -292,7 +228,7 @@ export default function Home() {
     } finally {
       setLmsBusy(false);
     }
-  };
+  }, [lmsToken]);
 
   const handleLmsDisconnect = async () => {
     if (lmsToken) {
@@ -305,6 +241,88 @@ export default function Home() {
     setLmsAssignments([]);
     setLmsLastSynced(null);
   };
+
+  const checkFreshnessAndSync = useCallback(async () => {
+    if (syncInProgressRef.current) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
+    const lastUp = readLocal(STORAGE_KEYS.lastUpdated, null);
+    const SYNC_INTERVAL = 15 * 60 * 1000; // 15 minutes
+    const now = Date.now();
+
+    if (!lastUp || (now - new Date(lastUp).getTime() > SYNC_INTERVAL)) {
+      await performBackgroundSync(false);
+    }
+  }, [performBackgroundSync]);
+
+  const checkLmsFreshnessAndSync = useCallback(async () => {
+    if (!lmsToken || lmsBusy) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
+    const lastUp = readLocal(STORAGE_KEYS.lmsLastSynced, null);
+    const SYNC_INTERVAL = 30 * 60 * 1000; // 30 minutes
+    const now = Date.now();
+
+    if (!lastUp || (now - new Date(lastUp).getTime() > SYNC_INTERVAL)) {
+      await handleLmsSync(lmsToken);
+    }
+  }, [lmsToken, lmsBusy, handleLmsSync]);
+
+  useEffect(() => {
+    loadLocalData();
+  }, [loadLocalData]);
+
+  useEffect(() => {
+    if (hasCredentials && !autoSyncAttemptedRef.current) {
+      autoSyncAttemptedRef.current = true;
+      void checkFreshnessAndSync();
+    }
+    if (lmsToken) {
+      void checkLmsFreshnessAndSync();
+    }
+  }, [hasCredentials, lmsToken, checkFreshnessAndSync, checkLmsFreshnessAndSync]);
+
+  useEffect(() => {
+    let timeoutId;
+    const handleCheck = () => {
+      if (document.visibilityState === "visible") {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          void checkFreshnessAndSync();
+          if (lmsToken) void checkLmsFreshnessAndSync();
+        }, 2000); // Wait 2s for network to stabilize after device wake
+      }
+    };
+
+    window.addEventListener("focus", handleCheck);
+    window.addEventListener("online", handleCheck);
+    document.addEventListener("visibilitychange", handleCheck);
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("focus", handleCheck);
+      window.removeEventListener("online", handleCheck);
+      document.removeEventListener("visibilitychange", handleCheck);
+    };
+  }, [checkFreshnessAndSync, checkLmsFreshnessAndSync, lmsToken]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const up = readLocal(STORAGE_KEYS.lastUpdated, null);
+      setRelativeTime(getRelativeTimeString(up));
+
+      // Fallback periodic sync check if wake-up events were missed or failed
+      if (document.visibilityState === "visible") {
+        void checkFreshnessAndSync();
+        if (lmsToken) void checkLmsFreshnessAndSync();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [checkFreshnessAndSync, checkLmsFreshnessAndSync, lmsToken]);
+
+  const { present: presentClass, next: nextClass } = useMemo(() => {
+    return getCurrentAndNextClass(timetableGrid, rawSubjects, customSubjectNames);
+  }, [timetableGrid, rawSubjects, customSubjectNames]);
   
   const getUrgency = (dueDateStr) => {
       if (!dueDateStr) return { color: "border-ink/10 bg-ink/5", text: "text-ink/60", label: "No Date", dot: "⚪" };
