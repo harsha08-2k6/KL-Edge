@@ -3,6 +3,8 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 import re
+import json
+import base64
 
 LMS_BASE_URL = os.getenv("LMS_URL", "https://lms.kluniversity.in")
 
@@ -50,10 +52,13 @@ def authenticate_lms(username, password):
         raise LmsError("Authentication failed: Invalid username or password, or LMS blocked the request.")
 
     # Convert cookies to a string format we can return as a "token" to the frontend
-    moodle_cookie = session.cookies.get('MoodleSession')
+    # Moodle uses SERVERID for load balancing sticky sessions. We must capture all cookies.
+    cookies_dict = session.cookies.get_dict()
+    token_bytes = json.dumps(cookies_dict).encode('utf-8')
+    encoded_token = base64.b64encode(token_bytes).decode('utf-8')
     
     return {
-        "lmsToken": moodle_cookie,
+        "lmsToken": encoded_token,
         "message": "Successfully connected to LMS"
     }
 
@@ -65,7 +70,14 @@ def get_lms_assignments(session_token):
     if not session_token:
         raise LmsError("No LMS session token provided.")
 
-    cookies = {'MoodleSession': session_token}
+    try:
+        # Try to parse as JSON/Base64 cookies dict (new format)
+        decoded_json = base64.b64decode(session_token).decode('utf-8')
+        cookies = json.loads(decoded_json)
+    except Exception:
+        # Fallback to old format where session_token is just the MoodleSession cookie
+        cookies = {'MoodleSession': session_token}
+        
     my_url = f"{LMS_BASE_URL}/my/"
 
     try:

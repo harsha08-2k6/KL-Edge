@@ -255,19 +255,6 @@ export default function Home() {
     }
   }, [performBackgroundSync]);
 
-  const checkLmsFreshnessAndSync = useCallback(async () => {
-    if (!lmsToken || lmsBusy) return;
-    if (typeof navigator !== "undefined" && !navigator.onLine) return;
-
-    const lastUp = readLocal(STORAGE_KEYS.lmsLastSynced, null);
-    const SYNC_INTERVAL = 30 * 60 * 1000; // 30 minutes
-    const now = Date.now();
-
-    if (!lastUp || (now - new Date(lastUp).getTime() > SYNC_INTERVAL)) {
-      await handleLmsSync(lmsToken);
-    }
-  }, [lmsToken, lmsBusy, handleLmsSync]);
-
   useEffect(() => {
     loadLocalData();
   }, [loadLocalData]);
@@ -277,10 +264,7 @@ export default function Home() {
       autoSyncAttemptedRef.current = true;
       void checkFreshnessAndSync();
     }
-    if (lmsToken) {
-      void checkLmsFreshnessAndSync();
-    }
-  }, [hasCredentials, lmsToken, checkFreshnessAndSync, checkLmsFreshnessAndSync]);
+  }, [hasCredentials, checkFreshnessAndSync]);
 
   useEffect(() => {
     let timeoutId;
@@ -289,7 +273,6 @@ export default function Home() {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
           void checkFreshnessAndSync();
-          if (lmsToken) void checkLmsFreshnessAndSync();
         }, 2000); // Wait 2s for network to stabilize after device wake
       }
     };
@@ -304,7 +287,7 @@ export default function Home() {
       window.removeEventListener("online", handleCheck);
       document.removeEventListener("visibilitychange", handleCheck);
     };
-  }, [checkFreshnessAndSync, checkLmsFreshnessAndSync, lmsToken]);
+  }, [checkFreshnessAndSync]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -314,11 +297,10 @@ export default function Home() {
       // Fallback periodic sync check if wake-up events were missed or failed
       if (document.visibilityState === "visible") {
         void checkFreshnessAndSync();
-        if (lmsToken) void checkLmsFreshnessAndSync();
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [checkFreshnessAndSync, checkLmsFreshnessAndSync, lmsToken]);
+  }, [checkFreshnessAndSync]);
 
   const { present: presentClass, next: nextClass } = useMemo(() => {
     return getCurrentAndNextClass(timetableGrid, rawSubjects, customSubjectNames);
@@ -372,8 +354,11 @@ export default function Home() {
             <Settings size={16} aria-hidden="true" />
           </Link>
           <button
-            onClick={() => performBackgroundSync(true)}
-            disabled={syncBusy}
+            onClick={() => {
+              performBackgroundSync(true);
+              if (lmsToken) handleLmsSync(lmsToken);
+            }}
+            disabled={syncBusy || lmsBusy}
             className="tap inline-flex h-10 items-center gap-1.5 rounded-lg bg-ink px-3 text-sm font-bold text-paper shadow-soft transition-transform hover:-translate-y-0.5 active:translate-y-0"
           >
             <RefreshCw size={15} className={syncBusy ? "animate-spin" : ""} />
