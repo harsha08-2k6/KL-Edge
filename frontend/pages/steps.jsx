@@ -32,6 +32,23 @@ export default function Steps() {
   const erpId = credentials.erpId;
   const API_BASE = import.meta.env.VITE_API_BASE || "";
 
+  // UNDER DEVELOPMENT SCREEN
+  return (
+    <Layout title="Steps Counter">
+      <div className="flex flex-col items-center justify-center py-20 px-4 space-y-6 text-center">
+        <div className="h-24 w-24 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
+          <Footprints size={48} />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-ink mb-2">Under Development 🚧</h2>
+          <p className="text-sm font-bold text-ink/60 max-w-sm mx-auto">
+            The Steps Counter and Edge Points system is currently being built. Check back soon for the full Google Fit integration!
+          </p>
+        </div>
+      </div>
+    </Layout>
+  );
+
   useEffect(() => {
     if (isEnabled && !isConnected) {
       checkDeviceSupport();
