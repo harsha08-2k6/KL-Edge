@@ -153,6 +153,12 @@ class StreakUpdate(BaseModel):
     activeDays: int
     isPublic: bool
 
+class StepsSync(BaseModel):
+    erpId: str
+    todaySteps: int
+    totalSteps: int
+    isPublic: bool
+
 def init_leaderboard_db():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -166,10 +172,22 @@ def init_leaderboard_db():
             is_public BOOLEAN
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS steps_data (
+            erp_id TEXT PRIMARY KEY,
+            today_steps INTEGER,
+            total_steps INTEGER,
+            edge_points INTEGER,
+            last_synced TEXT,
+            is_public BOOLEAN
+        )
+    ''')
     conn.commit()
     conn.close()
 
 app = FastAPI()
+
+STEPS_TO_POINTS_RATE = 100
 
 @app.on_event("startup")
 async def startup_event():
@@ -257,6 +275,75 @@ async def get_leaderboard(erpId: str, group: str = "overall"):
         "userRank": user_rank,
         "userData": user_data
     }
+
+@app.post("/api/steps/sync")
+async def sync_steps(payload: StepsSync):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now = datetime.utcnow().isoformat() + "Z"
+    
+    # Calculate edge points based on total steps
+    edge_points = payload.totalSteps // STEPS_TO_POINTS_RATE
+    
+    cursor.execute("""
+        INSERT INTO steps_data (erp_id, today_steps, total_steps, edge_points, last_synced, is_public)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(erp_id) DO UPDATE SET
+            today_steps=excluded.today_steps,
+            total_steps=excluded.total_steps,
+            edge_points=excluded.edge_points,
+            last_synced=excluded.last_synced,
+            is_public=excluded.is_public
+    """, (payload.erpId, payload.todaySteps, payload.totalSteps, edge_points, now, payload.isPublic))
+    conn.commit()
+    conn.close()
+    return {"status": "ok", "edgePoints": edge_points}
+
+@app.get("/api/steps/leaderboard")
+async def get_steps_leaderboard(erpId: str, group: str = "overall"):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM steps_data ORDER BY total_steps DESC")
+    all_users = cursor.fetchall()
+    conn.close()
+
+    if group != "overall":
+        batch_prefix = erpId[:2] if len(erpId) >= 2 else erpId
+        filtered_users = [u for u in all_users if u["erp_id"].startswith(batch_prefix)]
+    else:
+        filtered_users = all_users
+
+    user_rank = None
+    user_data = None
+    for idx, u in enumerate(filtered_users):
+        if u["erp_id"] == erpId:
+            user_rank = idx + 1
+            user_data = dict(u)
+            break
+
+    top_public = [dict(u) for u in filtered_users if u["is_public"]][:50]
+    
+    for u in top_public:
+        if u["erp_id"] != erpId:
+            u["erp_id"] = u["erp_id"][:5] + "***" if len(u["erp_id"]) >= 5 else u["erp_id"]
+
+    return {
+        "leaderboard": top_public,
+        "userRank": user_rank,
+        "userData": user_data
+    }
+
+@app.get("/api/steps/me")
+async def get_my_steps(erpId: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM steps_data WHERE erp_id = ?", (erpId,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return dict(row)
+    return {"today_steps": 0, "total_steps": 0, "edge_points": 0, "is_public": False}
 
 
 class SyncRequest(BaseModel):

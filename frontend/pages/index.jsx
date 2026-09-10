@@ -1,4 +1,4 @@
-import { RefreshCw, Settings, Bell } from "lucide-react";
+import { RefreshCw, Settings, Bell, Footprints } from "lucide-react";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
@@ -350,19 +350,14 @@ export default function Home() {
             </Link>
           )}
           <SocialLinks showLinkedIn={false} />
-          <button
-            onClick={toggleNotificationsPanel}
-            aria-label="Recent Updates"
-            title="Recent Updates"
+          <Link
+            to="/steps"
+            aria-label="Steps Counter"
+            title="Steps Counter"
             className="tap relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-ink/10 bg-white text-ink/70 shadow-soft transition-colors hover:text-ink"
           >
-            <Bell size={16} />
-            {unreadCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-coral px-1 text-[9px] font-black text-white ring-2 ring-white">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+            <Footprints size={16} />
+          </Link>
           <Link
             to="/settings"
             aria-label="Settings"
