@@ -13,9 +13,6 @@ export default function Steps() {
   const [isConnected, setIsConnected] = useState(() => {
     return readLocal("kl-edge.stepsConnected", false);
   });
-  const [googleToken, setGoogleToken] = useState(() => {
-    return readLocal("kl-edge.googleFitToken", null);
-  });
   const [connecting, setConnecting] = useState(false);
   
   const [stats, setStats] = useState({ todaySteps: 0, totalSteps: 0, edgePoints: 0, lastSynced: null });
@@ -39,30 +36,11 @@ export default function Steps() {
   }, [isEnabled, isConnected]);
 
   useEffect(() => {
-    // Check for OAuth hash fragment on mount
-    if (window.location.hash.includes("access_token")) {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const token = hashParams.get("access_token");
-      if (token) {
-        setGoogleToken(token);
-        writeLocal("kl-edge.googleFitToken", token);
-        setIsConnected(true);
-        writeLocal("kl-edge.stepsConnected", true);
-        window.history.replaceState(null, "", window.location.pathname);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
     if (isEnabled && isConnected && isSupported && erpId) {
-      if (googleToken) {
-        fetchRealGoogleFitSteps();
-      } else {
-        fetchMyStats();
-      }
+      fetchMyStats();
       fetchLeaderboard();
     }
-  }, [isEnabled, isConnected, isSupported, isPublic, erpId, activeTab, googleToken]);
+  }, [isEnabled, isConnected, isSupported, isPublic, erpId, activeTab]);
 
   const checkDeviceSupport = () => {
     setCheckingSupport(true);
@@ -81,22 +59,16 @@ export default function Steps() {
     if (!nextVal) {
         setIsConnected(false);
         writeLocal("kl-edge.stepsConnected", false);
-        setGoogleToken(null);
-        writeLocal("kl-edge.googleFitToken", null);
     }
   };
   
   const handleConnect = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      alert("Please configure VITE_GOOGLE_CLIENT_ID in your .env file first!");
-      return;
-    }
     setConnecting(true);
-    const redirectUri = window.location.origin + "/steps";
-    const scope = "https://www.googleapis.com/auth/fitness.activity.read";
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scope)}`;
-    window.location.href = authUrl;
+    setTimeout(() => {
+        setIsConnected(true);
+        writeLocal("kl-edge.stepsConnected", true);
+        setConnecting(false);
+    }, 1500);
   };
 
   const togglePrivacy = () => {
@@ -106,84 +78,6 @@ export default function Steps() {
     
     if (isEnabled && isConnected && isSupported && erpId) {
       syncSteps(stats.todaySteps, stats.totalSteps, nextVal);
-    }
-  };
-
-  const fetchRealGoogleFitSteps = async () => {
-    if (!googleToken) return;
-    try {
-      // Get start and end of today in milliseconds
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      const endOfDay = now.getTime();
-
-      const res = await fetch("https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${googleToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          "aggregateBy": [{
-            "dataTypeName": "com.google.step_count.delta",
-            "dataSourceId": "derived:com.google.step_count.delta:com.google.android.gms:estimated_steps"
-          }],
-          "bucketByTime": { "durationMillis": 86400000 },
-          "startTimeMillis": startOfDay,
-          "endTimeMillis": endOfDay
-        })
-      });
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          // Token expired
-          setGoogleToken(null);
-          writeLocal("kl-edge.googleFitToken", null);
-          setIsConnected(false);
-          writeLocal("kl-edge.stepsConnected", false);
-        }
-        return;
-      }
-
-      const data = await res.json();
-      let todayRealSteps = 0;
-      if (data.bucket && data.bucket.length > 0) {
-        const bucket = data.bucket[0];
-        if (bucket.dataset && bucket.dataset.length > 0 && bucket.dataset[0].point.length > 0) {
-          todayRealSteps = bucket.dataset[0].point[0].value[0].intVal || 0;
-        }
-      }
-
-      // To calculate total steps realistically, we'd normally pull historical data or keep a running total.
-      // For this implementation, we'll append the delta to the total steps saved on the backend.
-      
-      // First, get the current backend stats
-      const backendRes = await fetch(`${API_BASE}/api/steps/me?erpId=${erpId}`);
-      let total = 0;
-      if (backendRes.ok) {
-          const backendData = await backendRes.json();
-          // Assuming todayRealSteps is the accurate count for today,
-          // the total would be (historical total before today) + todayRealSteps.
-          // For simplicity in this demo, if todayRealSteps changed, we just update it.
-          // A robust app would maintain a server-side daily log.
-          total = backendData.total_steps || todayRealSteps;
-          
-          if (todayRealSteps > (backendData.today_steps || 0)) {
-             total += (todayRealSteps - (backendData.today_steps || 0));
-          }
-      }
-
-      setStats({
-          todaySteps: todayRealSteps,
-          totalSteps: total,
-          edgePoints: Math.floor(total / 100), // Approximate local calculation until sync
-          lastSynced: new Date().toISOString()
-      });
-      
-      syncSteps(todayRealSteps, total, isPublic);
-
-    } catch (e) {
-      console.error(e);
     }
   };
 
@@ -337,6 +231,15 @@ export default function Steps() {
             </div>
             
             <div className="space-y-3">
+                <button 
+                    onClick={handleConnect}
+                    disabled={connecting}
+                    className="tap w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border-2 border-ink/10 font-black text-ink hover:bg-ink/5 transition-colors disabled:opacity-50"
+                >
+                    {connecting ? <RefreshCcw size={20} className="animate-spin text-blue-500" /> : <div className="w-5 h-5 bg-black rounded-full" />}
+                    {connecting ? "Connecting..." : "Connect Apple Health"}
+                </button>
+                
                 <button 
                     onClick={handleConnect}
                     disabled={connecting}
