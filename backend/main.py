@@ -554,7 +554,10 @@ def lms_assignments(authorization: str = Header(None)):
         assignments = get_lms_assignments(token)
         return {"assignments": assignments, "syncedAt": f"{datetime.utcnow().isoformat()}Z"}
     except Exception as e:
-        raise AppError("Failed to fetch assignments", 500)
+        error_msg = str(e)
+        if "expired" in error_msg.lower() or "session" in error_msg.lower():
+            raise AppError(error_msg, 401)
+        raise AppError("Failed to fetch assignments: " + error_msg, 500)
 
 @app.post("/api/lms/disconnect")
 def disconnect_lms(authorization: str = Header(None)):

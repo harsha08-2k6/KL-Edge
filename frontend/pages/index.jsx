@@ -221,7 +221,9 @@ export default function Home() {
       setLmsLastSynced(res.syncedAt);
       setLmsError(""); // Clear any previous errors on success
     } catch (err) {
-      setLmsError(err.message || "Failed to sync assignments. The LMS might be down.");
+      const errMsg = err.message || "Failed to sync assignments. The LMS might be down.";
+      setLmsError(errMsg);
+      setMessage(errMsg);
       if (err.status === 401) {
           handleLmsDisconnect();
       }
