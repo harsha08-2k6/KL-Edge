@@ -133,7 +133,8 @@ export function getStreakStats() {
 export async function syncLeaderboard(erpId, stats, isPublic = true) {
     if (!erpId) return;
     try {
-        await fetch('http://localhost:8000/api/leaderboard/update', {
+        const API_BASE = import.meta.env.VITE_API_BASE || "";
+        await fetch(`${API_BASE}/api/leaderboard/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

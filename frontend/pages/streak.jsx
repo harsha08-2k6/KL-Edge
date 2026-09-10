@@ -30,7 +30,8 @@ export default function Streak() {
 
   const fetchLeaderboard = async () => {
     try {
-      const res = await fetch(`http://localhost:8000/api/leaderboard?erpId=${erpId}&group=${activeTab}`);
+      const API_BASE = import.meta.env.VITE_API_BASE || "";
+      const res = await fetch(`${API_BASE}/api/leaderboard?erpId=${erpId}&group=${activeTab}`);
       const data = await res.json();
       setLeaderboard(data.leaderboard || []);
       setUserRank(data.userRank);
