@@ -3,7 +3,7 @@ import Home from "./pages/index.jsx";
 import Subjects from "./pages/subjects.jsx";
 import SubjectNames from "./pages/subject-names.jsx";
 import Timetable from "./pages/timetable.jsx";
-import Marks from "./pages/marks.jsx";
+import Streak from "./pages/streak.jsx";
 import More from "./pages/more.jsx";
 import SeatingPlan from "./pages/seating-plan.jsx";
 import Cgpa from "./pages/cgpa.jsx";
@@ -12,7 +12,7 @@ import Settings from "./pages/settings.jsx";
 import Privacy from "./pages/privacy.jsx";
 import Documentation from "./pages/documentation.jsx";
 import Map from "./pages/map.jsx";
-
+import Assignments from "./pages/assignments.jsx";
 export default function App() {
   return (
     <Router>
@@ -21,7 +21,7 @@ export default function App() {
         <Route path="/subjects" element={<Subjects />} />
         <Route path="/subject-names" element={<SubjectNames />} />
         <Route path="/timetable" element={<Timetable />} />
-        <Route path="/marks" element={<Marks />} />
+        <Route path="/streak" element={<Streak />} />
         <Route path="/more" element={<More />} />
         <Route path="/seating-plan" element={<SeatingPlan />} />
         <Route path="/cgpa" element={<Cgpa />} />
@@ -30,6 +30,7 @@ export default function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/documentation" element={<Documentation />} />
         <Route path="/map" element={<Map />} />
+        <Route path="/assignments" element={<Assignments />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
+from typing import Optional
 
 from erp_scraper import (
     AppError,
@@ -66,6 +67,8 @@ def get_db_connection():
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
+
+
 
 
 def get_cached_json(key: str):
@@ -143,13 +146,36 @@ def run_full_sync(payload: dict) -> dict:
 
 
 
-app = FastAPI()
+class StreakUpdate(BaseModel):
+    erpId: str
+    streak: int
+    longestStreak: int
+    activeDays: int
+    isPublic: bool
 
+def init_leaderboard_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS leaderboard (
+            erp_id TEXT PRIMARY KEY,
+            current_streak INTEGER,
+            longest_streak INTEGER,
+            active_days INTEGER,
+            last_updated TEXT,
+            is_public BOOLEAN
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+app = FastAPI()
 
 @app.on_event("startup")
 async def startup_event():
     from services.map_db import init_db
     init_db()
+    init_leaderboard_db()
 
 raw_origins = os.getenv("FRONTEND_ORIGIN", "*")
 origin_allow_list = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
@@ -163,6 +189,74 @@ app.add_middleware(
 )
 
 app.include_router(map_router)
+
+@app.get("/api/portal-status")
+def portal_status():
+    status = "offline"
+    if redis_client is not None:
+        try:
+            val = redis_client.get("portal_status")
+            if val:
+                status = val
+        except Exception:
+            pass
+    return {"status": status}
+
+@app.post("/api/leaderboard/update")
+async def update_leaderboard(payload: StreakUpdate):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now = datetime.utcnow().isoformat() + "Z"
+    
+    cursor.execute("""
+        INSERT INTO leaderboard (erp_id, current_streak, longest_streak, active_days, last_updated, is_public)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(erp_id) DO UPDATE SET
+            current_streak=excluded.current_streak,
+            longest_streak=excluded.longest_streak,
+            active_days=excluded.active_days,
+            last_updated=excluded.last_updated,
+            is_public=excluded.is_public
+    """, (payload.erpId, payload.streak, payload.longestStreak, payload.activeDays, now, payload.isPublic))
+    conn.commit()
+    conn.close()
+    return {"status": "ok"}
+
+@app.get("/api/leaderboard")
+async def get_leaderboard(erpId: str, group: str = "overall"):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM leaderboard ORDER BY current_streak DESC, active_days DESC")
+    all_users = cursor.fetchall()
+    conn.close()
+
+    if group != "overall":
+        # Filter by batch year (e.g. "23")
+        batch_prefix = erpId[:2] if len(erpId) >= 2 else erpId
+        filtered_users = [u for u in all_users if u["erp_id"].startswith(batch_prefix)]
+    else:
+        filtered_users = all_users
+
+    user_rank = None
+    user_data = None
+    for idx, u in enumerate(filtered_users):
+        if u["erp_id"] == erpId:
+            user_rank = idx + 1
+            user_data = dict(u)
+            break
+
+    top_public = [dict(u) for u in filtered_users if u["is_public"]][:50]
+    
+    # Mask ERP IDs
+    for u in top_public:
+        if u["erp_id"] != erpId:
+            u["erp_id"] = u["erp_id"][:5] + "***" if len(u["erp_id"]) >= 5 else u["erp_id"]
+
+    return {
+        "leaderboard": top_public,
+        "userRank": user_rank,
+        "userData": user_data
+    }
 
 
 class SyncRequest(BaseModel):

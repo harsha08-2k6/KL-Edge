@@ -1,10 +1,10 @@
-import { Armchair, BookMarked, ChevronRight, GraduationCap, ListChecks, Settings, MapPin } from "lucide-react";
+import { Armchair, BookMarked, ChevronRight, GraduationCap, Settings, MapPin, Flame } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
 
 const moreLinks = [
   { href: "/map", label: "Campus Map", description: "Interactive map navigation with AI Assistant support.", icon: MapPin },
-  { href: "/marks", label: "Marks", description: "View internal exam marks (Coming Soon).", icon: ListChecks },
+  { href: "/streak", label: "Streak", description: "View your active days and streak calendar.", icon: Flame },
   { href: "/cgpa", label: "CGPA", description: "Check your semester-wise CGPA.", icon: GraduationCap },
   { href: "/seating-plan", label: "Seating Plan", description: "Find your exam seating arrangements.", icon: Armchair },
   { href: "/subject-names", label: "Subject Names", description: "Edit names used inside the timetable.", icon: BookMarked },

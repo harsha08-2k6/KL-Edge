@@ -59,7 +59,9 @@ export function Footer() {
 
         {/* Author / Disclaimer */}
         <div className="pt-3 border-t border-ink/5 text-[10px] text-ink/60 space-y-1">
-          <p className="font-bold text-ink/70">Built by SHVR</p>
+          <p className="font-bold text-ink/70">
+            Built by SHVR - <a href="https://sivaharshavardhanreddy-portfolio.netlify.app/" target="_blank" rel="noreferrer" className="text-mint hover:underline">View Portfolio</a>
+          </p>
           <p className="px-4 leading-normal italic text-ink/65">
             KL-Edge is an independent student project and is not affiliated with or endorsed by the university. All academic data is retrieved from the official student portal.
           </p>

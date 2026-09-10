@@ -9,6 +9,7 @@ import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS } from "../
 import { readLocal, STORAGE_KEYS, writeLocal, removeLocal } from "../utils/storage.js";
 import { showNotification, processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
+import { logVisit, getStreakStats } from "../utils/streak.js";
 
 function getRelativeTimeString(timestamp) {
   if (!timestamp) return "Never updated";
@@ -46,6 +47,13 @@ export default function Home() {
     }
   }, [hasCredentials, navigate]);
 
+  const [streakStats, setStreakStats] = useState({ streak: 0, activeDaysThisMonth: 0, visits: [] });
+
+  useEffect(() => {
+    logVisit();
+    setStreakStats(getStreakStats());
+  }, []);
+
   const [rawSubjects, setRawSubjects] = useState(() => readLocal(STORAGE_KEYS.attendance, []));
   const [lastUpdated, setLastUpdated] = useState(() => readLocal(STORAGE_KEYS.lastUpdated, null));
   const [syncBusy, setSyncBusy] = useState(false);
@@ -74,7 +82,6 @@ export default function Home() {
   const [lmsPassword, setLmsPassword] = useState("");
   const [lmsBusy, setLmsBusy] = useState(false);
   const [lmsError, setLmsError] = useState("");
-  const [showAllLms, setShowAllLms] = useState(false);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
@@ -333,6 +340,15 @@ export default function Home() {
       title="Dashboard"
       action={
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {streakStats.streak > 0 && (
+            <Link
+              to="/streak"
+              className="tap flex h-10 items-center gap-1.5 rounded-lg border border-orange-500/20 bg-orange-500/10 px-3 text-sm font-black text-orange-600 transition-colors hover:bg-orange-500/20"
+              title={`${streakStats.streak} Day Streak`}
+            >
+              🔥 {streakStats.streak}
+            </Link>
+          )}
           <SocialLinks showLinkedIn={false} />
           <button
             onClick={toggleNotificationsPanel}
@@ -820,7 +836,7 @@ export default function Home() {
                   <p className="mt-1 text-xs font-semibold text-ink/30">You're all caught up!</p>
                 </div>
               ) : (
-                (showAllLms ? lmsAssignments : lmsAssignments.slice(0, 3)).map((assignment) => {
+                lmsAssignments.slice(0, 3).map((assignment) => {
                   const urgency = getUrgency(assignment.dueDate);
                   return (
                     <div key={assignment.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-4 transition-colors ${urgency.color}`}>
@@ -851,12 +867,12 @@ export default function Home() {
             </div>
             {lmsAssignments.length > 3 && (
               <div className="mt-4 text-center">
-                <button 
-                  onClick={() => setShowAllLms(!showAllLms)} 
+                <Link 
+                  to="/assignments"
                   className="text-xs font-bold text-ink/60 hover:text-ink"
                 >
-                  {showAllLms ? "View Less" : `View all ${lmsAssignments.length} assignments`}
-                </button>
+                  View all {lmsAssignments.length} assignments
+                </Link>
               </div>
             )}
           </div>
@@ -871,7 +887,12 @@ export default function Home() {
           onClose={() => setSuccessMessage("")}
         />
       )}
-
+      
+      <div className="mt-6 pb-20 text-center text-[10px] text-ink/60">
+        <p className="font-bold text-ink/70">
+          Built by SHVR - <a href="https://sivaharshavardhanreddy-portfolio.netlify.app/" target="_blank" rel="noreferrer" className="text-mint hover:underline">View Portfolio</a>
+        </p>
+      </div>
     </Layout>
   );
 }
