@@ -350,14 +350,7 @@ export default function Home() {
             </Link>
           )}
           <SocialLinks showLinkedIn={false} />
-          <Link
-            to="/steps"
-            aria-label="Steps Counter"
-            title="Steps Counter"
-            className="tap relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-ink/10 bg-white text-ink/70 shadow-soft transition-colors hover:text-ink"
-          >
-            <Footprints size={16} />
-          </Link>
+
           <Link
             to="/settings"
             aria-label="Settings"

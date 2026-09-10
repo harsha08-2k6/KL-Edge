@@ -12,7 +12,6 @@ import Settings from "./pages/settings.jsx";
 import Privacy from "./pages/privacy.jsx";
 import Documentation from "./pages/documentation.jsx";
 import Map from "./pages/map.jsx";
-import Steps from "./pages/steps.jsx";
 import Assignments from "./pages/assignments.jsx";
 export default function App() {
   return (
@@ -23,7 +22,6 @@ export default function App() {
         <Route path="/subject-names" element={<SubjectNames />} />
         <Route path="/timetable" element={<Timetable />} />
         <Route path="/streak" element={<Streak />} />
-        <Route path="/steps" element={<Steps />} />
         <Route path="/more" element={<More />} />
         <Route path="/seating-plan" element={<SeatingPlan />} />
         <Route path="/cgpa" element={<Cgpa />} />
