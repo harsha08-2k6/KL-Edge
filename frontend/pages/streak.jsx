@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Layout } from "../components/Layout.jsx";
 import { getStreakStats, logVisit, syncLeaderboard } from "../utils/streak.js";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
@@ -18,7 +18,7 @@ export default function Streak() {
   const credentials = readLocal(STORAGE_KEYS.credentials, { erpId: "" });
   const erpId = credentials.erpId;
 
-  useEffect(() => {
+  const updateStreak = useCallback(() => {
     logVisit();
     const currentStats = getStreakStats();
     setStats(currentStats);
@@ -27,6 +27,24 @@ export default function Streak() {
       syncLeaderboard(erpId, currentStats, isPublic).then(() => fetchLeaderboard());
     }
   }, [isPublic, erpId, activeTab]);
+
+  useEffect(() => {
+    updateStreak();
+    
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        updateStreak();
+      }
+    };
+    
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+    
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
+  }, [updateStreak]);
 
   const fetchLeaderboard = async () => {
     try {

@@ -1,4 +1,4 @@
-import { Armchair, BookMarked, ChevronRight, GraduationCap, Settings, MapPin, Flame, Footprints } from "lucide-react";
+import { Armchair, BookMarked, ChevronRight, Flame, Gamepad2, GraduationCap, MapPin, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
 
@@ -9,6 +9,7 @@ const moreLinks = [
   { href: "/seating-plan", label: "Seating Plan", description: "Find your exam seating arrangements.", icon: Armchair },
   { href: "/subject-names", label: "Subject Names", description: "Edit names used inside the timetable.", icon: BookMarked },
   { href: "/settings", label: "Settings", description: "Configure login credentials and sync options for ERP access.", icon: Settings },
+  { href: "/more/games", label: "Games", description: "Take a quick break", icon: Gamepad2 },
 ];
 
 export default function More() {
@@ -32,6 +33,7 @@ export default function More() {
           </Link>
         ))}
       </div>
+
     </Layout>
   );
 }

@@ -49,10 +49,28 @@ export default function Home() {
 
   const [streakStats, setStreakStats] = useState({ streak: 0, activeDaysThisMonth: 0, visits: [] });
 
-  useEffect(() => {
+  const updateStreak = useCallback(() => {
     logVisit();
     setStreakStats(getStreakStats());
   }, []);
+
+  useEffect(() => {
+    updateStreak();
+    
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        updateStreak();
+      }
+    };
+    
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+    
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
+  }, [updateStreak]);
 
   const [rawSubjects, setRawSubjects] = useState(() => readLocal(STORAGE_KEYS.attendance, []));
   const [lastUpdated, setLastUpdated] = useState(() => readLocal(STORAGE_KEYS.lastUpdated, null));

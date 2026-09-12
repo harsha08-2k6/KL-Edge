@@ -47,6 +47,39 @@ textarea {
   min-width: 36px;
 }
 
+.snake-board {
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+  grid-template-rows: repeat(16, minmax(0, 1fr));
+}
+
+@keyframes snake-food-pulse {
+  0%,
+  100% {
+    transform: scale(0.78);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
+.animate-snake-food {
+  animation: snake-food-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes dragon-collect-pulse {
+  0%,
+  100% {
+    transform: scale(0.9) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.08) rotate(8deg);
+  }
+}
+
+.animate-dragon-collect {
+  animation: dragon-collect-pulse 0.7s ease-in-out infinite;
+}
+
 @keyframes slide-in {
   from {
     transform: translate(-50%, -1.5rem);
@@ -97,4 +130,52 @@ textarea {
 
 .animate-panel-slide-in {
   animation: panel-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tic-pop {
+  from {
+    transform: scale(0.62) rotate(-6deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes tic-win {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-tic-pop {
+  animation: tic-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-tic-win {
+  animation: tic-win 0.65s ease-in-out 2;
+}
+
+.tic-tac-toe-cell:disabled {
+  cursor: default;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slideLeft {
+  0% {
+    background-position: 100px 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
 }

@@ -13,6 +13,10 @@ import Privacy from "./pages/privacy.jsx";
 import Documentation from "./pages/documentation.jsx";
 import Map from "./pages/map.jsx";
 import Assignments from "./pages/assignments.jsx";
+import Games from "./pages/games/index.jsx";
+import TicTacToe from "./pages/games/tic-tac-toe.jsx";
+import Snake from "./pages/games/snake.jsx";
+
 export default function App() {
   return (
     <Router>
@@ -31,6 +35,14 @@ export default function App() {
         <Route path="/documentation" element={<Documentation />} />
         <Route path="/map" element={<Map />} />
         <Route path="/assignments" element={<Assignments />} />
+        <Route path="/more/games" element={<Games />} />
+        <Route path="/more/games/tic-tac-toe" element={<TicTacToe />} />
+        <Route path="/more/games/snake" element={<Snake />} />
+
+        <Route path="/games" element={<Navigate to="/more/games" replace />} />
+        <Route path="/games/tic-tac-toe" element={<Navigate to="/more/games/tic-tac-toe" replace />} />
+        <Route path="/games/snake" element={<Navigate to="/more/games/snake" replace />} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
