@@ -705,7 +705,7 @@ export default function Home() {
                   🕒 {presentClass.timeString}
                 </span>
                 {presentClass.classroom && (
-                  <span className="rounded-md bg-surface px-2 py-1 flex items-center gap-1">
+                  <span className="rounded-md bg-surface px-2 py-1 flex items-center gap-1 text-sm font-black text-ink">
                     🏫 Room {presentClass.classroom}
                   </span>
                 )}
@@ -744,7 +744,7 @@ export default function Home() {
                   🕒 {nextClass.timeString}
                 </span>
                 {nextClass.classroom && (
-                  <span className="rounded-md bg-surface px-2 py-1 flex items-center gap-1">
+                  <span className="rounded-md bg-surface px-2 py-1 flex items-center gap-1 text-sm font-black text-ink">
                     🏫 Room {nextClass.classroom}
                   </span>
                 )}
@@ -759,14 +759,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Last Sync */}
-      <section className="mt-3">
-        <MetricCard
-          label="Last Sync"
-          value={lastUpdated ? new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--"}
-          helper={lastUpdated ? new Date(lastUpdated).toLocaleDateString() : "No data yet"}
-        />
-      </section>
 
       {timetableGrid.length === 0 && (
         <section className="mt-3">
