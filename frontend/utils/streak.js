@@ -14,21 +14,37 @@ export function getTodayStr() {
     return formatDateStr(new Date());
 }
 
+export async function fetchVisits(erpId) {
+    if (!erpId) return [];
+    try {
+        const API_BASE = import.meta.env.VITE_API_BASE || "";
+        const res = await fetch(`${API_BASE}/api/streak/visits?erpId=${erpId}`);
+        const data = await res.json();
+        return data.visits || [];
+    } catch (e) {
+        console.error("Failed to fetch visits", e);
+        return [];
+    }
+}
+
 // Function to log today's visit
-export function logVisit() {
-    const data = readLocal(STREAK_KEY, { visits: [] });
-    const today = getTodayStr();
-    
-    if (!data.visits.includes(today)) {
-        data.visits.push(today);
-        writeLocal(STREAK_KEY, data);
+export async function logVisit(erpId) {
+    if (!erpId) return;
+    try {
+        const API_BASE = import.meta.env.VITE_API_BASE || "";
+        await fetch(`${API_BASE}/api/streak/log`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ erpId })
+        });
+    } catch (e) {
+        console.error("Failed to log visit", e);
     }
 }
 
 // Function to calculate current streak
-export function getStreakStats() {
-    const data = readLocal(STREAK_KEY, { visits: [] });
-    const visits = new Set(data.visits);
+export function getStreakStats(visitsArray) {
+    const visits = new Set(visitsArray || []);
     let streak = 0;
     
     let iterDate = new Date();
@@ -126,7 +142,7 @@ export function getStreakStats() {
         longestStreak: currentLongest,
         activeDaysThisMonth,
         totalActiveDays: visits.size,
-        visits: data.visits
+        visits: Array.from(visits)
     };
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Layout } from "../components/Layout.jsx";
-import { getStreakStats, logVisit, syncLeaderboard } from "../utils/streak.js";
+import { getStreakStats, logVisit, syncLeaderboard, fetchVisits } from "../utils/streak.js";
 import { readLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
 import { Flame, Calendar as CalendarIcon, Info, Trophy, Users, Globe } from "lucide-react";
 
@@ -18,14 +18,16 @@ export default function Streak() {
   const credentials = readLocal(STORAGE_KEYS.credentials, { erpId: "" });
   const erpId = credentials.erpId;
 
-  const updateStreak = useCallback(() => {
-    logVisit();
-    const currentStats = getStreakStats();
+  const updateStreak = useCallback(async () => {
+    if (!erpId) return;
+    
+    await logVisit(erpId);
+    const visits = await fetchVisits(erpId);
+    
+    const currentStats = getStreakStats(visits);
     setStats(currentStats);
     
-    if (erpId) {
-      syncLeaderboard(erpId, currentStats, isPublic).then(() => fetchLeaderboard());
-    }
+    syncLeaderboard(erpId, currentStats, isPublic).then(() => fetchLeaderboard());
   }, [isPublic, erpId, activeTab]);
 
   useEffect(() => {

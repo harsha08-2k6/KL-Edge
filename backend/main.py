@@ -27,6 +27,7 @@ import json
 from routes.map import router as map_router
 from services.lms_scraper import authenticate_lms, get_lms_assignments
 from fastapi import Header
+from supabase_client import get_supabase
 
 
 # Redis key for faculty cache
@@ -159,6 +160,9 @@ class StepsSync(BaseModel):
     totalSteps: int
     isPublic: bool
 
+class VisitLog(BaseModel):
+    erpId: str
+
 def init_leaderboard_db():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -222,49 +226,75 @@ def portal_status():
 
 @app.post("/api/leaderboard/update")
 async def update_leaderboard(payload: StreakUpdate):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    supabase = get_supabase()
+    if not supabase:
+        return {"status": "error", "message": "Supabase not configured"}
+    
     now = datetime.utcnow().isoformat() + "Z"
     
-    cursor.execute("""
-        INSERT INTO leaderboard (erp_id, current_streak, longest_streak, active_days, last_updated, is_public)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(erp_id) DO UPDATE SET
-            current_streak=excluded.current_streak,
-            longest_streak=excluded.longest_streak,
-            active_days=excluded.active_days,
-            last_updated=excluded.last_updated,
-            is_public=excluded.is_public
-    """, (payload.erpId, payload.streak, payload.longestStreak, payload.activeDays, now, payload.isPublic))
-    conn.commit()
-    conn.close()
+    data = {
+        "user_id": payload.erpId,
+        "current_streak": payload.streak,
+        "longest_streak": payload.longestStreak,
+        "active_days": payload.activeDays,
+        "last_updated": now,
+        "is_public": payload.isPublic
+    }
+    
+    try:
+        supabase.table("user_streaks").upsert(data).execute()
+    except Exception as e:
+        print(f"Failed to update leaderboard in Supabase: {e}")
+        return {"status": "error", "message": str(e)}
+        
     return {"status": "ok"}
 
 @app.get("/api/leaderboard")
 async def get_leaderboard(erpId: str, group: str = "overall"):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM leaderboard ORDER BY current_streak DESC, active_days DESC")
-    all_users = cursor.fetchall()
-    conn.close()
+    supabase = get_supabase()
+    if not supabase:
+        return {"leaderboard": [], "userRank": None, "userData": None}
+    
+    try:
+        res = supabase.table("user_streaks").select("*").order("current_streak", desc=True).order("active_days", desc=True).execute()
+        all_users = res.data
+    except Exception as e:
+        print(f"Failed to fetch leaderboard from Supabase: {e}")
+        all_users = []
 
     if group != "overall":
         # Filter by batch year (e.g. "23")
         batch_prefix = erpId[:2] if len(erpId) >= 2 else erpId
-        filtered_users = [u for u in all_users if u["erp_id"].startswith(batch_prefix)]
+        filtered_users = [u for u in all_users if u["user_id"].startswith(batch_prefix)]
     else:
         filtered_users = all_users
 
     user_rank = None
     user_data = None
     for idx, u in enumerate(filtered_users):
-        if u["erp_id"] == erpId:
+        if u["user_id"] == erpId:
             user_rank = idx + 1
-            user_data = dict(u)
+            user_data = {
+                "erp_id": u["user_id"],
+                "current_streak": u["current_streak"],
+                "longest_streak": u["longest_streak"],
+                "active_days": u["active_days"]
+            }
             break
 
-    top_public = [dict(u) for u in filtered_users if u["is_public"]][:50]
-    
+    top_public = []
+    for u in filtered_users:
+        if u.get("is_public", True):
+            mapped_u = {
+                "erp_id": u["user_id"],
+                "current_streak": u["current_streak"],
+                "longest_streak": u["longest_streak"],
+                "active_days": u["active_days"]
+            }
+            top_public.append(mapped_u)
+        if len(top_public) >= 50:
+            break
+            
     # Mask ERP IDs
     for u in top_public:
         if u["erp_id"] != erpId:
@@ -275,6 +305,46 @@ async def get_leaderboard(erpId: str, group: str = "overall"):
         "userRank": user_rank,
         "userData": user_data
     }
+
+@app.post("/api/streak/log")
+async def log_streak_visit(payload: VisitLog):
+    supabase = get_supabase()
+    if not supabase:
+        return {"status": "error", "message": "Supabase not configured"}
+    
+    import datetime as dt
+    today = dt.date.today().isoformat()
+    
+    try:
+        # Ensure user_streaks record exists first to satisfy foreign key
+        streak_res = supabase.table("user_streaks").select("user_id").eq("user_id", payload.erpId).execute()
+        if not streak_res.data:
+            supabase.table("user_streaks").insert({"user_id": payload.erpId}).execute()
+            
+        res = supabase.table("user_visits").select("*").eq("user_id", payload.erpId).eq("visit_date", today).execute()
+        if not res.data:
+            supabase.table("user_visits").insert({
+                "user_id": payload.erpId,
+                "visit_date": today
+            }).execute()
+        return {"status": "ok"}
+    except Exception as e:
+        print(f"Failed to log visit in Supabase: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/streak/visits")
+async def get_streak_visits(erpId: str):
+    supabase = get_supabase()
+    if not supabase:
+        return {"visits": []}
+    
+    try:
+        res = supabase.table("user_visits").select("visit_date").eq("user_id", erpId).execute()
+        visits = [row["visit_date"] for row in res.data]
+        return {"visits": visits}
+    except Exception as e:
+        print(f"Failed to fetch visits from Supabase: {e}")
+        return {"visits": []}
 
 @app.post("/api/steps/sync")
 async def sync_steps(payload: StepsSync):
