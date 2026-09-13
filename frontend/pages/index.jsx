@@ -9,7 +9,7 @@ import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS } from "../
 import { readLocal, STORAGE_KEYS, writeLocal, removeLocal } from "../utils/storage.js";
 import { showNotification, processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
-import { logVisit, getStreakStats } from "../utils/streak.js";
+import { logVisit, getStreakStats, fetchVisits } from "../utils/streak.js";
 
 function getRelativeTimeString(timestamp) {
   if (!timestamp) return "Never updated";
@@ -49,9 +49,14 @@ export default function Home() {
 
   const [streakStats, setStreakStats] = useState({ streak: 0, activeDaysThisMonth: 0, visits: [] });
 
-  const updateStreak = useCallback(() => {
-    logVisit();
-    setStreakStats(getStreakStats());
+  const updateStreak = useCallback(async () => {
+    const credentials = readLocal(STORAGE_KEYS.credentials, {});
+    const erpId = credentials.erpId;
+    if (!erpId) return;
+
+    await logVisit(erpId);
+    const visits = await fetchVisits(erpId);
+    setStreakStats(getStreakStats(visits));
   }, []);
 
   useEffect(() => {
@@ -546,7 +551,7 @@ export default function Home() {
         </div>
         {syncStatus === "idle" && (
           <span className="text-[10px] text-ink/40">
-            Auto-refreshing in background
+            {lastUpdated ? new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Auto-refreshing in background"}
           </span>
         )}
       </div>
