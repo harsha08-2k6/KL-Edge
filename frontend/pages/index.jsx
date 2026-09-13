@@ -9,7 +9,7 @@ import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS } from "../
 import { readLocal, STORAGE_KEYS, writeLocal, removeLocal } from "../utils/storage.js";
 import { showNotification, processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
-import { logVisit, getStreakStats, fetchVisits } from "../utils/streak.js";
+import { logVisit, getStreakStats, fetchVisits, syncLeaderboard } from "../utils/streak.js";
 
 function getRelativeTimeString(timestamp) {
   if (!timestamp) return "Never updated";
@@ -56,7 +56,12 @@ export default function Home() {
 
     await logVisit(erpId);
     const visits = await fetchVisits(erpId);
-    setStreakStats(getStreakStats(visits));
+    
+    const currentStats = getStreakStats(visits);
+    setStreakStats(currentStats);
+    
+    // Make sure we also sync this to the backend so the DB is updated without visiting the streak page
+    await syncLeaderboard(erpId, currentStats, true);
   }, []);
 
   useEffect(() => {

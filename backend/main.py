@@ -230,8 +230,10 @@ async def update_leaderboard(payload: StreakUpdate):
     supabase = get_supabase()
     if not supabase:
         return {"status": "error", "message": "Supabase not configured"}
-    
-    now = datetime.utcnow().isoformat() + "Z"
+
+    import datetime as dt
+    # Store timestamp as UTC, but aware that Supabase handles it as timestamptz
+    now = dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc).isoformat()
     
     data = {
         "user_id": payload.erpId,
@@ -315,8 +317,12 @@ async def log_streak_visit(payload: VisitLog):
         return {"status": "error", "message": f"Supabase not configured: {get_init_error()}"}
     
     import datetime as dt
-    # Use the date provided by frontend to avoid UTC rollover issues, fallback to server today
-    today = payload.date if payload.date else dt.date.today().isoformat()
+    # Get current time in IST (UTC+5:30)
+    ist_offset = dt.timedelta(hours=5, minutes=30)
+    ist_now = dt.datetime.utcnow() + ist_offset
+    
+    # Use the date provided by frontend to avoid timezone issues, fallback to IST server today
+    today = payload.date if payload.date else ist_now.date().isoformat()
     
     try:
         # Ensure user_streaks record exists first to satisfy foreign key
