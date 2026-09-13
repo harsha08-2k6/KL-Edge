@@ -232,8 +232,9 @@ async def update_leaderboard(payload: StreakUpdate):
         return {"status": "error", "message": "Supabase not configured"}
 
     import datetime as dt
-    # Store timestamp as UTC, but aware that Supabase handles it as timestamptz
-    now = dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc).isoformat()
+    # Force IST timezone (UTC+5:30) for the timestamp
+    ist_tz = dt.timezone(dt.timedelta(hours=5, minutes=30))
+    now = dt.datetime.now(ist_tz).isoformat()
     
     data = {
         "user_id": payload.erpId,
