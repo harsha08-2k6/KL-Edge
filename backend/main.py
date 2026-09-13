@@ -309,9 +309,10 @@ async def get_leaderboard(erpId: str, group: str = "overall"):
 
 @app.post("/api/streak/log")
 async def log_streak_visit(payload: VisitLog):
+    from supabase_client import get_supabase, get_init_error
     supabase = get_supabase()
     if not supabase:
-        return {"status": "error", "message": "Supabase not configured"}
+        return {"status": "error", "message": f"Supabase not configured: {get_init_error()}"}
     
     import datetime as dt
     # Use the date provided by frontend to avoid UTC rollover issues, fallback to server today
