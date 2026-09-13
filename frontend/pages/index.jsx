@@ -48,6 +48,8 @@ export default function Home() {
   }, [hasCredentials, navigate]);
 
   const [streakStats, setStreakStats] = useState({ streak: 0, activeDaysThisMonth: 0, visits: [] });
+  const [showStreakWelcome, setShowStreakWelcome] = useState(false);
+  const [streakMessage, setStreakMessage] = useState("");
 
   const updateStreak = useCallback(async () => {
     const credentials = readLocal(STORAGE_KEYS.credentials, {});
@@ -59,6 +61,12 @@ export default function Home() {
     
     const currentStats = getStreakStats(visits);
     setStreakStats(currentStats);
+    
+    if (currentStats.streak > 0) {
+      setStreakMessage(`🔥 Welcome back! You are on a ${currentStats.streak} day streak!`);
+      setShowStreakWelcome(true);
+      setTimeout(() => setShowStreakWelcome(false), 2500); // hide after 2.5 seconds
+    }
     
     // Make sure we also sync this to the backend so the DB is updated without visiting the streak page
     await syncLeaderboard(erpId, currentStats, true);
@@ -893,6 +901,15 @@ export default function Home() {
           message={successMessage}
           type="success"
           onClose={() => setSuccessMessage("")}
+        />
+      )}
+
+      {/* Streak Welcome Popup */}
+      {showStreakWelcome && (
+        <Toast
+          message={streakMessage}
+          type="success"
+          onClose={() => setShowStreakWelcome(false)}
         />
       )}
       

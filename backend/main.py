@@ -299,10 +299,8 @@ async def get_leaderboard(erpId: str, group: str = "overall"):
         if len(top_public) >= 50:
             break
             
-    # Mask ERP IDs
-    for u in top_public:
-        if u["erp_id"] != erpId:
-            u["erp_id"] = u["erp_id"][:5] + "***" if len(u["erp_id"]) >= 5 else u["erp_id"]
+    # Mask ERP IDs only if they wanted to be private (but they are not in this list if they are private)
+    # So we can just show the full ID since they opted in.
 
     return {
         "leaderboard": top_public,
