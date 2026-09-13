@@ -162,6 +162,7 @@ class StepsSync(BaseModel):
 
 class VisitLog(BaseModel):
     erpId: str
+    date: str = None
 
 def init_leaderboard_db():
     conn = get_db_connection()
@@ -313,7 +314,8 @@ async def log_streak_visit(payload: VisitLog):
         return {"status": "error", "message": "Supabase not configured"}
     
     import datetime as dt
-    today = dt.date.today().isoformat()
+    # Use the date provided by frontend to avoid UTC rollover issues, fallback to server today
+    today = payload.date if payload.date else dt.date.today().isoformat()
     
     try:
         # Ensure user_streaks record exists first to satisfy foreign key

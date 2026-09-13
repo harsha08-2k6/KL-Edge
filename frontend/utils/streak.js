@@ -31,11 +31,12 @@ export async function fetchVisits(erpId) {
 export async function logVisit(erpId) {
     if (!erpId) return;
     try {
+        const todayStr = getTodayStr(); // Using local time from device
         const API_BASE = import.meta.env.VITE_API_BASE || "";
         await fetch(`${API_BASE}/api/streak/log`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ erpId })
+            body: JSON.stringify({ erpId, date: todayStr })
         });
     } catch (e) {
         console.error("Failed to log visit", e);
