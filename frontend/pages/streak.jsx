@@ -152,21 +152,6 @@ export default function Streak() {
             </div>
           </div>
           
-          <div className="flex bg-surface p-1 rounded-lg mb-4">
-            <button 
-              onClick={() => setActiveTab("batch")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded-md transition-colors ${activeTab === 'batch' ? 'bg-white shadow-sm text-ink' : 'text-ink/60'}`}
-            >
-              <Users size={14} /> My Batch
-            </button>
-            <button 
-              onClick={() => setActiveTab("overall")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded-md transition-colors ${activeTab === 'overall' ? 'bg-white shadow-sm text-ink' : 'text-ink/60'}`}
-            >
-              <Globe size={14} /> Overall
-            </button>
-          </div>
-
           <div className="space-y-3">
             {leaderboard.map((user, idx) => {
               const rank = idx + 1;

@@ -1,4 +1,4 @@
-import { RefreshCw, Settings, Bell, Footprints } from "lucide-react";
+import { RefreshCw, Settings, Bell, Footprints, Flame, X } from "lucide-react";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
@@ -904,13 +904,33 @@ export default function Home() {
         />
       )}
 
-      {/* Streak Welcome Popup */}
+      {/* Centered Streak Welcome Modal */}
       {showStreakWelcome && (
-        <Toast
-          message={streakMessage}
-          type="success"
-          onClose={() => setShowStreakWelcome(false)}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-[280px] overflow-hidden rounded-3xl bg-white shadow-2xl animate-scale-up border border-orange-500/20">
+            <button 
+              onClick={() => setShowStreakWelcome(false)}
+              className="absolute top-4 right-4 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-surface text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
+            >
+              <X size={14} />
+            </button>
+            
+            <div className="flex flex-col items-center p-8 pb-10 text-center">
+              <div className="mb-6 flex items-center justify-center gap-2 text-xs font-black tracking-[0.2em] text-orange-500 uppercase">
+                <Flame size={16} className="fill-orange-500" /> STREAK
+              </div>
+              
+              <div className="flex flex-col items-center justify-center">
+                <span className="text-[80px] leading-none font-black text-ink">{streakStats?.streak || 0}</span>
+                <span className="mt-2 text-sm font-black tracking-[0.3em] text-ink/40 uppercase">DAYS</span>
+              </div>
+              
+              <div className="mt-8 rounded-full bg-orange-500/10 px-5 py-2.5 text-xs font-black tracking-wide text-orange-600">
+                Keep your streak going!
+              </div>
+            </div>
+          </div>
+        </div>
       )}
       
       <div className="mt-6 pb-20 text-center text-[10px] text-ink/60">
