@@ -63,9 +63,15 @@ export default function Home() {
     setStreakStats(currentStats);
     
     if (currentStats.streak > 0) {
-      setStreakMessage(`🔥 Welcome back! You are on a ${currentStats.streak} day streak!`);
-      setShowStreakWelcome(true);
-      setTimeout(() => setShowStreakWelcome(false), 2500); // hide after 2.5 seconds
+      const today = new Date().toDateString();
+      const lastShownDate = readLocal("streak_last_shown_date", "");
+      
+      if (lastShownDate !== today) {
+        setStreakMessage(`🔥 Welcome back! You are on a ${currentStats.streak} day streak!`);
+        setShowStreakWelcome(true);
+        setTimeout(() => setShowStreakWelcome(false), 2500); // hide after 2.5 seconds
+        writeLocal("streak_last_shown_date", today);
+      }
     }
     
     // Make sure we also sync this to the backend so the DB is updated without visiting the streak page
