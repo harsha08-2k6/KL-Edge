@@ -408,6 +408,7 @@ export default function Home() {
           <button
             onClick={() => {
               performBackgroundSync(true);
+              if (lmsToken) handleLmsSync(lmsToken);
             }}
             disabled={syncBusy || lmsBusy}
             className="tap inline-flex h-10 items-center gap-1.5 rounded-lg bg-ink px-3 text-sm font-bold text-paper shadow-soft transition-transform hover:-translate-y-0.5 active:translate-y-0"
