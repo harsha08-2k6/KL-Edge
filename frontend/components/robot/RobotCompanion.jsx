@@ -159,14 +159,7 @@ export function RobotCompanion({ maintenanceMessage }) {
   const handlePointerMove = useCallback((e) => {
     if (!isDragging.current) {
       if (robotRef.current && robotState !== ROBOT_STATES.SLEEPING) {
-        const rect = robotRef.current.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        
-        const dist = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2));
-        if (robotState === ROBOT_STATES.IDLE && dist < 100 && Math.abs(e.movementX) > 10) {
-           changeState(ROBOT_STATES.SURPRISED, 1500);
-        }
+        // Shaking animation trigger removed to keep robot stable
       }
       return;
     }
