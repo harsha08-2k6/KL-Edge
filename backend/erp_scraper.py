@@ -1027,7 +1027,7 @@ def extract_extra_inputs(form, exclude: set) -> Dict[str, str]:
             continue
 
         input_type = (input_tag.get("type") or "").lower()
-        if input_type in ("submit", "button", "image"):
+        if input_type in ("button", "image"):
             continue
 
         if input_type in ("checkbox", "radio") and not input_tag.has_attr("checked"):
