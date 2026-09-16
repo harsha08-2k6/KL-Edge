@@ -564,7 +564,8 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
                 if location and "site/login" not in location and "site%2flogin" not in location:
                     has_app_redirect = True
 
-            if has_app_redirect and looks_like_login_page(res_html):
+            # Allow the standard error detection to handle it so captchas can retry
+            if has_app_redirect and looks_like_login_page(res_html) and attempt == max_attempts:
                 raise AppError("Invalid credentials. Check username, password and captcha.", 401)
                 
             if looks_like_login_failure(login_response.url, res_html, login_form):

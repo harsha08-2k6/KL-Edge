@@ -28,52 +28,129 @@
 }
 
 @keyframes robot-float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 @keyframes robot-bounce {
-  0% { transform: translateY(0px) scale(1); }
-  50% { transform: translateY(-15px) scale(0.95, 1.05); }
-  100% { transform: translateY(0px) scale(1.05, 0.95); }
+  0% {
+    transform: translateY(0px) scale(1);
+  }
+
+  50% {
+    transform: translateY(-15px) scale(0.95, 1.05);
+  }
+
+  100% {
+    transform: translateY(0px) scale(1.05, 0.95);
+  }
 }
 
 @keyframes robot-jump {
-  0% { transform: translateY(0px); }
-  40% { transform: translateY(-30px); }
-  50% { transform: translateY(-30px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+
+  40% {
+    transform: translateY(-30px);
+  }
+
+  50% {
+    transform: translateY(-30px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 @keyframes robot-tilt {
-  0% { transform: rotate(0deg); }
-  25% { transform: rotate(5deg); }
-  75% { transform: rotate(-5deg); }
-  100% { transform: rotate(0deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(5deg);
+  }
+
+  75% {
+    transform: rotate(-5deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
 }
 
 @keyframes robot-shock {
-  0% { transform: scale(1); }
-  20% { transform: scale(1.1) translateY(-20px); }
-  40% { transform: scale(0.9) translateY(0px); }
-  60% { transform: scale(1.05) translateY(-10px); }
-  100% { transform: scale(1) translateY(0px); }
+  0% {
+    transform: scale(1);
+  }
+
+  20% {
+    transform: scale(1.1) translateY(-20px);
+  }
+
+  40% {
+    transform: scale(0.9) translateY(0px);
+  }
+
+  60% {
+    transform: scale(1.05) translateY(-10px);
+  }
+
+  100% {
+    transform: scale(1) translateY(0px);
+  }
 }
 
 @keyframes robot-sleep-breathe {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.02) translateY(5px); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.02) translateY(5px);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes robot-wave {
-  0% { transform: rotate(0deg); }
-  20% { transform: rotate(15deg); }
-  40% { transform: rotate(-10deg); }
-  60% { transform: rotate(15deg); }
-  80% { transform: rotate(-10deg); }
-  100% { transform: rotate(0deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  20% {
+    transform: rotate(15deg);
+  }
+
+  40% {
+    transform: rotate(-10deg);
+  }
+
+  60% {
+    transform: rotate(15deg);
+  }
+
+  80% {
+    transform: rotate(-10deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
 }
 
 .speech-bubble {
@@ -81,8 +158,15 @@
 }
 
 @keyframes pop-in {
-  0% { opacity: 0; transform: scale(0.5) translateY(10px); }
-  100% { opacity: 1; transform: scale(1) translateY(0px); }
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0px);
+  }
 }
 
 .zzz-particle {
@@ -94,15 +178,47 @@
   animation: float-up-fade 2.5s ease-in infinite;
 }
 
-.zzz-1 { animation-delay: 0s; right: 10px; top: 10px; font-size: 14px; }
-.zzz-2 { animation-delay: 0.8s; right: 25px; top: -5px; font-size: 18px; }
-.zzz-3 { animation-delay: 1.6s; right: 5px; top: -20px; font-size: 22px; }
+.zzz-1 {
+  animation-delay: 0s;
+  right: 10px;
+  top: 10px;
+  font-size: 14px;
+}
+
+.zzz-2 {
+  animation-delay: 0.8s;
+  right: 25px;
+  top: -5px;
+  font-size: 18px;
+}
+
+.zzz-3 {
+  animation-delay: 1.6s;
+  right: 5px;
+  top: -20px;
+  font-size: 22px;
+}
 
 @keyframes float-up-fade {
-  0% { opacity: 0; transform: translateY(0px) scale(0.5); }
-  20% { opacity: 1; transform: translateY(-10px) scale(1); }
-  80% { opacity: 1; transform: translateY(-30px) scale(1.2); }
-  100% { opacity: 0; transform: translateY(-40px) scale(1.5); }
+  0% {
+    opacity: 0;
+    transform: translateY(0px) scale(0.5);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1);
+  }
+
+  80% {
+    opacity: 1;
+    transform: translateY(-30px) scale(1.2);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(1.5);
+  }
 }
 
 .chat-window {
@@ -110,18 +226,38 @@
 }
 
 @keyframes slide-up {
-  0% { opacity: 0; transform: translateY(20px); }
-  100% { opacity: 1; transform: translateY(0px); }
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0px);
+  }
 }
 
 .typing-dot {
   animation: typing-bounce 1.4s infinite ease-in-out both;
 }
 
-.typing-dot:nth-child(1) { animation-delay: -0.32s; }
-.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+.typing-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
 
 @keyframes typing-bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+
+  40% {
+    transform: scale(1);
+  }
 }

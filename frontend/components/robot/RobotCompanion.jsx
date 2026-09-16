@@ -30,7 +30,7 @@ export function RobotCompanion({ maintenanceMessage }) {
   const [speech, setSpeech] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [facingLeft, setFacingLeft] = useState(false);
-  
+
   const robotRef = useRef(null);
   const containerRef = useRef(null);
   const isDragging = useRef(false);
@@ -43,7 +43,7 @@ export function RobotCompanion({ maintenanceMessage }) {
     if (robotState === ROBOT_STATES.SLEEPING && newState !== ROBOT_STATES.IDLE) {
       if (newState !== ROBOT_STATES.DRAGGING) return;
     }
-    
+
     lastState.current = robotState;
     setRobotState(newState);
 
@@ -76,7 +76,7 @@ export function RobotCompanion({ maintenanceMessage }) {
 
   useEffect(() => {
     let lastTime = performance.now();
-    
+
     const updatePhysics = (time) => {
       const deltaTime = (time - lastTime) / 1000;
       lastTime = time;
@@ -101,7 +101,7 @@ export function RobotCompanion({ maintenanceMessage }) {
               const speed = 40;
               vx = (dx / dist) * speed;
               vy = (dy / dist) * speed;
-              
+
               setFacingLeft(vx < 0);
               setVelocity({ x: vx, y: vy });
             }
@@ -120,7 +120,7 @@ export function RobotCompanion({ maintenanceMessage }) {
           const padding = 200;
           const winW = window.innerWidth;
           const rightZoneStart = Math.max(winW - 350, winW * 0.65);
-          
+
           if (newX < rightZoneStart + padding) { newX = rightZoneStart + padding; vx = 0; }
           if (newX > winW - padding) { newX = winW - padding; vx = 0; }
           if (newY < padding) { newY = padding; vy = 0; }
@@ -139,18 +139,18 @@ export function RobotCompanion({ maintenanceMessage }) {
 
   const handlePointerDown = (e) => {
     if (e.button !== 0) return;
-    
+
     isDragging.current = true;
     targetPos.current = null;
     const rect = robotRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    
+
     dragOffset.current = {
       x: e.clientX - centerX,
       y: e.clientY - centerY
     };
-    
+
     setMenuOpen(false);
     changeState(ROBOT_STATES.DRAGGING);
     document.body.style.userSelect = 'none';
@@ -170,23 +170,23 @@ export function RobotCompanion({ maintenanceMessage }) {
     const padding = 200;
     const winW = window.innerWidth;
     const rightZoneStart = Math.max(winW - 350, winW * 0.65);
-    
+
     if (newX < rightZoneStart + padding) newX = rightZoneStart + padding;
     if (newX > winW - padding) newX = winW - padding;
     if (newY < padding) newY = padding;
     if (newY > window.innerHeight - padding) newY = window.innerHeight - padding;
 
     setPosition({ x: newX, y: newY });
-    
+
     if (e.movementX !== 0) setFacingLeft(e.movementX < 0);
-    
+
   }, [robotState, changeState]);
 
   const handlePointerUp = useCallback(() => {
     if (isDragging.current) {
       isDragging.current = false;
       document.body.style.userSelect = '';
-      
+
       if (robotState !== ROBOT_STATES.SLEEPING) {
         changeState(ROBOT_STATES.HAPPY, 1000);
       } else {
@@ -211,7 +211,7 @@ export function RobotCompanion({ maintenanceMessage }) {
       setTimeout(() => setSpeech(""), 2000);
       return;
     }
-    
+
     setSpeech("Robo under maintenance");
     setTimeout(() => setSpeech(""), 3000);
   };
@@ -229,20 +229,20 @@ export function RobotCompanion({ maintenanceMessage }) {
       case ROBOT_STATES.THINKING: return "robot-thinking";
       case ROBOT_STATES.SLEEPING: return "robot-sleeping";
       case ROBOT_STATES.SURPRISED: return "robot-surprised";
-      case ROBOT_STATES.DRAGGING: return ""; 
+      case ROBOT_STATES.DRAGGING: return "";
       default: return "robot-idle";
     }
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 pointer-events-none overflow-hidden z-40 hidden md:block"
       ref={containerRef}
     >
-      <div 
+      <div
         ref={robotRef}
         className="absolute pointer-events-auto transition-transform duration-100 ease-out will-change-transform flex justify-center items-center"
-        style={{ 
+        style={{
           transform: `translate(${position.x}px, ${position.y}px) translate(-50%, -50%)`,
           cursor: isDragging.current ? 'grabbing' : 'grab',
           width: '120px',
@@ -278,43 +278,43 @@ export function RobotCompanion({ maintenanceMessage }) {
         )}
 
         <div className={`relative w-full h-full drop-shadow-2xl transition-transform duration-300`}>
-           <div className={`w-full h-full bg-contain bg-center bg-no-repeat ${getAnimationClass()}`}
-                style={{ backgroundImage: "url('/robot.png')" }}
-           />
+          <div className={`w-full h-full bg-contain bg-center bg-no-repeat ${getAnimationClass()}`}
+            style={{ backgroundImage: "url('/robot.png')" }}
+          />
         </div>
 
         {menuOpen && (
           <div className="absolute top-1/2 left-[110%] -translate-y-1/2 bg-white rounded-2xl shadow-xl border border-ink/10 w-40 overflow-hidden pointer-events-auto z-50 animate-in fade-in zoom-in-95 duration-200">
             <div className="p-2 space-y-1">
-              <button 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  setMenuOpen(false); 
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(false);
                   const winW = window.innerWidth;
                   const winH = window.innerHeight;
                   const rightZoneStart = Math.max(winW - 350, winW * 0.65);
                   const bottomZoneStart = Math.max(winH - 350, winH * 0.5);
-                  targetPos.current = { 
-                    x: rightZoneStart + (winW - rightZoneStart) / 2, 
-                    y: bottomZoneStart + (winH - bottomZoneStart) / 2 
+                  targetPos.current = {
+                    x: rightZoneStart + (winW - rightZoneStart) / 2,
+                    y: bottomZoneStart + (winH - bottomZoneStart) / 2
                   };
-                  changeState(ROBOT_STATES.MOVING); 
+                  changeState(ROBOT_STATES.MOVING);
                 }}
                 className="w-full text-left px-3 py-2 text-sm font-semibold text-ink/80 hover:text-ink hover:bg-surface rounded-lg flex items-center gap-2 transition-colors"
               >
                 <ArrowRight size={14} /> Move Center
               </button>
-              
+
               {robotState !== ROBOT_STATES.SLEEPING ? (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setMenuOpen(false); changeState(ROBOT_STATES.SLEEPING); setSpeech("Good night!"); setTimeout(()=>setSpeech(""),2000); }}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen(false); changeState(ROBOT_STATES.SLEEPING); setSpeech("Good night!"); setTimeout(() => setSpeech(""), 2000); }}
                   className="w-full text-left px-3 py-2 text-sm font-semibold text-ink/80 hover:text-ink hover:bg-surface rounded-lg flex items-center gap-2 transition-colors"
                 >
                   <Moon size={14} /> Sleep
                 </button>
               ) : (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setMenuOpen(false); changeState(ROBOT_STATES.HAPPY, 1500); setSpeech("Good to see you!"); setTimeout(()=>setSpeech(""),3000); }}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen(false); changeState(ROBOT_STATES.HAPPY, 1500); setSpeech("Good to see you!"); setTimeout(() => setSpeech(""), 3000); }}
                   className="w-full text-left px-3 py-2 text-sm font-semibold text-mint hover:bg-mint/10 rounded-lg flex items-center gap-2 transition-colors"
                 >
                   <Sun size={14} /> Wake Up
@@ -326,8 +326,8 @@ export function RobotCompanion({ maintenanceMessage }) {
       </div>
 
       {menuOpen && (
-        <div 
-          className="fixed inset-0 pointer-events-auto z-30" 
+        <div
+          className="fixed inset-0 pointer-events-auto z-30"
           onClick={() => setMenuOpen(false)}
         />
       )}
