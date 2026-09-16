@@ -10,6 +10,7 @@ import { readLocal, STORAGE_KEYS, writeLocal, removeLocal } from "../utils/stora
 import { showNotification, processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
 import { logVisit, getStreakStats, fetchVisits, syncLeaderboard } from "../utils/streak.js";
+import { RobotCompanion } from "../components/robot/RobotCompanion.jsx";
 
 function getRelativeTimeString(timestamp) {
   if (!timestamp) return "Never updated";
@@ -311,10 +312,13 @@ export default function Home() {
   }, [loadLocalData]);
 
   useEffect(() => {
-    if (hasCredentials && !autoSyncAttemptedRef.current) {
-      autoSyncAttemptedRef.current = true;
-      void checkFreshnessAndSync();
+    let timeout;
+    if (hasCredentials) {
+      timeout = setTimeout(() => {
+        void checkFreshnessAndSync();
+      }, 100);
     }
+    return () => clearTimeout(timeout);
   }, [hasCredentials, checkFreshnessAndSync]);
 
   useEffect(() => {
@@ -944,6 +948,8 @@ export default function Home() {
           Built by SHVR - <a href="https://sivaharshavardhanreddy-portfolio.netlify.app/" target="_blank" rel="noreferrer" className="text-mint hover:underline">View Portfolio</a>
         </p>
       </div>
+      
+      <RobotCompanion maintenanceMessage={syncStatus === "failed" ? "The ERP seems to be down for maintenance!" : ""} />
     </Layout>
   );
 }

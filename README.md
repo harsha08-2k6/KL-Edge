@@ -62,6 +62,11 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
 - Smart urgency indicators (Due soon, Overdue, etc.)
 - Direct links to assignment submission portals
 
+### 🔥 Daily Streaks & Engagement
+- Track daily logins to encourage consistency
+- Real-time leaderboard to compare streaks among peers
+- Auto-syncing of stats to maintain streak progress seamlessly
+
 ### 📱 Responsive & PWA Design
 - Fully optimized as a Progressive Web App (PWA) for:
   - Mobile devices
