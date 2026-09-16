@@ -1021,19 +1021,22 @@ def find_pjax_container_id(soup: BeautifulSoup, form) -> str:
 
 def extract_extra_inputs(form, exclude: set) -> Dict[str, str]:
     extras: Dict[str, str] = {}
-    for input_tag in form.find_all("input"):
+    for input_tag in form.find_all(["input", "button"]):
         name = input_tag.get("name")
         if not name or name in exclude:
             continue
 
         input_type = (input_tag.get("type") or "").lower()
-        if input_type in ("button", "image"):
+        if input_tag.name == "input" and input_type in ("button", "image"):
             continue
 
         if input_type in ("checkbox", "radio") and not input_tag.has_attr("checked"):
             continue
 
-        extras[name] = input_tag.get("value") or ""
+        if input_tag.name == "button":
+            extras[name] = input_tag.get("value") or input_tag.text.strip() or ""
+        else:
+            extras[name] = input_tag.get("value") or ""
 
     return extras
 
