@@ -299,10 +299,16 @@ export default function Home() {
     if (typeof navigator !== "undefined" && !navigator.onLine) return;
 
     const lastUp = readLocal(STORAGE_KEYS.lastUpdated, null);
+    const lastAttempt = readLocal("kl-edge.lastSyncAttempt", null);
     const SYNC_INTERVAL = 15 * 60 * 1000; // 15 minutes
+    const ATTEMPT_COOLDOWN = 5 * 60 * 1000; // 5 minutes cooldown if it failed
     const now = Date.now();
 
-    if (!lastUp || (now - new Date(lastUp).getTime() > SYNC_INTERVAL)) {
+    const timeSinceLastUp = lastUp ? now - new Date(lastUp).getTime() : Infinity;
+    const timeSinceLastAttempt = lastAttempt ? now - lastAttempt : Infinity;
+
+    if (timeSinceLastUp > SYNC_INTERVAL && timeSinceLastAttempt > ATTEMPT_COOLDOWN) {
+      writeLocal("kl-edge.lastSyncAttempt", now);
       await performBackgroundSync(false);
     }
   }, [performBackgroundSync]);
