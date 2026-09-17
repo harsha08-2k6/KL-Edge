@@ -56,24 +56,32 @@ export default function Home() {
     const credentials = readLocal(STORAGE_KEYS.credentials, {});
     const erpId = credentials.erpId;
     if (!erpId) return;
-
+    
+    const prevStreakCount = readLocal("streak_last_count", 0);
+    
     await logVisit(erpId);
     const visits = await fetchVisits(erpId);
     
     const currentStats = getStreakStats(visits);
     setStreakStats(currentStats);
     
-    if (currentStats.streak > 0) {
-      const today = new Date().toDateString();
-      const lastShownDate = readLocal("streak_last_shown_date", "");
-      
-      if (lastShownDate !== today) {
+    const today = new Date().toDateString();
+    const lastShownDate = readLocal("streak_last_shown_date", "");
+    
+    if (lastShownDate !== today) {
+      if (currentStats.streak === 1 && prevStreakCount > 1) {
+        setStreakMessage(`🧊 Oh no! You lost your ${prevStreakCount}-day streak. Time to start a new one!`);
+        setShowStreakWelcome(true);
+        setTimeout(() => setShowStreakWelcome(false), 4000);
+      } else if (currentStats.streak > 0) {
         setStreakMessage(`🔥 Welcome back! You are on a ${currentStats.streak} day streak!`);
         setShowStreakWelcome(true);
-        setTimeout(() => setShowStreakWelcome(false), 2500); // hide after 2.5 seconds
-        writeLocal("streak_last_shown_date", today);
+        setTimeout(() => setShowStreakWelcome(false), 2500);
       }
+      writeLocal("streak_last_shown_date", today);
     }
+    
+    writeLocal("streak_last_count", currentStats.streak);
     
     // Make sure we also sync this to the backend so the DB is updated without visiting the streak page
     await syncLeaderboard(erpId, currentStats, true);
