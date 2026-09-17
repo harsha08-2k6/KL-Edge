@@ -23,13 +23,15 @@ const PHRASES = [
   "Welcome back!"
 ];
 
-export function RobotCompanion({ maintenanceMessage }) {
+export function RobotCompanion({ maintenanceMessage, dashboardStats, userName = "User" }) {
   const [robotState, setRobotState] = useState(ROBOT_STATES.IDLE);
   const [position, setPosition] = useState({ x: window.innerWidth - 200, y: window.innerHeight - 200 });
   const [velocity, setVelocity] = useState({ x: 0, y: 0 });
   const [speech, setSpeech] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [facingLeft, setFacingLeft] = useState(false);
+  const messageIndexRef = useRef(0);
 
   const robotRef = useRef(null);
   const containerRef = useRef(null);
@@ -64,15 +66,36 @@ export function RobotCompanion({ maintenanceMessage }) {
       if (maintenanceMessage) {
         setSpeech(maintenanceMessage);
         setTimeout(() => setSpeech(""), 5000);
-      } else if (Math.random() > 0.6) {
-        const randomPhrase = PHRASES[Math.floor(Math.random() * PHRASES.length)];
-        setSpeech(randomPhrase);
-        setTimeout(() => setSpeech(""), 4000);
+      } else if (dashboardStats && !assistantOpen) {
+        const messages = [];
+        if (dashboardStats.nextClass && dashboardStats.nextClassMins !== null) {
+          messages.push(`Next class in ${dashboardStats.nextClassMins} min`);
+        } else {
+          messages.push("No more classes today!");
+        }
+        
+        if (dashboardStats.overallAttendance !== null) {
+          messages.push(`Attendance: ${dashboardStats.overallAttendance}%`);
+        }
+        
+        if (dashboardStats.assignmentsDueToday?.length > 0) {
+          messages.push(`${dashboardStats.assignmentsDueToday.length} assignment(s) due today`);
+        }
+        
+        if (dashboardStats.classesRemaining !== undefined) {
+          messages.push(`${dashboardStats.classesRemaining} classes remaining`);
+        }
+        
+        if (messages.length > 0) {
+          setSpeech(messages[messageIndexRef.current % messages.length]);
+          messageIndexRef.current += 1;
+          setTimeout(() => setSpeech(""), 4000);
+        }
       }
-    }, 12000);
+    }, 8000);
 
     return () => clearInterval(interval);
-  }, [robotState, maintenanceMessage]);
+  }, [robotState, maintenanceMessage, dashboardStats, assistantOpen]);
 
   useEffect(() => {
     let lastTime = performance.now();
@@ -212,8 +235,8 @@ export function RobotCompanion({ maintenanceMessage }) {
       return;
     }
 
-    setSpeech("Robo under maintenance");
-    setTimeout(() => setSpeech(""), 3000);
+    setAssistantOpen(prev => !prev);
+    setMenuOpen(false);
   };
 
   const handleContextMenu = (e) => {
@@ -323,12 +346,79 @@ export function RobotCompanion({ maintenanceMessage }) {
             </div>
           </div>
         )}
+
+        {assistantOpen && dashboardStats && (
+          <div className="absolute bottom-[110%] right-0 bg-white rounded-2xl shadow-xl border border-ink/10 w-72 overflow-hidden pointer-events-auto z-50 animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 bg-surface/50 border-b border-ink/5 flex items-center justify-between">
+              <h3 className="font-black text-ink text-sm flex items-center gap-1.5">
+                🤖 Hey {userName.split(" ")[0]}!
+              </h3>
+              <button onClick={(e) => { e.stopPropagation(); setAssistantOpen(false); }} className="text-ink/40 hover:text-ink">
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-4">
+              {/* Next Class */}
+              <div>
+                <p className="text-[10px] font-black text-ink/40 uppercase tracking-widest flex items-center gap-1 mb-1">
+                  📚 Next class
+                </p>
+                {dashboardStats.nextClass ? (
+                  <>
+                    <p className="text-sm font-bold text-ink leading-tight">{dashboardStats.nextClass.subjectName}</p>
+                    <p className="text-xs text-ink/70 mt-0.5">Starts in {dashboardStats.nextClassMins} min</p>
+                    {dashboardStats.nextClass.classroom && (
+                      <p className="text-xs font-semibold text-ink/60 mt-0.5">Room {dashboardStats.nextClass.classroom}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm font-semibold text-ink/60">No upcoming classes today!</p>
+                )}
+              </div>
+              
+              {/* Attendance */}
+              <div>
+                <p className="text-[10px] font-black text-ink/40 uppercase tracking-widest flex items-center gap-1 mb-1">
+                  📊 Attendance
+                </p>
+                <p className="text-sm font-bold text-ink leading-tight">Overall: {dashboardStats.overallAttendance ?? 0}%</p>
+                <p className={`text-xs mt-0.5 font-semibold ${(dashboardStats.overallAttendance ?? 0) >= 75 ? 'text-mint' : 'text-coral'}`}>
+                  {(dashboardStats.overallAttendance ?? 0) >= 75 ? "You're safe for now" : "You need to attend more!"}
+                </p>
+              </div>
+
+              {/* Assignment */}
+              <div>
+                <p className="text-[10px] font-black text-ink/40 uppercase tracking-widest flex items-center gap-1 mb-1">
+                  📝 Assignment
+                </p>
+                {dashboardStats.assignmentsDueToday?.length > 0 ? (
+                  <>
+                    <p className="text-sm font-bold text-ink leading-tight">{dashboardStats.assignmentsDueToday[0].title}</p>
+                    <p className="text-xs text-coral font-semibold mt-0.5">Due today</p>
+                  </>
+                ) : (
+                  <p className="text-sm font-semibold text-ink/60">No assignments due today!</p>
+                )}
+              </div>
+
+              {/* Today */}
+              <div>
+                <p className="text-[10px] font-black text-ink/40 uppercase tracking-widest flex items-center gap-1 mb-1">
+                  📅 Today
+                </p>
+                <p className="text-sm font-bold text-ink leading-tight">{dashboardStats.classesRemaining} classes remaining</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {menuOpen && (
+      {(menuOpen || assistantOpen) && (
         <div
           className="fixed inset-0 pointer-events-auto z-30"
-          onClick={() => setMenuOpen(false)}
+          onClick={() => { setMenuOpen(false); setAssistantOpen(false); }}
         />
       )}
     </div>

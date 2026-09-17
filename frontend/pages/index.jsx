@@ -371,10 +371,43 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [checkFreshnessAndSync]);
 
-  const { present: presentClass, next: nextClass } = useMemo(() => {
+  const { present: presentClass, next: nextClass, remaining: classesRemaining } = useMemo(() => {
     return getCurrentAndNextClass(timetableGrid, rawSubjects, customSubjectNames);
   }, [timetableGrid, rawSubjects, customSubjectNames]);
   
+  const dashboardStats = useMemo(() => {
+    // 1. Next Class Time
+    let nextClassMins = null;
+    if (nextClass) {
+      const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+      nextClassMins = Math.max(0, nextClass.startMinutes - currentMinutes);
+    }
+
+    // 2. Attendance
+    let totalPresent = 0;
+    let totalClasses = 0;
+    rawSubjects.forEach(sub => {
+      totalPresent += (sub.present || 0);
+      totalClasses += (sub.total || 0);
+    });
+    const overallAttendance = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100) : null;
+
+    // 3. Assignments Due Today
+    const assignmentsDueToday = lmsAssignments.filter(a => {
+      if (!a.dueDate) return false;
+      const diffDays = Math.ceil((new Date(a.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 0;
+    });
+
+    return {
+      nextClass,
+      nextClassMins,
+      overallAttendance,
+      assignmentsDueToday,
+      classesRemaining
+    };
+  }, [nextClass, rawSubjects, lmsAssignments, classesRemaining]);
+
   const getUrgency = (dueDateStr) => {
       if (!dueDateStr) return { color: "border-ink/10 bg-ink/5", text: "text-ink/60", label: "No Date", dot: "⚪" };
       const due = new Date(dueDateStr).getTime();
@@ -966,7 +999,11 @@ export default function Home() {
         </p>
       </div>
       
-      <RobotCompanion maintenanceMessage={syncStatus === "failed" ? "The ERP seems to be down for maintenance!" : ""} />
+      <RobotCompanion 
+        maintenanceMessage={syncStatus === "failed" ? "The ERP seems to be down for maintenance!" : ""}
+        dashboardStats={dashboardStats}
+        userName={readLocal(STORAGE_KEYS.credentials, {}).name || readLocal(STORAGE_KEYS.username, "") || "User"}
+      />
     </Layout>
   );
 }

@@ -633,13 +633,15 @@ export function getCurrentAndNextClass(grid, attendance = [], customSubjectNames
       classroom,
       subjectName: subjectName || courseCode,
       slot: classItem.slot,
-      timeString: classItem.times ? `${classItem.times.start} - ${classItem.times.end}` : ""
+      timeString: classItem.times ? `${classItem.times.start} - ${classItem.times.end}` : "",
+      startMinutes: classItem.startMinutes
     };
   };
   
   return {
     present: formatClassInfo(presentClass),
-    next: formatClassInfo(nextClass)
+    next: formatClassInfo(nextClass),
+    remaining: todayClasses.filter(c => c.startMinutes > currentMinutes).length
   };
 }
 export function mergeConsecutiveClasses(rows) {
