@@ -425,6 +425,26 @@ def refresh_login_captcha(session: requests.Session) -> tuple[str, str]:
     if not image_bytes:
         raise AppError("Captcha image was empty.", 502)
         
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(image_bytes))
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+        bg = Image.new('RGBA', img.size, (255, 255, 255))
+        out = Image.alpha_composite(bg, img).convert('RGB')
+        
+        # Increase contrast to help OCR
+        from PIL import ImageEnhance
+        enhancer = ImageEnhance.Contrast(out)
+        out = enhancer.enhance(1.5)
+        
+        buf = io.BytesIO()
+        out.save(buf, format='PNG')
+        image_bytes = buf.getvalue()
+    except Exception as e:
+        pass
+        
     ocr = get_ocr_client()
     solved_text = ocr.classification(image_bytes)
     
