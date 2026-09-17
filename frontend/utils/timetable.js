@@ -24,7 +24,20 @@ export function getSlotTime(slot) {
 }
 
 export function formatSlotWithTime(slot) {
-  const slotNumber = getSlotNumber(slot);
+  const match = String(slot || "").match(/\d+/g);
+  if (!match) return slot || "";
+  
+  if (match.length > 1) {
+    const startNum = match[0];
+    const endNum = match[match.length - 1];
+    const startTime = SLOT_TIMES[startNum];
+    const endTime = SLOT_TIMES[endNum];
+    if (startTime && endTime) {
+      return `Slot ${startNum}-${endNum} - ${startTime.start} - ${endTime.end}`;
+    }
+  }
+
+  const slotNumber = match[0];
   const time = SLOT_TIMES[slotNumber];
   if (!time) return slot || "";
   return `Slot ${slotNumber} - ${time.start} - ${time.end}`;
@@ -571,7 +584,8 @@ export function getCurrentAndNextClass(grid, attendance = [], customSubjectNames
   const today = dayNames[now.getDay()];
   
   const { schedule } = buildWeekSchedule(grid);
-  const todayRows = schedule[today] || [];
+  let todayRows = schedule[today] || [];
+  todayRows = mergeConsecutiveClasses(todayRows);
   
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   
@@ -580,8 +594,20 @@ export function getCurrentAndNextClass(grid, attendance = [], customSubjectNames
   
   // Sort today's classes by slot start time
   const todayClasses = todayRows.map((item) => {
-    const slotNum = getSlotNumber(item.slot);
-    const times = SLOT_TIMES[slotNum];
+    const matches = String(item.slot || "").match(/\d+/g);
+    const startSlotNum = matches ? matches[0] : "";
+    const endSlotNum = matches ? matches[matches.length - 1] : "";
+    
+    const startTimes = SLOT_TIMES[startSlotNum];
+    const endTimes = SLOT_TIMES[endSlotNum];
+    
+    const times = startTimes && endTimes ? {
+      start: startTimes.start,
+      end: endTimes.end,
+      startMinutes: startTimes.startMinutes,
+      endMinutes: endTimes.endMinutes
+    } : null;
+
     return {
       ...item,
       times,
@@ -615,4 +641,30 @@ export function getCurrentAndNextClass(grid, attendance = [], customSubjectNames
     present: formatClassInfo(presentClass),
     next: formatClassInfo(nextClass)
   };
+}
+export function mergeConsecutiveClasses(rows) {
+  if (!rows || rows.length === 0) return [];
+  const merged = [];
+  let current = null;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (!current) {
+      current = { ...row, originalSlots: [row.slot] };
+      continue;
+    }
+    const currParsed = parseCellValue(current.value);
+    const rowParsed = parseCellValue(row.value);
+    const currSlotNum = parseInt(getSlotNumber(current.originalSlots[current.originalSlots.length - 1]), 10);
+    const rowSlotNum = parseInt(getSlotNumber(row.slot), 10);
+    if (currParsed.courseCode === rowParsed.courseCode && currParsed.courseCode !== '' && rowSlotNum === currSlotNum + 1) {
+      current.originalSlots.push(row.slot);
+      current.slot = current.originalSlots.join(', ');
+      // Update times if they were previously computed (e.g. by map) or rely on formatSlotWithTime
+    } else {
+      merged.push(current);
+      current = { ...row, originalSlots: [row.slot] };
+    }
+  }
+  if (current) merged.push(current);
+  return merged;
 }

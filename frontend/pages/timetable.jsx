@@ -9,7 +9,8 @@ import {
   dayNames,
   dayOrder,
   buildWeekSchedule,
-  getTodayRows
+  getTodayRows,
+  mergeConsecutiveClasses
 } from "../utils/timetable.js";
 
 function getTodayName() {
@@ -27,11 +28,12 @@ export default function Timetable() {
   const [selectedDay, setSelectedDay] = useState(today);
   const selectedDayInitialized = useRef(false);
   const todayRows = daysWithData.length ? schedule[today] || [] : getTodayRows(grid, today);
-  const selectedRows = daysWithData.length
+  const selectedRowsRaw = daysWithData.length
     ? schedule[selectedDay] || []
     : selectedDay === today
       ? todayRows
       : [];
+  const selectedRows = useMemo(() => mergeConsecutiveClasses(selectedRowsRaw), [selectedRowsRaw]);
   const totalSlots = selectedRows.length;
 
   useEffect(() => {
