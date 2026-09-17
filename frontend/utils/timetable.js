@@ -5,11 +5,11 @@ export const SLOT_TIMES = {
   "4": { start: "10:10 AM", end: "11:00 AM", startMinutes: 10 * 60 + 10, endMinutes: 11 * 60 },
   "5": { start: "11:10 AM", end: "12:00 PM", startMinutes: 11 * 60 + 10, endMinutes: 12 * 60 },
   "6": { start: "12:00 PM", end: "12:50 PM", startMinutes: 12 * 60, endMinutes: 12 * 60 + 50 },
-  "7": { start: "12:55 PM", end: "01:45 PM", startMinutes: 12 * 60 + 55, endMinutes: 13 * 60 + 45 },
-  "8": { start: "01:45 PM", end: "02:35 PM", startMinutes: 13 * 60 + 45, endMinutes: 14 * 60 + 35 },
-  "9": { start: "02:40 PM", end: "03:30 PM", startMinutes: 14 * 60 + 40, endMinutes: 15 * 60 + 30 },
-  "10": { start: "03:40 PM", end: "04:30 PM", startMinutes: 15 * 60 + 40, endMinutes: 16 * 60 + 30 },
-  "11": { start: "04:30 PM", end: "05:20 PM", startMinutes: 16 * 60 + 30, endMinutes: 17 * 60 + 20 },
+  "7": { start: "01:00 PM", end: "01:50 PM", startMinutes: 13 * 60, endMinutes: 13 * 60 + 50 },
+  "8": { start: "02:00 PM", end: "02:50 PM", startMinutes: 14 * 60, endMinutes: 14 * 60 + 50 },
+  "9": { start: "02:50 PM", end: "03:40 PM", startMinutes: 14 * 60 + 50, endMinutes: 15 * 60 + 40 },
+  "10": { start: "03:50 PM", end: "04:40 PM", startMinutes: 15 * 60 + 50, endMinutes: 16 * 60 + 40 },
+  "11": { start: "04:40 PM", end: "05:30 PM", startMinutes: 16 * 60 + 40, endMinutes: 17 * 60 + 30 },
   "12": { start: "05:40 PM", end: "06:30 PM", startMinutes: 17 * 60 + 40, endMinutes: 18 * 60 + 30 },
   "13": { start: "06:30 PM", end: "07:20 PM", startMinutes: 18 * 60 + 30, endMinutes: 19 * 60 + 20 }
 };
