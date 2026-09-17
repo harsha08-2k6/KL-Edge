@@ -1,6 +1,6 @@
 import { RefreshCw, Settings, Bell, Footprints, Flame, X } from "lucide-react";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
 import { SocialLinks } from "../components/SocialLinks.jsx";
@@ -419,7 +419,7 @@ export default function Home() {
   }).length;
 
   if (!hasCredentials) {
-    return null;
+    return <Navigate to="/settings" replace />;
   }
 
   return (
