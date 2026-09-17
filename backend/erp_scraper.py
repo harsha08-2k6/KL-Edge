@@ -428,7 +428,7 @@ def refresh_login_captcha(session: requests.Session) -> tuple[str, str]:
     ocr = get_ocr_client()
     solved_text = ocr.classification(image_bytes)
     
-    solved_text = re.sub(r'[^a-zA-Z0-9]', '', solved_text).lower()
+    solved_text = re.sub(r'[^a-zA-Z0-9]', '', solved_text)
     return solved_text, login_html
 
 
