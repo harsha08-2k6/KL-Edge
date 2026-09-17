@@ -61,39 +61,65 @@ export function RobotCompanion({ maintenanceMessage, dashboardStats, userName = 
       return;
     }
 
-    const interval = setInterval(() => {
+    let timeoutId;
+    let index = 0;
+
+    const runCycle = () => {
       if (maintenanceMessage) {
         setSpeech(maintenanceMessage);
         setTimeout(() => setSpeech(""), 5000);
-      } else if (dashboardStats) {
-        const messages = [];
-        if (dashboardStats.nextClass && dashboardStats.nextClassMins !== null) {
-          messages.push(`Next class in ${dashboardStats.nextClassMins} min`);
-        } else {
-          messages.push("No more classes today!");
-        }
-        
-        if (dashboardStats.overallAttendance !== null) {
-          messages.push(`Attendance: ${dashboardStats.overallAttendance}%`);
-        }
-        
-        if (dashboardStats.assignmentsDueToday?.length > 0) {
-          messages.push(`${dashboardStats.assignmentsDueToday.length} assignment(s) due today`);
-        }
-        
-        if (dashboardStats.classesRemaining !== undefined) {
-          messages.push(`${dashboardStats.classesRemaining} classes remaining`);
-        }
-        
-        if (messages.length > 0) {
-          setSpeech(messages[messageIndexRef.current % messages.length]);
-          messageIndexRef.current += 1;
-          setTimeout(() => setSpeech(""), 4000);
-        }
+        timeoutId = setTimeout(runCycle, 10000);
+        return;
       }
-    }, 10000);
+      
+      if (!dashboardStats) {
+        timeoutId = setTimeout(runCycle, 10000);
+        return;
+      }
 
-    return () => clearInterval(interval);
+      const messages = [];
+      if (dashboardStats.nextClass && dashboardStats.nextClassMins !== null) {
+        messages.push(`Next class in ${dashboardStats.nextClassMins} min`);
+        messages.push(`${dashboardStats.nextClass.subjectName}`);
+        if (dashboardStats.nextClass.classroom) {
+          messages.push(`Room: ${dashboardStats.nextClass.classroom}`);
+        }
+      } else {
+        messages.push("No more classes today!");
+      }
+      
+      if (dashboardStats.overallAttendance !== null) {
+        messages.push(`Attendance: ${dashboardStats.overallAttendance}%`);
+      }
+      
+      if (dashboardStats.assignmentsDueToday?.length > 0) {
+        messages.push(`${dashboardStats.assignmentsDueToday.length} assignment(s) due today`);
+      }
+      
+      if (dashboardStats.classesRemaining !== undefined) {
+        messages.push(`${dashboardStats.classesRemaining} classes remaining`);
+      }
+
+      if (messages.length === 0) {
+        timeoutId = setTimeout(runCycle, 5 * 60 * 1000);
+        return;
+      }
+
+      if (index < messages.length) {
+        setSpeech(messages[index]);
+        index++;
+        
+        setTimeout(() => setSpeech(""), 4000);
+        timeoutId = setTimeout(runCycle, 8000);
+      } else {
+        index = 0;
+        timeoutId = setTimeout(runCycle, 5 * 60 * 1000); // 5 minutes break
+      }
+    };
+
+    timeoutId = setTimeout(runCycle, 2000);
+
+    return () => clearTimeout(timeoutId);
   }, [robotState, maintenanceMessage, dashboardStats]);
 
   useEffect(() => {
