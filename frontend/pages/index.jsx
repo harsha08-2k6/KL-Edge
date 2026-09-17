@@ -722,7 +722,7 @@ export default function Home() {
       {/* Current and Next Class */}
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* Ongoing Class Card */}
-        <div className="rounded-xl border border-ink/10 bg-white/80 p-4 shadow-soft">
+        <div className="rounded-xl border border-ink/10 bg-white/80 p-4 shadow-soft flex flex-col h-full">
           <div className="flex items-center justify-between">
             <span className="rounded-full bg-mint/10 px-2.5 py-0.5 text-[10px] font-black text-mint uppercase tracking-wider">
               Ongoing Class
@@ -734,14 +734,16 @@ export default function Home() {
             )}
           </div>
           {presentClass ? (
-            <div className="mt-3">
-              <h3 className="text-base font-black text-ink leading-tight">
-                {presentClass.subjectName}
-              </h3>
-              <p className="mt-0.5 text-[10px] font-semibold text-ink/45 uppercase tracking-wide">
-                {presentClass.courseCode}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-bold text-ink/70">
+            <div className="mt-3 flex flex-col flex-grow">
+              <div>
+                <h3 className="text-base font-black text-ink leading-tight">
+                  {presentClass.subjectName}
+                </h3>
+                <p className="mt-0.5 text-[10px] font-semibold text-ink/45 uppercase tracking-wide">
+                  {presentClass.courseCode}
+                </p>
+              </div>
+              <div className="mt-auto pt-3 flex flex-wrap gap-1.5 text-[11px] font-bold text-ink/70">
                 <span className="rounded-md bg-surface px-2 py-1 flex items-center gap-1">
                   🕒 {presentClass.timeString}
                 </span>
@@ -761,7 +763,7 @@ export default function Home() {
         </div>
 
         {/* Next Class Card */}
-        <div className="rounded-xl border border-ink/10 bg-white/80 p-4 shadow-soft">
+        <div className="rounded-xl border border-ink/10 bg-white/80 p-4 shadow-soft flex flex-col h-full">
           <div className="flex items-center justify-between">
             <span className="rounded-full bg-violet/10 px-2.5 py-0.5 text-[10px] font-black text-violet uppercase tracking-wider">
               Next Class
@@ -773,14 +775,16 @@ export default function Home() {
             )}
           </div>
           {nextClass ? (
-            <div className="mt-3">
-              <h3 className="text-base font-black text-ink leading-tight">
-                {nextClass.subjectName}
-              </h3>
-              <p className="mt-0.5 text-[10px] font-semibold text-ink/45 uppercase tracking-wide">
-                {nextClass.courseCode}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-bold text-ink/70">
+            <div className="mt-3 flex flex-col flex-grow">
+              <div>
+                <h3 className="text-base font-black text-ink leading-tight">
+                  {nextClass.subjectName}
+                </h3>
+                <p className="mt-0.5 text-[10px] font-semibold text-ink/45 uppercase tracking-wide">
+                  {nextClass.courseCode}
+                </p>
+              </div>
+              <div className="mt-auto pt-3 flex flex-wrap gap-1.5 text-[11px] font-bold text-ink/70">
                 <span className="rounded-md bg-surface px-2 py-1 flex items-center gap-1">
                   🕒 {nextClass.timeString}
                 </span>
