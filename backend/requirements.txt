@@ -7,4 +7,4 @@ python-dotenv
 urllib3
 redis
 ddddocr
-supabase
+supabasePillow

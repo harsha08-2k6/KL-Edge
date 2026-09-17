@@ -13,6 +13,11 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
+try:
+    from PIL import Image, ImageEnhance
+except ImportError:
+    pass
+
 load_dotenv()
 
 
@@ -426,7 +431,6 @@ def refresh_login_captcha(session: requests.Session) -> tuple[str, str]:
         raise AppError("Captcha image was empty.", 502)
         
     try:
-        from PIL import Image
         import io
         img = Image.open(io.BytesIO(image_bytes))
         if img.mode != 'RGBA':
@@ -435,7 +439,6 @@ def refresh_login_captcha(session: requests.Session) -> tuple[str, str]:
         out = Image.alpha_composite(bg, img).convert('RGB')
         
         # Increase contrast to help OCR
-        from PIL import ImageEnhance
         enhancer = ImageEnhance.Contrast(out)
         out = enhancer.enhance(1.5)
         
