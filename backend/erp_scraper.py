@@ -599,6 +599,10 @@ def perform_login(payload: Dict[str, str]) -> requests.Session:
                 error_msg = extract_login_error_message(res_html) or "Invalid credentials."
                 
                 if error_type == "credentials":
+                    if not user_captcha and attempt < max_attempts:
+                        if DEBUG_ENABLED:
+                            print(f"[erp:login] Assuming captcha error instead of credentials during auto-sync. Retrying...", flush=True)
+                        continue
                     if DEBUG_ENABLED:
                         print(f"[erp:login] Credentials error detected: {error_msg}. Aborting retry.", flush=True)
                         save_debug_html("last_login_failure.html", res_html, login_response.url)
