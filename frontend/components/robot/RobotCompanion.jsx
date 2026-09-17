@@ -80,9 +80,10 @@ export function RobotCompanion({ maintenanceMessage, dashboardStats, userName = 
       const messages = [];
       if (dashboardStats.nextClass && dashboardStats.nextClassMins !== null) {
         messages.push(`Next class in ${dashboardStats.nextClassMins} min`);
-        messages.push(`${dashboardStats.nextClass.subjectName}`);
         if (dashboardStats.nextClass.classroom) {
-          messages.push(`Room: ${dashboardStats.nextClass.classroom}`);
+          messages.push(`${dashboardStats.nextClass.subjectName} (Room ${dashboardStats.nextClass.classroom})`);
+        } else {
+          messages.push(`${dashboardStats.nextClass.subjectName}`);
         }
       } else {
         messages.push("No more classes today!");
