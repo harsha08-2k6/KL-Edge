@@ -299,7 +299,7 @@ export function RobotCompanion({ maintenanceMessage, dashboardStats, userName = 
         onContextMenu={handleContextMenu}
       >
         {speech && (
-          <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded-2xl shadow-lg border border-ink/10 speech-bubble text-sm font-bold text-ink whitespace-nowrap z-30 pointer-events-none animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300 ease-out">
+          <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded-2xl shadow-lg border border-ink/10 speech-bubble text-sm font-bold text-ink w-max max-w-[220px] text-center break-words z-30 pointer-events-none animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300 ease-out">
             {speech}
             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r border-b border-ink/10 rotate-45 transform origin-center"></div>
           </div>
