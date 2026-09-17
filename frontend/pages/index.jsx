@@ -36,18 +36,6 @@ function getRelativeTimeString(timestamp) {
 export default function Home() {
   const navigate = useNavigate();
 
-  const hasCredentials = useMemo(() => {
-    const credentials = readLocal(STORAGE_KEYS.credentials, {});
-    const syncOptions = readLocal(STORAGE_KEYS.syncOptions, {});
-    return !!(credentials.erpId && credentials.password && syncOptions.academicYear && syncOptions.semesterId);
-  }, []);
-
-  useEffect(() => {
-    if (!hasCredentials) {
-      navigate("/settings", { replace: true });
-    }
-  }, [hasCredentials, navigate]);
-
   const [streakStats, setStreakStats] = useState({ streak: 0, activeDaysThisMonth: 0, visits: [] });
   const [showStreakWelcome, setShowStreakWelcome] = useState(false);
   const [streakMessage, setStreakMessage] = useState("");

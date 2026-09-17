@@ -1,5 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BookOpenCheck, Calendar, Home, MoreHorizontal, Users, ArrowLeft } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { readLocal, STORAGE_KEYS } from "../utils/storage.js";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -24,6 +26,19 @@ export function Layout({ children, title, action, width = "default", backTo }) {
   const location = useLocation();
   const navigate = useNavigate();
   const shellWidth = widthClasses[width] || widthClasses.default;
+
+  const hasCredentials = useMemo(() => {
+    const credentials = readLocal(STORAGE_KEYS.credentials, {});
+    const syncOptions = readLocal(STORAGE_KEYS.syncOptions, {});
+    return !!(credentials.erpId && credentials.password && syncOptions.academicYear && syncOptions.semesterId);
+  }, []);
+
+  useEffect(() => {
+    const allowedPaths = ["/settings", "/privacy", "/documentation"];
+    if (!hasCredentials && !allowedPaths.includes(location.pathname)) {
+      navigate("/settings", { replace: true });
+    }
+  }, [hasCredentials, location.pathname, navigate]);
 
   const rootPaths = ["/", "/subjects", "/timetable", "/faculty", "/more"];
   const isSubPage = !rootPaths.includes(location.pathname);
