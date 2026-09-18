@@ -296,22 +296,36 @@ export default function Home() {
     setLmsLastSynced(null);
   };
 
-  const checkFreshnessAndSync = useCallback(async () => {
+  const checkFreshnessAndSync = useCallback(async (isUserAction = false) => {
     if (syncInProgressRef.current) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) return;
 
     const lastUp = readLocal(STORAGE_KEYS.lastUpdated, null);
     const lastAttempt = readLocal("kl-edge.lastSyncAttempt", null);
     const SYNC_INTERVAL = 15 * 60 * 1000; // 15 minutes
-    const ATTEMPT_COOLDOWN = 5 * 60 * 1000; // 5 minutes cooldown if it failed
+    const ATTEMPT_COOLDOWN = 5 * 60 * 1000; // 5 minutes cooldown for background checks
     const now = Date.now();
 
-    const timeSinceLastUp = lastUp ? now - new Date(lastUp).getTime() : Infinity;
-    const timeSinceLastAttempt = lastAttempt ? now - lastAttempt : Infinity;
+    let timeSinceLastUp = Infinity;
+    if (lastUp) {
+      const parsedTime = new Date(lastUp).getTime();
+      if (!isNaN(parsedTime)) {
+        timeSinceLastUp = now - parsedTime;
+      }
+    }
 
-    if (timeSinceLastUp > SYNC_INTERVAL && timeSinceLastAttempt > ATTEMPT_COOLDOWN) {
-      writeLocal("kl-edge.lastSyncAttempt", now);
-      await performBackgroundSync(false);
+    // Fix if system clock was moved backwards or date is from the future
+    if (timeSinceLastUp < 0) timeSinceLastUp = Infinity;
+
+    const timeSinceLastAttempt = lastAttempt && !isNaN(lastAttempt) ? now - lastAttempt : Infinity;
+    const isAttemptExpired = timeSinceLastAttempt > ATTEMPT_COOLDOWN || timeSinceLastAttempt < 0;
+
+    if (timeSinceLastUp > SYNC_INTERVAL) {
+      // If user actively opens/focuses the app, OR if the background cooldown has expired, trigger sync
+      if (isUserAction || isAttemptExpired) {
+        writeLocal("kl-edge.lastSyncAttempt", now);
+        await performBackgroundSync(false);
+      }
     }
   }, [performBackgroundSync]);
 
@@ -323,7 +337,7 @@ export default function Home() {
     let timeout;
     if (hasCredentials) {
       timeout = setTimeout(() => {
-        void checkFreshnessAndSync();
+        void checkFreshnessAndSync(true);
       }, 100);
     }
     return () => clearTimeout(timeout);
@@ -335,7 +349,7 @@ export default function Home() {
       if (document.visibilityState === "visible") {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
-          void checkFreshnessAndSync();
+          void checkFreshnessAndSync(true);
         }, 2000); // Wait 2s for network to stabilize after device wake
       }
     };
@@ -359,7 +373,7 @@ export default function Home() {
 
       // Fallback periodic sync check if wake-up events were missed or failed
       if (document.visibilityState === "visible") {
-        void checkFreshnessAndSync();
+        void checkFreshnessAndSync(false);
       }
     }, 30000);
     return () => clearInterval(interval);
