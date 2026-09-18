@@ -122,22 +122,22 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
 KL-Edge/
 │
 ├── backend/
-│   ├── api/
 │   ├── routes/
+│   ├── scraper/
 │   ├── services/
-│   ├── utils/
-│   ├── requirements.txt
-│   └── main.py
+│   ├── main.py
+│   ├── erp_scraper.py
+│   ├── supabase_client.py
+│   └── requirements.txt
 │
 ├── frontend/
+│   ├── components/
+│   ├── pages/
 │   ├── public/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   ├── hooks/
-│   │   ├── styles/
-│   │   └── App.jsx
+│   ├── styles/
+│   ├── utils/
+│   ├── App.jsx
+│   ├── main.jsx
 │   ├── package.json
 │   ├── tailwind.config.js
 │   └── vite.config.js
