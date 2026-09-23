@@ -260,7 +260,7 @@ async def get_leaderboard(erpId: str, group: str = "overall"):
         return {"leaderboard": [], "userRank": None, "userData": None}
     
     try:
-        res = supabase.table("user_streaks").select("*").order("current_streak", desc=True).order("active_days", desc=True).execute()
+        res = supabase.table("user_streaks").select("*").gt("current_streak", 0).order("current_streak", desc=True).order("active_days", desc=True).execute()
         all_users = res.data
     except Exception as e:
         print(f"Failed to fetch leaderboard from Supabase: {e}")
