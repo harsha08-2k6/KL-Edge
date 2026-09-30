@@ -6,7 +6,7 @@ import { Footer } from "../components/Footer.jsx";
 import { Toast } from "../components/Toast.jsx";
 import { fetchCaptcha, syncAttendance } from "../utils/api.js";
 import { readLocal, removeLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
-import { showNotification, processSyncUpdates } from "../utils/notifications.js";
+import { processSyncUpdates } from "../utils/notifications.js";
 
 const academicYears = [
   "2026-2027",
@@ -57,60 +57,9 @@ export default function Settings() {
   const [captchaBusy, setCaptchaBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [toast, setToast] = useState(null);
-  const [permissionState, setPermissionState] = useState("unsupported");
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  useEffect(() => {
-    if (!("Notification" in window)) {
-      setPermissionState("unsupported");
-      return;
-    }
 
-    const currentPermission = Notification.permission;
-    setPermissionState(currentPermission);
-    if (currentPermission === "granted") {
-      setNotificationsEnabled(localStorage.getItem("kl-edge.notificationsEnabled") === "true");
-    } else {
-      setNotificationsEnabled(false);
-    }
-  }, []);
 
-  const toggleNotifications = async () => {
-    if (!("Notification" in window)) {
-      alert("This browser does not support desktop notifications.");
-      return;
-    }
-    
-    const currentPermission = Notification.permission;
-    setPermissionState(currentPermission);
-    
-    if (currentPermission === "denied") {
-      alert("Notifications are blocked by your browser settings. Please click the site icon in your browser's address bar to reset and allow notification permissions.");
-      return;
-    }
-
-    if (notificationsEnabled) {
-      localStorage.setItem("kl-edge.notificationsEnabled", "false");
-      setNotificationsEnabled(false);
-    } else {
-      let permission = "default";
-      try {
-        permission = await Notification.requestPermission();
-      } catch (err) {
-        console.error("Failed to request notification permission:", err);
-      }
-      setPermissionState(permission);
-      if (permission === "granted") {
-        localStorage.setItem("kl-edge.notificationsEnabled", "true");
-        setNotificationsEnabled(true);
-        showNotification("KL-Edge Notifications Enabled! 🔔", {
-          body: "You will now receive alerts for class countdowns and sync updates."
-        });
-      } else {
-        alert("Notification permission was not granted.");
-      }
-    }
-  };
 
   const initialCaptchaLoaded = useRef(false);
   const captchaRequestId = useRef(0);
@@ -197,11 +146,7 @@ export default function Settings() {
       setMessage("");
       setToast({ message: "Attendance synced successfully! ✅", type: "success" });
 
-      if (localStorage.getItem("kl-edge.notificationsEnabled") === "true") {
-        showNotification("KL-Edge Sync Complete", {
-          body: "Your attendance and timetable have been synced successfully."
-        });
-      }
+
     } catch (error) {
       if (error.status === 501) {
         setCaptcha("");
@@ -373,37 +318,7 @@ export default function Settings() {
         {message ? <p className="rounded-lg bg-paper px-3 py-2 text-sm font-bold text-ink/70">{message}</p> : null}
       </section>
 
-      {/* Notifications Section */}
-      <section className="mt-3.5 space-y-2.5 rounded-lg border border-ink/10 bg-white p-3 shadow-soft">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-black text-ink">Browser Notifications</h4>
-            <p className="text-xs font-semibold mt-0.5">
-              {permissionState === "denied" ? (
-                <span className="text-coral font-bold">Blocked by browser settings. Please click the site icon in your address bar to allow notifications.</span>
-              ) : (
-                <span className="text-ink/50">Receive alerts when attendance syncs or classes start.</span>
-              )}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={toggleNotifications}
-            className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-mint/20"
-            style={{
-              backgroundColor: notificationsEnabled ? "var(--mint, #10b981)" : "rgba(18, 21, 31, 0.12)"
-            }}
-          >
-            <span className="sr-only">Toggle Notifications</span>
-            <span
-              className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-              style={{
-                transform: notificationsEnabled ? "translateX(20px)" : "translateX(0px)"
-              }}
-            />
-          </button>
-        </div>
-      </section>
+
 
       {/* Toast Notification */}
       {toast && (

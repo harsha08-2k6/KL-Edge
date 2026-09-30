@@ -7,7 +7,7 @@ import { SocialLinks } from "../components/SocialLinks.jsx";
 import { Toast } from "../components/Toast.jsx";
 import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal, removeLocal } from "../utils/storage.js";
-import { showNotification, processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
+import { processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
 import { logVisit, getStreakStats, fetchVisits, syncLeaderboard } from "../utils/streak.js";
 import { RobotCompanion } from "../components/robot/RobotCompanion.jsx";
@@ -203,11 +203,7 @@ export default function Home() {
         setTimeout(() => setSuccessMessage(""), 3000);
       }
 
-      if (localStorage.getItem("kl-edge.notificationsEnabled") === "true") {
-        showNotification("KL-Edge Sync Complete", {
-          body: "Your attendance and timetable have been refreshed."
-        });
-      }
+
     } catch (error) {
       console.error("Sync failed:", error);
       setSyncStatus("failed");

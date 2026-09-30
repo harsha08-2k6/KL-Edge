@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Clock } from "lucide-react";
 import { readLocal, STORAGE_KEYS } from "../utils/storage.js";
-import { showNotification } from "../utils/notifications.js";
+
 import {
   buildSubjectNameMap,
   formatSlotStartTime,
@@ -260,11 +260,7 @@ export function TimetableWidget({ grid, attendance }) {
       const classKey = `${nextClassInfo.shortName}-${nextClassInfo.slot}`;
       if (lastNotifiedClass.current !== classKey) {
         lastNotifiedClass.current = classKey;
-        if (localStorage.getItem("kl-edge.notificationsEnabled") === "true") {
-          showNotification("Upcoming Class Alert 🔔", {
-            body: `${nextClassInfo.shortName} starts in ${nextClassInfo.diff} minutes!`
-          });
-        }
+
       }
     }
   }, [nextClassInfo]);

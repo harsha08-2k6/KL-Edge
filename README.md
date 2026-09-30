@@ -199,7 +199,6 @@ uvicorn main:app --reload
 
 ## 📈 Future Improvements
 
-- Push notifications
 - AI-based attendance predictions
 - Exam scheduler
 - Notes sharing system
