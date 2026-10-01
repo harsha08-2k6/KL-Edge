@@ -19,7 +19,7 @@ const navItems = [
 
 const widthClasses = {
   default: "max-w-7xl",
-  wide: "max-w-3xl",
+  wide: "max-w-7xl",
   full: "max-w-7xl"
 };
 
