@@ -23,6 +23,11 @@ body {
   -ms-user-select: none;
 }
 
+.custom-cursor-active,
+.custom-cursor-active * {
+  cursor: none !important;
+}
+
 button,
 input,
 textarea {

@@ -64,7 +64,7 @@ export default function Faculty() {
   };
 
   return (
-    <Layout title="Faculty Search" width="wide">
+    <Layout title="Faculty Search">
       <div className="grid gap-2 grid-cols-1 sm:grid-cols-[1fr_auto_auto]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/45" size={18} />
@@ -101,22 +101,22 @@ export default function Faculty() {
         </button>
       </div>
 
-      <section className="mt-3 space-y-2 overflow-x-auto">
+      <section className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4">
         {results.map((entry) => (
-          <article key={`${entry.faculty}-${entry.cabin}`} className="flex items-center justify-between gap-2.5 rounded-lg border border-ink/10 bg-white p-2.5 shadow-soft">
-            <div className="flex-1">
-              <h2 className="text-sm font-black text-ink">{entry.faculty}</h2>
-              <div className="mt-0.5 flex flex-wrap gap-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-ink/40">{entry.department}</span>
-                {entry.empId && <span className="text-[10px] font-bold text-mint">ID: {entry.empId}</span>}
+          <article key={`${entry.faculty}-${entry.cabin}`} className="flex items-center justify-between gap-2.5 rounded-lg border border-ink/10 bg-white p-3 shadow-soft md:flex-col md:items-start md:p-5 hover:shadow-md transition-all">
+            <div className="flex-1 w-full">
+              <h2 className="text-sm md:text-base font-black text-ink line-clamp-2" title={entry.faculty}>{entry.faculty}</h2>
+              <div className="mt-0.5 flex flex-wrap gap-1.5 md:mt-2">
+                <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-ink/40">{entry.department}</span>
+                {entry.empId && <span className="text-[10px] md:text-xs font-bold text-mint">ID: {entry.empId}</span>}
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right md:text-left md:mt-auto md:w-full md:flex md:items-center md:justify-between md:pt-4">
               <p className="rounded-md bg-violet/12 px-2.5 py-1.5 text-sm font-black text-violet">
                 {entry.cabin}
               </p>
               {entry.roomNo && entry.roomNo !== entry.cabin && (
-                <p className="mt-1 text-[10px] font-black uppercase text-ink/30">Room: {entry.roomNo}</p>
+                <p className="mt-1 text-[10px] font-black uppercase text-ink/30 md:mt-0">Room: {entry.roomNo}</p>
               )}
             </div>
           </article>

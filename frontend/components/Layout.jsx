@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BookOpenCheck, Calendar, Home, MoreHorizontal, Users, ArrowLeft } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { readLocal, STORAGE_KEYS } from "../utils/storage.js";
+import { CustomCursor } from "./CustomCursor.jsx";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -17,7 +18,7 @@ const navItems = [
 ];
 
 const widthClasses = {
-  default: "max-w-2xl",
+  default: "max-w-7xl",
   wide: "max-w-3xl",
   full: "max-w-7xl"
 };
@@ -57,6 +58,7 @@ export function Layout({ children, title, action, width = "default", backTo }) {
 
   return (
     <main className={`app-shell mx-auto flex w-full ${shellWidth} flex-col px-3 pt-3 sm:px-4`}>
+      <CustomCursor />
       <header className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           {isSubPage && (
@@ -69,8 +71,8 @@ export function Layout({ children, title, action, width = "default", backTo }) {
             </button>
           )}
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-mint">KL Edge</p>
-            <h1 className="mt-0.5 text-xl font-black tracking-normal text-ink">{title}</h1>
+            <p className="text-[11px] md:text-xs font-bold uppercase tracking-[0.16em] text-mint">KL Edge</p>
+            <h1 className="mt-0.5 text-xl md:text-2xl font-black tracking-normal text-ink">{title}</h1>
           </div>
         </div>
         {action}
@@ -79,7 +81,7 @@ export function Layout({ children, title, action, width = "default", backTo }) {
       {children}
 
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-ink/10 bg-paper/95 px-2 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1 backdrop-blur">
-        <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
+        <div className={`mx-auto grid ${shellWidth} grid-cols-5 gap-1`}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = location.pathname === item.href || (item.aliases || []).includes(location.pathname);

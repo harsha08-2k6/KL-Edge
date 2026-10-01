@@ -413,14 +413,14 @@ export default function Home() {
   }, [nextClass, rawSubjects, lmsAssignments, classesRemaining]);
 
   const getUrgency = (dueDateStr) => {
-      if (!dueDateStr) return { color: "border-ink/10 bg-ink/5", text: "text-ink/60", label: "No Date", dot: "⚪" };
+      if (!dueDateStr) return { color: "border-ink/10 bg-surface", text: "text-ink/60", label: "No Date", dot: "" };
       const due = new Date(dueDateStr).getTime();
       const now = Date.now();
       const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
-      if (diffDays <= 1) return { color: "border-coral/20 bg-coral/5", text: "text-coral font-bold", label: diffDays <= 0 ? "Due today" : "Due tomorrow", dot: "🔴" };
-      if (diffDays <= 3) return { color: "border-amber/20 bg-amber/5", text: "text-amber font-bold", label: `Due in ${diffDays} days`, dot: "🟠" };
-      if (diffDays <= 7) return { color: "border-yellow-500/30 bg-yellow-500/10", text: "text-yellow-600 font-bold", label: `Due in ${diffDays} days`, dot: "🟡" };
-      return { color: "border-mint/20 bg-mint/5", text: "text-mint font-bold", label: `Due in ${diffDays} days`, dot: "🟢" };
+      if (diffDays <= 1) return { color: "border-ink/20 bg-ink/5", text: "text-ink font-bold", label: diffDays <= 0 ? "Due today" : "Due tomorrow", dot: "●" };
+      if (diffDays <= 3) return { color: "border-ink/10 bg-white", text: "text-ink/80 font-bold", label: `Due in ${diffDays} days`, dot: "○" };
+      if (diffDays <= 7) return { color: "border-ink/10 bg-white", text: "text-ink/70 font-bold", label: `Due in ${diffDays} days`, dot: "○" };
+      return { color: "border-ink/10 bg-white", text: "text-ink/60 font-bold", label: `Due in ${diffDays} days`, dot: "○" };
   };
 
   const urgentAssignmentsCount = lmsAssignments.filter(a => {
@@ -435,12 +435,13 @@ export default function Home() {
   return (
     <Layout
       title="Dashboard"
+      width="full"
       action={
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">
           {streakStats.streak > 0 && (
             <Link
               to="/streak"
-              className="tap flex h-10 items-center gap-1.5 rounded-lg border border-orange-500/20 bg-orange-500/10 px-3 text-sm font-black text-orange-600 transition-colors hover:bg-orange-500/20"
+              className="tap flex h-10 md:h-11 items-center gap-1.5 md:gap-2 rounded-lg border border-ink/10 bg-white px-3 md:px-4 text-sm md:text-base font-black text-ink transition-colors hover:bg-surface"
               title={`${streakStats.streak} Day Streak`}
             >
               🔥 {streakStats.streak}
@@ -452,18 +453,18 @@ export default function Home() {
             to="/settings"
             aria-label="Settings"
             title="Settings"
-            className="tap inline-flex h-10 w-10 items-center justify-center rounded-lg border border-ink/10 bg-white text-ink/70 shadow-soft transition-colors hover:text-ink"
+            className="tap inline-flex h-10 w-10 md:h-11 md:w-11 items-center justify-center rounded-lg border border-ink/10 bg-white text-ink/70 shadow-soft transition-colors hover:text-ink"
           >
-            <Settings size={16} aria-hidden="true" />
+            <Settings size={18} className="md:h-5 md:w-5" aria-hidden="true" />
           </Link>
           <button
             onClick={() => {
               performBackgroundSync(true);
             }}
             disabled={syncBusy || lmsBusy}
-            className="tap inline-flex h-10 items-center gap-1.5 rounded-lg bg-ink px-3 text-sm font-bold text-paper shadow-soft transition-transform hover:-translate-y-0.5 active:translate-y-0"
+            className="tap inline-flex h-10 md:h-11 items-center gap-1.5 md:gap-2 rounded-lg bg-ink px-3 md:px-5 text-sm md:text-base font-bold text-paper shadow-soft transition-transform hover:-translate-y-0.5 active:translate-y-0"
           >
-            <RefreshCw size={15} className={syncBusy ? "animate-spin" : ""} />
+            <RefreshCw size={16} className={syncBusy ? "animate-spin" : ""} />
             {syncBusy ? "Syncing..." : "Resync"}
           </button>
         </div>
@@ -608,9 +609,9 @@ export default function Home() {
       )}
 
       {/* Sync Status Banner */}
-      <div className="mb-3 flex items-center justify-between rounded-xl border border-ink/10 bg-white/80 px-4 py-2.5 text-xs font-bold text-ink/70 shadow-soft backdrop-blur-sm">
+      <div className="mb-4 flex items-center justify-between rounded-xl border border-ink/10 bg-white/80 px-4 py-2.5 md:py-3.5 text-xs md:text-sm font-bold text-ink/70 shadow-soft backdrop-blur-sm">
         <div className="flex items-center gap-2">
-          <span className={`inline-block h-2 w-2 rounded-full ${
+          <span className={`inline-block h-2 w-2 md:h-2.5 md:w-2.5 rounded-full ${
             syncStatus === "syncing" ? "bg-amber animate-pulse" :
             syncStatus === "success" ? "bg-mint" :
             syncStatus === "failed" ? "bg-coral" : "bg-mint/60"
@@ -623,7 +624,7 @@ export default function Home() {
           </span>
         </div>
         {syncStatus === "idle" && (
-          <span className="text-[10px] text-ink/40">
+          <span className="text-[10px] md:text-xs text-ink/40">
             {lastUpdated ? new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Auto-refreshing in background"}
           </span>
         )}
@@ -756,127 +757,154 @@ export default function Home() {
         </div>
       )}
 
-      {/* Current and Next Class */}
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {/* Bento Grid Container for Desktop */}
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-3 md:gap-5 md:items-start">
+        
+        {/* Main Content Area - 2 Columns on Desktop */}
+        <div className="md:col-span-2 flex flex-col gap-4">
+          
+          {/* Current and Next Class */}
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {/* Ongoing Class Card */}
-        <div className="rounded-xl border border-ink/10 bg-white/80 p-4 shadow-soft flex flex-col h-full">
+        <div className="rounded-xl border border-ink/10 bg-white/80 p-4 md:p-6 shadow-soft flex flex-col h-full">
           <div className="flex items-center justify-between">
-            <span className="rounded-full bg-mint/10 px-2.5 py-0.5 text-[10px] font-black text-mint uppercase tracking-wider">
+            <span className="rounded-full border border-ink/10 bg-ink/5 px-2.5 py-0.5 md:px-3 md:py-1 text-[10px] md:text-xs font-black text-ink/70 uppercase tracking-wider">
               Ongoing Class
             </span>
             {presentClass && (
-              <span className="text-[10px] font-black uppercase tracking-widest text-ink/40">
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-ink/40">
                 {presentClass.slot}
               </span>
             )}
           </div>
           {presentClass ? (
-            <div className="mt-3 flex flex-col flex-grow">
+            <div className="mt-3 md:mt-4 flex flex-col flex-grow">
               <div>
-                <h3 className="text-base font-black text-ink leading-tight">
+                <h3 className="text-base md:text-xl font-black text-ink leading-tight">
                   {presentClass.subjectName}
                 </h3>
-                <p className="mt-0.5 text-[10px] font-semibold text-ink/45 uppercase tracking-wide">
+                <p className="mt-0.5 md:mt-1 text-[10px] md:text-xs font-semibold text-ink/45 uppercase tracking-wide">
                   {presentClass.courseCode}
                 </p>
               </div>
-              <div className="mt-auto pt-3 flex flex-wrap gap-1.5 text-[11px] font-bold text-ink/70">
-                <span className="rounded-md bg-surface px-2 py-1 flex items-center gap-1">
+              <div className="mt-auto pt-3 md:pt-4 flex flex-wrap gap-1.5 md:gap-2 text-[11px] md:text-sm font-bold text-ink/70">
+                <span className="rounded-md bg-surface px-2 py-1 md:px-3 md:py-1.5 flex items-center gap-1">
                   🕒 {presentClass.timeString}
                 </span>
                 {presentClass.classroom && (
-                  <span className="rounded-md bg-surface px-2 py-1 flex items-center gap-1 text-sm font-black text-ink">
+                  <span className="rounded-md bg-surface px-2 py-1 md:px-3 md:py-1.5 flex items-center gap-1 text-sm md:text-base font-black text-ink">
                     🏫 Room {presentClass.classroom}
                   </span>
                 )}
               </div>
             </div>
           ) : (
-            <div className="mt-4 py-4 text-center">
-              <p className="text-xs font-black text-ink/40">No ongoing class right now</p>
-              <p className="mt-0.5 text-[10px] text-ink/30">Enjoy your break! ☕</p>
+            <div className="mt-4 md:mt-8 py-4 md:py-6 text-center">
+              <p className="text-xs md:text-base font-black text-ink/40">No ongoing class right now</p>
+              <p className="mt-0.5 md:mt-1.5 text-[10px] md:text-sm text-ink/30">Enjoy your break! ☕</p>
             </div>
           )}
         </div>
 
         {/* Next Class Card */}
-        <div className="rounded-xl border border-ink/10 bg-white/80 p-4 shadow-soft flex flex-col h-full">
+        <div className="rounded-xl border border-ink/10 bg-white/80 p-4 md:p-6 shadow-soft flex flex-col h-full">
           <div className="flex items-center justify-between">
-            <span className="rounded-full bg-violet/10 px-2.5 py-0.5 text-[10px] font-black text-violet uppercase tracking-wider">
+            <span className="rounded-full border border-ink/10 bg-ink/5 px-2.5 py-0.5 md:px-3 md:py-1 text-[10px] md:text-xs font-black text-ink/70 uppercase tracking-wider">
               Next Class
             </span>
             {nextClass && (
-              <span className="text-[10px] font-black uppercase tracking-widest text-ink/40">
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-ink/40">
                 {nextClass.slot}
               </span>
             )}
           </div>
           {nextClass ? (
-            <div className="mt-3 flex flex-col flex-grow">
+            <div className="mt-3 md:mt-4 flex flex-col flex-grow">
               <div>
-                <h3 className="text-base font-black text-ink leading-tight">
+                <h3 className="text-base md:text-xl font-black text-ink leading-tight">
                   {nextClass.subjectName}
                 </h3>
-                <p className="mt-0.5 text-[10px] font-semibold text-ink/45 uppercase tracking-wide">
+                <p className="mt-0.5 md:mt-1 text-[10px] md:text-xs font-semibold text-ink/45 uppercase tracking-wide">
                   {nextClass.courseCode}
                 </p>
               </div>
-              <div className="mt-auto pt-3 flex flex-wrap gap-1.5 text-[11px] font-bold text-ink/70">
-                <span className="rounded-md bg-surface px-2 py-1 flex items-center gap-1">
+              <div className="mt-auto pt-3 md:pt-4 flex flex-wrap gap-1.5 md:gap-2 text-[11px] md:text-sm font-bold text-ink/70">
+                <span className="rounded-md bg-surface px-2 py-1 md:px-3 md:py-1.5 flex items-center gap-1">
                   🕒 {nextClass.timeString}
                 </span>
                 {nextClass.classroom && (
-                  <span className="rounded-md bg-surface px-2 py-1 flex items-center gap-1 text-sm font-black text-ink">
+                  <span className="rounded-md bg-surface px-2 py-1 md:px-3 md:py-1.5 flex items-center gap-1 text-sm md:text-base font-black text-ink">
                     🏫 Room {nextClass.classroom}
                   </span>
                 )}
               </div>
             </div>
           ) : (
-            <div className="mt-4 py-4 text-center">
-              <p className="text-xs font-black text-ink/40">No more classes today</p>
-              <p className="mt-0.5 text-[10px] text-ink/30">All done for the day! 🎉</p>
+            <div className="mt-4 md:mt-8 py-4 md:py-6 text-center">
+              <p className="text-xs md:text-base font-black text-ink/40">No more classes today</p>
+              <p className="mt-0.5 md:mt-1.5 text-[10px] md:text-sm text-ink/30">All done for the day! 🎉</p>
             </div>
           )}
         </div>
       </section>
 
+      {/* Desktop Only Games Section */}
+      <section className="hidden md:block mt-1">
+        <h3 className="text-base md:text-xl font-black text-ink mb-3 px-1">Quick Games</h3>
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
+          <Link to="/more/games/tic-tac-toe" className="rounded-xl border border-ink/10 bg-white/80 p-4 md:p-5 shadow-soft flex flex-col items-center justify-center gap-2 hover:bg-surface hover:-translate-y-1 transition-all tap">
+            <span className="text-3xl">🎮</span>
+            <span className="text-sm font-bold text-ink">Tic Tac Toe</span>
+          </Link>
+          <Link to="/more/games/snake" className="rounded-xl border border-ink/10 bg-white/80 p-4 md:p-5 shadow-soft flex flex-col items-center justify-center gap-2 hover:bg-surface hover:-translate-y-1 transition-all tap">
+            <span className="text-3xl">🐍</span>
+            <span className="text-sm font-bold text-ink">Snake</span>
+          </Link>
+          <Link to="/more/games" className="rounded-xl border border-ink/10 bg-white/80 p-4 md:p-5 shadow-soft flex flex-col items-center justify-center gap-2 hover:bg-surface hover:-translate-y-1 transition-all tap">
+            <span className="text-3xl">🕹️</span>
+            <span className="text-sm font-bold text-ink">All Games</span>
+          </Link>
+        </div>
+      </section>
 
       {timetableGrid.length === 0 && (
-        <section className="mt-3">
-          <div className="rounded-xl border border-dashed border-ink/15 bg-white/70 p-5 text-center shadow-soft">
-            <p className="font-black text-ink/70">No timetable synced yet</p>
-            <p className="mt-1 text-xs font-semibold text-ink/45">Resync using the button above to load your class schedule.</p>
+        <section className="mt-2 md:mt-4">
+          <div className="rounded-xl border border-dashed border-ink/15 bg-white/70 p-5 md:p-8 text-center shadow-soft">
+            <p className="font-black text-ink/70 md:text-lg">No timetable synced yet</p>
+            <p className="mt-1 md:mt-2 text-xs md:text-base font-semibold text-ink/45">Resync using the button above to load your class schedule.</p>
           </div>
         </section>
       )}
+        </div>
 
-      {/* LMS Section */}
-      <section className="mt-4 mb-4">
+        {/* Sidebar Area - 1 Column on Desktop */}
+        <div className="md:col-span-1 flex flex-col gap-4">
+          {/* LMS Section */}
+          <section>
         {!lmsToken ? (
-          <div className="rounded-xl border border-ink/10 bg-white/80 p-5 shadow-soft">
-            <h3 className="text-base font-black text-ink mb-1">Assignment Deadlines</h3>
-            <p className="text-sm font-semibold text-ink/60 mb-4">
+          <div className="rounded-xl border border-ink/10 bg-white/80 p-5 md:p-6 shadow-soft">
+            <h3 className="text-base md:text-xl font-black text-ink mb-1 md:mb-2">Assignment Deadlines</h3>
+            <p className="text-sm md:text-base font-semibold text-ink/60 mb-4 md:mb-6">
               Connect your LMS to see your upcoming assignment deadlines.
             </p>
             <button
               onClick={() => setShowLmsModal(true)}
-              className="tap w-full rounded-lg bg-ink py-3 text-sm font-black text-paper hover:bg-ink/90 transition-colors md:w-auto md:px-8"
+              className="tap w-full rounded-lg bg-ink py-3 md:py-4 text-sm md:text-base font-black text-paper hover:bg-ink/90 transition-colors md:w-auto md:px-8"
             >
               Connect LMS
             </button>
-            <p className="mt-3 text-[10px] font-semibold text-ink/40">
+            <p className="mt-3 md:mt-4 text-[10px] md:text-xs font-semibold text-ink/40">
               Your LMS credentials are used securely to retrieve your assignment details.
             </p>
           </div>
         ) : (
-          <div className="rounded-xl border border-ink/10 bg-white/80 p-5 shadow-soft">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/5 pb-3 mb-4">
+          <div className="rounded-xl border border-ink/10 bg-white/80 p-5 md:p-6 shadow-soft">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/5 pb-3 md:pb-4 mb-4 md:mb-5">
               <div>
-                <h3 className="text-base font-black text-ink flex items-center gap-2">
+                <h3 className="text-base md:text-xl font-black text-ink flex items-center gap-2">
                   Assignments
                   {urgentAssignmentsCount > 0 && (
-                    <span className="text-[10px] bg-coral text-white px-2 py-0.5 rounded-full font-bold">
+                    <span className="text-[10px] md:text-xs bg-ink/10 text-ink/80 border border-ink/20 px-2 py-0.5 rounded-full font-bold">
                       {urgentAssignmentsCount} need attention
                     </span>
                   )}
@@ -904,26 +932,26 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 md:space-y-4">
               {lmsError ? (
-                <div className="rounded-xl border border-coral/20 bg-coral/5 p-4 text-center">
-                  <p className="text-sm font-black text-coral">LMS Error</p>
-                  <p className="mt-1 text-xs font-semibold text-coral/80">{lmsError}</p>
+                <div className="rounded-xl border border-coral/20 bg-coral/5 p-4 md:p-6 text-center">
+                  <p className="text-sm md:text-lg font-black text-coral">LMS Error</p>
+                  <p className="mt-1 md:mt-2 text-xs md:text-sm font-semibold text-coral/80">{lmsError}</p>
                 </div>
               ) : lmsAssignments.length === 0 ? (
-                <div className="text-center py-6">
-                  <p className="text-sm font-black text-ink/40">No pending assignments</p>
-                  <p className="mt-1 text-xs font-semibold text-ink/30">You're all caught up!</p>
+                <div className="text-center py-6 md:py-10">
+                  <p className="text-sm md:text-lg font-black text-ink/40">No pending assignments</p>
+                  <p className="mt-1 md:mt-2 text-xs md:text-sm font-semibold text-ink/30">You're all caught up!</p>
                 </div>
               ) : (
                 lmsAssignments.slice(0, 3).map((assignment) => {
                   const urgency = getUrgency(assignment.dueDate);
                   return (
-                    <div key={assignment.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-4 transition-colors ${urgency.color}`}>
+                    <div key={assignment.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 rounded-xl border p-4 md:p-5 transition-colors ${urgency.color}`}>
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">{assignment.course}</p>
-                        <h4 className="mt-0.5 text-sm font-black text-ink">{assignment.title}</h4>
-                        <div className="mt-1 flex items-center gap-2 text-xs">
+                        <p className="text-[10px] md:text-xs font-black uppercase tracking-wider text-ink/40">{assignment.course}</p>
+                        <h4 className="mt-0.5 md:mt-1 text-sm md:text-lg font-black text-ink">{assignment.title}</h4>
+                        <div className="mt-1 md:mt-2 flex items-center gap-2 text-xs md:text-sm">
                           <span className="font-semibold text-ink/60">
                             Due: {assignment.dueDateText || new Date(assignment.dueDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
@@ -936,7 +964,7 @@ export default function Home() {
                         href={assignment.lmsLink}
                         target="_blank"
                         rel="noreferrer"
-                        className="tap flex items-center justify-center whitespace-nowrap rounded-lg bg-ink px-4 py-2 text-xs font-bold text-white hover:bg-ink/90 transition-colors"
+                        className="tap flex items-center justify-center whitespace-nowrap rounded-lg bg-ink px-4 md:px-5 py-2 md:py-2.5 text-xs md:text-sm font-bold text-white hover:bg-ink/90 transition-colors"
                       >
                         Open LMS
                       </a>
@@ -949,7 +977,7 @@ export default function Home() {
               <div className="mt-4 text-center">
                 <Link 
                   to="/assignments"
-                  className="text-xs font-bold text-ink/60 hover:text-ink"
+                  className="text-xs md:text-sm font-bold text-ink/60 hover:text-ink"
                 >
                   View all {lmsAssignments.length} assignments
                 </Link>
@@ -957,7 +985,9 @@ export default function Home() {
             )}
           </div>
         )}
-      </section>
+          </section>
+        </div>
+      </div>
 
       {/* Success Message */}
       {successMessage && (
@@ -997,7 +1027,7 @@ export default function Home() {
         </div>
       )}
       
-      <div className="mt-6 pb-20 text-center text-[10px] text-ink/60">
+      <div className="mt-6 pb-20 text-center text-[10px] md:text-xs text-ink/60">
         <p className="font-bold text-ink/70">
           Built by SHVR - <a href="https://sivaharshavardhanreddy-portfolio.netlify.app/" target="_blank" rel="noreferrer" className="text-mint hover:underline">View Portfolio</a>
         </p>

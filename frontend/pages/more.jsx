@@ -15,21 +15,23 @@ const moreLinks = [
 export default function More() {
   return (
     <Layout title="More">
-      <div className="mt-2 flex flex-col gap-2">
+      <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
         {moreLinks.map((item) => (
           <Link
             key={item.href}
             to={item.href}
-            className="tap flex items-center justify-between rounded-xl border border-ink/10 bg-white p-4 shadow-soft"
+            className="tap group flex flex-row items-center justify-between md:flex-col md:items-start md:justify-between rounded-xl border border-ink/10 bg-white p-4 md:p-5 shadow-soft hover:shadow-md hover:border-ink/20 transition-all"
           >
-            <div className="flex items-center gap-4">
-              <item.icon size={20} className="text-ink/70" />
+            <div className="flex items-center gap-4 md:flex-col md:items-start md:gap-3 w-full">
+              <div className="flex shrink-0 items-center justify-center md:h-12 md:w-12 md:rounded-full md:bg-ink/5 md:group-hover:bg-ink/10 transition-colors">
+                <item.icon size={20} className="text-ink/70 md:h-6 md:w-6" />
+              </div>
               <div>
-                <p className="font-bold text-ink">{item.label}</p>
-                <p className="text-xs text-ink/60">{item.description}</p>
+                <p className="font-bold text-ink md:text-lg">{item.label}</p>
+                <p className="text-xs text-ink/60 md:mt-1">{item.description}</p>
               </div>
             </div>
-            <ChevronRight size={20} className="text-ink/40" />
+            <ChevronRight size={20} className="text-ink/40 md:hidden" />
           </Link>
         ))}
       </div>
