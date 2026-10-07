@@ -758,10 +758,10 @@ export default function Home() {
       )}
 
       {/* Bento Grid Container for Desktop */}
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-3 md:gap-5 md:items-start min-h-[80vh]">
+      <div className="flex flex-col gap-4 md:gap-5 min-h-[80vh]">
         
-        {/* Main Content Area - 2 Columns on Desktop */}
-        <div className="md:col-span-2 flex flex-col gap-4">
+        {/* Main Content Area */}
+        <div className="flex flex-col gap-4">
           
           {/* Current and Next Class */}
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -877,8 +877,8 @@ export default function Home() {
       )}
         </div>
 
-        {/* Sidebar Area - 1 Column on Desktop */}
-        <div className="md:col-span-1 flex flex-col gap-4">
+        {/* Assignments / LMS Section */}
+        <div className="flex flex-col gap-4">
           {/* LMS Section */}
           <section>
         {!lmsToken ? (
@@ -932,14 +932,14 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="space-y-3 md:space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
               {lmsError ? (
-                <div className="rounded-xl border border-coral/20 bg-coral/5 p-4 md:p-6 text-center">
+                <div className="rounded-xl border border-coral/20 bg-coral/5 p-4 md:p-6 text-center sm:col-span-2 lg:col-span-3">
                   <p className="text-sm md:text-lg font-black text-coral">LMS Error</p>
                   <p className="mt-1 md:mt-2 text-xs md:text-sm font-semibold text-coral/80">{lmsError}</p>
                 </div>
               ) : lmsAssignments.length === 0 ? (
-                <div className="text-center py-6 md:py-10">
+                <div className="text-center py-6 md:py-10 sm:col-span-2 lg:col-span-3">
                   <p className="text-sm md:text-lg font-black text-ink/40">No pending assignments</p>
                   <p className="mt-1 md:mt-2 text-xs md:text-sm font-semibold text-ink/30">You're all caught up!</p>
                 </div>
@@ -947,11 +947,11 @@ export default function Home() {
                 lmsAssignments.slice(0, 3).map((assignment) => {
                   const urgency = getUrgency(assignment.dueDate);
                   return (
-                    <div key={assignment.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 rounded-xl border p-4 md:p-5 transition-colors ${urgency.color}`}>
+                    <div key={assignment.id} className={`flex flex-col justify-between gap-3 md:gap-4 rounded-xl border p-4 md:p-5 transition-colors ${urgency.color}`}>
                       <div>
-                        <p className="text-[10px] md:text-xs font-black uppercase tracking-wider text-ink/40">{assignment.course}</p>
-                        <h4 className="mt-0.5 md:mt-1 text-sm md:text-lg font-black text-ink">{assignment.title}</h4>
-                        <div className="mt-1 md:mt-2 flex items-center gap-2 text-xs md:text-sm">
+                        <p className="text-[10px] md:text-xs font-black uppercase tracking-wider text-ink/40 line-clamp-1">{assignment.course}</p>
+                        <h4 className="mt-0.5 md:mt-1 text-sm md:text-lg font-black text-ink line-clamp-2">{assignment.title}</h4>
+                        <div className="mt-2 md:mt-3 flex flex-col gap-1 text-xs md:text-sm">
                           <span className="font-semibold text-ink/60">
                             Due: {assignment.dueDateText || new Date(assignment.dueDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
@@ -964,7 +964,7 @@ export default function Home() {
                         href={assignment.lmsLink}
                         target="_blank"
                         rel="noreferrer"
-                        className="tap flex items-center justify-center whitespace-nowrap rounded-lg bg-ink px-4 md:px-5 py-2 md:py-2.5 text-xs md:text-sm font-bold text-white hover:bg-ink/90 transition-colors"
+                        className="tap flex items-center justify-center whitespace-nowrap rounded-lg bg-ink px-4 md:px-5 py-2 md:py-2.5 text-xs md:text-sm font-bold text-white hover:bg-ink/90 transition-colors mt-auto"
                       >
                         Open LMS
                       </a>
