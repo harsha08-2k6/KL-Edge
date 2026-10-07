@@ -10,7 +10,7 @@ import { readLocal, STORAGE_KEYS, writeLocal, removeLocal } from "../utils/stora
 import { processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
 import { logVisit, getStreakStats, fetchVisits, syncLeaderboard } from "../utils/streak.js";
-import { RobotCompanion } from "../components/robot/RobotCompanion.jsx";
+import MovingEyes from "../components/MovingEyes.jsx";
 
 function getRelativeTimeString(timestamp) {
   if (!timestamp) return "Never updated";
@@ -1046,12 +1046,7 @@ export default function Home() {
           Built by SHVR - <a href="https://sivaharshavardhanreddy-portfolio.netlify.app/" target="_blank" rel="noreferrer" className="text-mint hover:underline">View Portfolio</a>
         </p>
       </div>
-      
-      <RobotCompanion 
-        maintenanceMessage={syncStatus === "failed" ? "The ERP seems to be down for maintenance!" : ""}
-        dashboardStats={dashboardStats}
-        userName={readLocal(STORAGE_KEYS.credentials, {}).name || readLocal(STORAGE_KEYS.username, "") || "User"}
-      />
+      <MovingEyes />
     </Layout>
   );
 }

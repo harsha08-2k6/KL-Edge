@@ -1,0 +1,56 @@
+.creature-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.creature {
+  position: relative;
+  width: 116px;
+  height: 104px;
+}
+
+.creature-image {
+  position: absolute;
+  inset: 0;
+  width: 116px;
+  height: 104px;
+  object-fit: contain;
+}
+
+/* Eye positions */
+.eye {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #050505;
+  overflow: hidden;
+}
+
+/* Left eye */
+.left-eye {
+  left: 56px;
+  top: 76px;
+}
+
+/* Right eye */
+.right-eye {
+  left: 73px;
+  top: 76px;
+}
+
+/* White moving pupil */
+.pupil {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+
+  left: 1.5px;
+  top: 1.5px;
+
+  border-radius: 50%;
+  background: white;
+
+  transition: transform 90ms ease-out;
+}
