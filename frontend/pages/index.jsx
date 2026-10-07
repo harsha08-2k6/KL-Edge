@@ -758,7 +758,7 @@ export default function Home() {
       )}
 
       {/* Bento Grid Container for Desktop */}
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-3 md:gap-5 md:items-start">
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-3 md:gap-5 md:items-start min-h-[80vh]">
         
         {/* Main Content Area - 2 Columns on Desktop */}
         <div className="md:col-span-2 flex flex-col gap-4">

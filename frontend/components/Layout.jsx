@@ -11,7 +11,7 @@ const navItems = [
   { href: "/faculty", label: "Faculty", icon: Users },
   {
     href: "/more",
-    label: "More",
+    label: "Menu",
     icon: MoreHorizontal,
     aliases: ["/marks", "/seating-plan", "/settings", "/cgpa", "/map", "/subject-names", "/privacy", "/documentation", "/games", "/more/games", "/games/tic-tac-toe", "/more/games/tic-tac-toe", "/games/snake", "/more/games/snake", "/games/dragon", "/more/games/dragon"]
   }
