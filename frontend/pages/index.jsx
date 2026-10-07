@@ -780,9 +780,9 @@ export default function Home() {
           {presentClass ? (
             <div className="mt-3 md:mt-4 flex flex-col flex-grow">
               <div>
-                <h3 className="text-base md:text-xl font-black text-ink leading-tight">
+                <h2 className="text-base md:text-xl font-black text-ink leading-tight">
                   {presentClass.subjectName}
-                </h3>
+                </h2>
                 <p className="mt-0.5 md:mt-1 text-[10px] md:text-xs font-semibold text-ink/45 uppercase tracking-wide">
                   {presentClass.courseCode}
                 </p>
@@ -821,9 +821,9 @@ export default function Home() {
           {nextClass ? (
             <div className="mt-3 md:mt-4 flex flex-col flex-grow">
               <div>
-                <h3 className="text-base md:text-xl font-black text-ink leading-tight">
+                <h2 className="text-base md:text-xl font-black text-ink leading-tight">
                   {nextClass.subjectName}
-                </h3>
+                </h2>
                 <p className="mt-0.5 md:mt-1 text-[10px] md:text-xs font-semibold text-ink/45 uppercase tracking-wide">
                   {nextClass.courseCode}
                 </p>

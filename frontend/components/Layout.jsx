@@ -94,6 +94,7 @@ export function Layout({ children, title, action, width = "default", backTo }) {
                   active ? "bg-ink text-paper" : "text-ink/62"
                 }`}
                 title={item.label}
+                aria-label={item.label === "More" ? "More options and settings" : item.label}
               >
                 <Icon size={16} aria-hidden="true" />
                 <span className="mt-0.5">{item.label}</span>

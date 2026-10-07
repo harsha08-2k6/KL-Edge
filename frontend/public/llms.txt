@@ -1,0 +1,7 @@
+# KL Edge
+
+Welcome to KL Edge.
+
+## Links
+- [Home](https://kl-edge.vercel.app/)
+- [More](https://kl-edge.vercel.app/more)
