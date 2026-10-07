@@ -1,50 +1,54 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import Home from "./pages/index.jsx";
-import Subjects from "./pages/subjects.jsx";
-import SubjectNames from "./pages/subject-names.jsx";
-import Timetable from "./pages/timetable.jsx";
-import Streak from "./pages/streak.jsx";
-import More from "./pages/more.jsx";
-import SeatingPlan from "./pages/seating-plan.jsx";
-import Cgpa from "./pages/cgpa.jsx";
-import Faculty from "./pages/faculty.jsx";
-import Settings from "./pages/settings.jsx";
-import Privacy from "./pages/privacy.jsx";
-import Documentation from "./pages/documentation.jsx";
-import Map from "./pages/map.jsx";
-import Assignments from "./pages/assignments.jsx";
-import Games from "./pages/games/index.jsx";
-import TicTacToe from "./pages/games/tic-tac-toe.jsx";
-import Snake from "./pages/games/snake.jsx";
+import { Suspense, lazy } from "react";
+
+const Home = lazy(() => import("./pages/index.jsx"));
+const Subjects = lazy(() => import("./pages/subjects.jsx"));
+const SubjectNames = lazy(() => import("./pages/subject-names.jsx"));
+const Timetable = lazy(() => import("./pages/timetable.jsx"));
+const Streak = lazy(() => import("./pages/streak.jsx"));
+const More = lazy(() => import("./pages/more.jsx"));
+const SeatingPlan = lazy(() => import("./pages/seating-plan.jsx"));
+const Cgpa = lazy(() => import("./pages/cgpa.jsx"));
+const Faculty = lazy(() => import("./pages/faculty.jsx"));
+const Settings = lazy(() => import("./pages/settings.jsx"));
+const Privacy = lazy(() => import("./pages/privacy.jsx"));
+const Documentation = lazy(() => import("./pages/documentation.jsx"));
+const Map = lazy(() => import("./pages/map.jsx"));
+const Assignments = lazy(() => import("./pages/assignments.jsx"));
+const Games = lazy(() => import("./pages/games/index.jsx"));
+const TicTacToe = lazy(() => import("./pages/games/tic-tac-toe.jsx"));
+const Snake = lazy(() => import("./pages/games/snake.jsx"));
 
 export default function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/subjects" element={<Subjects />} />
-        <Route path="/subject-names" element={<SubjectNames />} />
-        <Route path="/timetable" element={<Timetable />} />
-        <Route path="/streak" element={<Streak />} />
-        <Route path="/more" element={<More />} />
-        <Route path="/seating-plan" element={<SeatingPlan />} />
-        <Route path="/cgpa" element={<Cgpa />} />
-        <Route path="/faculty" element={<Faculty />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/documentation" element={<Documentation />} />
-        <Route path="/map" element={<Map />} />
-        <Route path="/assignments" element={<Assignments />} />
-        <Route path="/more/games" element={<Games />} />
-        <Route path="/more/games/tic-tac-toe" element={<TicTacToe />} />
-        <Route path="/more/games/snake" element={<Snake />} />
+      <Suspense fallback={<div className="flex h-screen w-full items-center justify-center text-ink/50 font-bold">Loading...</div>}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/subjects" element={<Subjects />} />
+          <Route path="/subject-names" element={<SubjectNames />} />
+          <Route path="/timetable" element={<Timetable />} />
+          <Route path="/streak" element={<Streak />} />
+          <Route path="/more" element={<More />} />
+          <Route path="/seating-plan" element={<SeatingPlan />} />
+          <Route path="/cgpa" element={<Cgpa />} />
+          <Route path="/faculty" element={<Faculty />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/documentation" element={<Documentation />} />
+          <Route path="/map" element={<Map />} />
+          <Route path="/assignments" element={<Assignments />} />
+          <Route path="/more/games" element={<Games />} />
+          <Route path="/more/games/tic-tac-toe" element={<TicTacToe />} />
+          <Route path="/more/games/snake" element={<Snake />} />
 
-        <Route path="/games" element={<Navigate to="/more/games" replace />} />
-        <Route path="/games/tic-tac-toe" element={<Navigate to="/more/games/tic-tac-toe" replace />} />
-        <Route path="/games/snake" element={<Navigate to="/more/games/snake" replace />} />
+          <Route path="/games" element={<Navigate to="/more/games" replace />} />
+          <Route path="/games/tic-tac-toe" element={<Navigate to="/more/games/tic-tac-toe" replace />} />
+          <Route path="/games/snake" element={<Navigate to="/more/games/snake" replace />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }

@@ -82,7 +82,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    updateStreak();
+    // Defer streak update to avoid chaining critical requests on initial load
+    const timeoutId = setTimeout(() => {
+      updateStreak();
+    }, 1500);
     
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
@@ -94,6 +97,7 @@ export default function Home() {
     window.addEventListener("focus", handleVisibility);
     
     return () => {
+      clearTimeout(timeoutId);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleVisibility);
     };
