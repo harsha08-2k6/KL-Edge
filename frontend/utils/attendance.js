@@ -6,38 +6,62 @@ export function calculateRealBunks() { return 0; }
 export function calculateRealNeed() { return 0; }
 export function getSubjectAnalytics() { return { overall: 0, weighted: "0/0", components: {} }; }
 
-export function calculateAttendance({ L, T, P, S }) {
-  let total = 0;
-  let weight = 0;
+export function calculateAttendance(subject) {
+  let attendedWeighted = 0;
+  let conductedWeighted = 0;
+  let hasComponents = false;
 
-  if (L !== undefined && L !== null) {
-    total += Number(L);
-    weight += 1;
-  }
-  if (T !== undefined && T !== null) {
-    total += Number(T);
-    weight += 1;
-  }
-  if (P !== undefined && P !== null) {
-    total += Number(P) * 0.5;
-    weight += 0.5;
-  }
-  if (S !== undefined && S !== null) {
-    total += Number(S) * 0.25;
-    weight += 0.25;
+  const lCond = Number(subject.L_conducted) || 0;
+  const lAtt = Number(subject.L_attended) || 0;
+  if (lCond > 0 || lAtt > 0) {
+    attendedWeighted += lAtt * 1;
+    conductedWeighted += lCond * 1;
+    hasComponents = true;
   }
 
-  if (weight === 0) return 0;
-  return Math.round(total / weight);
+  const tCond = Number(subject.T_conducted) || 0;
+  const tAtt = Number(subject.T_attended) || 0;
+  if (tCond > 0 || tAtt > 0) {
+    attendedWeighted += tAtt * 1;
+    conductedWeighted += tCond * 1;
+    hasComponents = true;
+  }
+
+  const pCond = Number(subject.P_conducted) || 0;
+  const pAtt = Number(subject.P_attended) || 0;
+  if (pCond > 0 || pAtt > 0) {
+    attendedWeighted += pAtt * 0.5;
+    conductedWeighted += pCond * 0.5;
+    hasComponents = true;
+  }
+
+  const sCond = Number(subject.S_conducted) || 0;
+  const sAtt = Number(subject.S_attended) || 0;
+  if (sCond > 0 || sAtt > 0) {
+    attendedWeighted += sAtt * 0.25;
+    conductedWeighted += sCond * 0.25;
+    hasComponents = true;
+  }
+
+  if (!hasComponents || conductedWeighted === 0) {
+    return -1;
+  }
+
+  return Math.round((attendedWeighted / conductedWeighted) * 100);
 }
 
 export function getFinalAttendance(subject = {}) {
+  const calculated = calculateAttendance(subject);
+  if (calculated !== -1) {
+    return calculated;
+  }
+
   const official = Number(subject.finalPercentage ?? subject.attendancePercentage ?? subject.percentage);
-  if (Number.isFinite(official) && official > 0) {
+  if (Number.isFinite(official) && official >= 0) {
     return Math.round(official);
   }
 
-  return calculateAttendance(subject);
+  return 0;
 }
 
 export function calculateOverall(subjects = []) {
