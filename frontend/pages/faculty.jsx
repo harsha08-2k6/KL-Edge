@@ -107,16 +107,16 @@ export default function Faculty() {
             <div className="flex-1 w-full">
               <h2 className="text-sm md:text-base font-black text-ink line-clamp-2" title={entry.faculty}>{entry.faculty}</h2>
               <div className="mt-0.5 flex flex-wrap gap-1.5 md:mt-2">
-                <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-ink/40">{entry.department}</span>
-                {entry.empId && <span className="text-[10px] md:text-xs font-bold text-mint">ID: {entry.empId}</span>}
+                <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-ink/70">{entry.department}</span>
+                {entry.empId && <span className="text-[10px] md:text-xs font-bold text-[#206e5b]">ID: {entry.empId}</span>}
               </div>
             </div>
             <div className="text-right md:text-left md:mt-auto md:w-full md:flex md:items-center md:justify-between md:pt-4">
-              <p className="rounded-md bg-violet/12 px-2.5 py-1.5 text-sm font-black text-violet">
+              <p className="rounded-md bg-violet/20 px-2.5 py-1.5 text-sm font-black text-[#51439c]">
                 {entry.cabin}
               </p>
               {entry.roomNo && entry.roomNo !== entry.cabin && (
-                <p className="mt-1 text-[10px] font-black uppercase text-ink/30 md:mt-0">Room: {entry.roomNo}</p>
+                <p className="mt-1 text-[10px] font-black uppercase text-ink/70 md:mt-0">Room: {entry.roomNo}</p>
               )}
             </div>
           </article>
