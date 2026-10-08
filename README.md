@@ -14,6 +14,7 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
 
 ### 📊 Attendance & Academic Management
 - Real-time attendance tracking
+- Exact attendance calculation matching KL University ERP weighting logic (L=1, T=1, P=0.5, S=0.25)
 - Attendance percentage calculator
 - Subject-wise attendance analysis
 - Required classes calculation for safe attendance percentage
@@ -62,6 +63,10 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
 - Smart urgency indicators (Due soon, Overdue, etc.)
 - Direct links to assignment submission portals
 
+### 🎮 Mini Games Arcade
+- Quick mini-games (Tic-Tac-Toe, Snake) to take a break between study sessions
+- Performance and stats tracking to beat personal bests
+
 ### 🔥 Daily Streaks & Engagement
 - Track daily logins to encourage consistency
 - Real-time leaderboard to compare streaks among peers
@@ -73,6 +78,7 @@ GitHub Repository: [KL Edge Repository](https://github.com/harsha08-2k6/KL-Edge.
   - Tablets
   - Desktop systems
 - Modern responsive UI with Tailwind CSS
+- Passes strict accessibility standards with high-contrast UI (100% Lighthouse Accessibility score)
 - Smooth user experience across all screen sizes
 
 ### ⚡ Performance Optimizations
@@ -133,6 +139,7 @@ KL-Edge/
 ├── frontend/
 │   ├── components/
 │   ├── pages/
+│   │   └── games/
 │   ├── public/
 │   ├── styles/
 │   ├── utils/
