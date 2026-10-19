@@ -68,24 +68,9 @@ export default function Timetable() {
               <p className="text-[10px] font-black uppercase tracking-widest text-ink/40">Selected Day</p>
               <h2 className="text-xl font-black text-ink">{selectedDay}</h2>
             </div>
-            <div className="flex items-center gap-2">
-              {syncStatus?.source && (
-                <span
-                  title={syncStatus.source === "live" ? `Refreshed from ERP: ${syncStatus.refreshedAt || "Live"}` : `Loaded from local cache (${syncStatus.cachedAt || syncStatus.refreshedAt || "Cached"})`}
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
-                    syncStatus.source === "live"
-                      ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
-                  }`}
-                >
-                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${syncStatus.source === "live" ? "bg-emerald-500" : "bg-amber-500"}`} />
-                  {syncStatus.source === "live" ? "Live" : "Cached"}
-                </span>
-              )}
-              <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-black text-ink/60">
-                {totalSlots} slot{totalSlots === 1 ? "" : "s"}
-              </span>
-            </div>
+            <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-black text-ink/60">
+              {totalSlots} slot{totalSlots === 1 ? "" : "s"}
+            </span>
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
