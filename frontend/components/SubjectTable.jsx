@@ -13,7 +13,14 @@ export function SubjectTable({ subjects }) {
           <div key={subject.courseCode} className="rounded-xl border border-border bg-paper p-3 md:p-5 shadow-soft flex flex-col h-full">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-ink/40">{subject.courseCode}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-ink/40">{subject.courseCode}</p>
+                  {subject.section && (
+                    <span className="rounded bg-surface px-1.5 py-0.5 text-[9px] font-bold text-ink/60">
+                      Sec {subject.section}
+                    </span>
+                  )}
+                </div>
                 <p className="mt-0.5 text-sm md:text-lg font-black text-ink leading-tight">{subject.subject}</p>
                 {(subject.faculty || subject.facultyName) && (
                   <p className="mt-1 truncate text-xs md:text-sm font-semibold text-ink/60">{subject.faculty || subject.facultyName}</p>
@@ -48,6 +55,17 @@ export function SubjectTable({ subjects }) {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {!hasLtpsData && subject.conducted != null && subject.attended != null && (
+              <div className="mt-auto pt-3 md:pt-4">
+                <div className="rounded-lg bg-surface p-2 md:p-2.5 flex items-center justify-between">
+                  <p className="text-[9px] md:text-[10px] font-black uppercase tracking-wider text-ink/40">Classes</p>
+                  <p className="text-[10px] md:text-xs font-bold text-ink/50">
+                    {subject.attended}/{subject.conducted} classes {subject.absent != null ? `(${subject.absent} absent)` : ""}
+                  </p>
+                </div>
               </div>
             )}
 

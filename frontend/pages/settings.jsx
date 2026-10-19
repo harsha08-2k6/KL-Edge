@@ -133,6 +133,10 @@ export default function Settings() {
       if (payload.cgpa) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
       writeLocal(STORAGE_KEYS.timetableStatus, {
         status: timetable?.status || (timetable?.grid?.length ? "ok" : "empty"),
+        source: timetable?.source || (timetable?.cached ? "cache" : "live"),
+        refreshedAt: timetable?.refreshedAt || payload.syncedAt,
+        cachedAt: timetable?.cachedAt || null,
+        mappingsCount: (timetable?.mappings || []).length,
         message: timetable?.message || ""
       });
       writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);

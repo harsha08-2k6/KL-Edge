@@ -1,4 +1,5 @@
 import os
+import time
 import asyncio
 from datetime import datetime, timedelta
 import sqlite3
@@ -16,6 +17,7 @@ from erp_scraper import (
     create_captcha_session,
     get_captcha_session,
     load_faculty,
+    perform_login,
     redis_client,
     sync_attendance,
     sync_cgpa,
@@ -115,32 +117,266 @@ def set_cached_json(key: str, value):
 
 
 
-def run_full_sync(payload: dict) -> dict:
-    attendance = sync_attendance(payload)
+TIMETABLE_CACHE_TTL_SECONDS = int(os.getenv("TIMETABLE_CACHE_TTL_SECONDS", "604800"))  # 7 days
 
-    def safe_sync(label, handler, fallback):
+
+def make_timetable_cache_key(erp_id: str, academic_year: str, semester_id: str) -> str:
+    c_id = (erp_id or "").strip().lower()
+    c_year = (academic_year or "").strip().lower().replace(" ", "")
+    c_sem = (semester_id or "").strip().lower().replace(" ", "")
+    return f"timetable:{c_id}:{c_year}:{c_sem}"
+
+
+def get_cached_timetable(erp_id: str, academic_year: str, semester_id: str) -> Optional[dict]:
+    if not erp_id or not academic_year or not semester_id:
+        return None
+    key = make_timetable_cache_key(erp_id, academic_year, semester_id)
+    cached = get_cached_json(key)
+    if not cached or not isinstance(cached, dict):
+        return None
+    cached_at = cached.get("_cached_at")
+    if cached_at:
         try:
-            return handler()
+            cached_time = datetime.fromisoformat(cached_at.replace("Z", ""))
+            if datetime.utcnow() - cached_time > timedelta(seconds=TIMETABLE_CACHE_TTL_SECONDS):
+                return None
+        except Exception:
+            pass
+    return cached
+
+
+def set_cached_timetable(erp_id: str, academic_year: str, semester_id: str, data: dict):
+    if not erp_id or not academic_year or not semester_id or not data or not data.get("grid"):
+        return
+    key = make_timetable_cache_key(erp_id, academic_year, semester_id)
+    to_store = dict(data)
+    now_iso = f"{datetime.utcnow().isoformat()}Z"
+    to_store["_cached_at"] = now_iso
+    to_store["cachedAt"] = now_iso
+    to_store["refreshedAt"] = data.get("refreshedAt") or now_iso
+    to_store["cached"] = True
+    to_store["source"] = "cache"
+    set_cached_json(key, to_store)
+
+
+async def run_full_sync(payload: dict) -> dict:
+    total_start = time.time()
+
+    # 1. Authenticate once and reuse the valid ERP session
+    login_start = time.time()
+    session = await perform_login(payload)
+    login_dur = time.time() - login_start
+    print(f"[erp:sync] ERP authentication completed in {login_dur:.3f}s", flush=True)
+
+    async def safe_sync(label, handler, fallback):
+        t0 = time.time()
+        try:
+            res = await handler()
+            dur = time.time() - t0
+            return res, None, dur
         except AppError as exc:
+            dur = time.time() - t0
             if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
                 print(f"[erp:{label}] {exc.message}", flush=True)
-            return fallback
+            return fallback, exc.message, dur
         except Exception as exc:
+            dur = time.time() - t0
             if os.getenv("ERP_DEBUG", "").lower() in {"1", "true", "yes"}:
                 print(f"[erp:{label}] {exc}", flush=True)
-            return fallback
+            return fallback, str(exc), dur
 
-    timetable = safe_sync("timetable", lambda: sync_timetable(payload), None)
-    seating_plan = safe_sync("seating-plan", lambda: sync_seating_plan(payload), None)
-    cgpa = safe_sync("cgpa", lambda: sync_cgpa(payload), None)
+    erp_id = payload.get("erpId", "")
+    academic_year = payload.get("academicYear", "")
+    semester_id = payload.get("semesterId", "")
+    force_refresh = bool(payload.get("forceRefresh") or payload.get("refreshTimetable"))
+
+    feature_statuses = {}
+    now_iso = f"{datetime.utcnow().isoformat()}Z"
+
+    # Check cache first for timetable (for fallback only if force_refresh is False)
+    cached_tt = get_cached_timetable(erp_id, academic_year, semester_id) if not force_refresh else None
+
+    # Fetch attendance using the authenticated session
+    attendance, att_err, att_dur = await safe_sync("attendance", lambda: sync_attendance(payload, session=session), [])
+    if att_err:
+        feature_statuses["attendance"] = {
+            "status": "failed",
+            "source": "live",
+            "error": att_err,
+            "duration_seconds": round(att_dur, 3)
+        }
+    elif attendance and len(attendance) > 0:
+        feature_statuses["attendance"] = {
+            "status": "success",
+            "source": "live",
+            "refreshedAt": now_iso,
+            "count": len(attendance),
+            "duration_seconds": round(att_dur, 3)
+        }
+    else:
+        feature_statuses["attendance"] = {
+            "status": "empty",
+            "source": "live",
+            "refreshedAt": now_iso,
+            "count": 0,
+            "duration_seconds": round(att_dur, 3)
+        }
+
+    # Timetable: Always attempt live fetch from ERP first using the authenticated session
+    timetable, tt_err, tt_dur = await safe_sync("timetable", lambda: sync_timetable(payload, session=session), None)
+    if timetable and timetable.get("grid"):
+        refreshed_at = timetable.get("refreshedAt") or f"{datetime.utcnow().isoformat()}Z"
+        timetable["source"] = "live"
+        timetable["cached"] = False
+        timetable["refreshedAt"] = refreshed_at
+        set_cached_timetable(erp_id, academic_year, semester_id, timetable)
+        feature_statuses["timetable"] = {
+            "status": "success",
+            "source": "live",
+            "cached": False,
+            "refreshedAt": refreshed_at,
+            "count": len(timetable.get("grid", [])),
+            "mappingsCount": len(timetable.get("mappings", [])),
+            "duration_seconds": round(tt_dur, 3)
+        }
+        print(f"[erp:sync] Timetable source: LIVE | Refreshed at: {refreshed_at} | Rows: {feature_statuses['timetable']['count']} | Mappings: {feature_statuses['timetable']['mappingsCount']} | Duration: {tt_dur:.3f}s", flush=True)
+    elif cached_tt and cached_tt.get("grid"):
+        timetable = dict(cached_tt)
+        cached_at = timetable.get("cachedAt") or timetable.get("_cached_at") or "unknown"
+        refreshed_at = timetable.get("refreshedAt") or cached_at
+        timetable["source"] = "cache"
+        timetable["cached"] = True
+        timetable["cachedAt"] = cached_at
+        timetable["refreshedAt"] = refreshed_at
+        feature_statuses["timetable"] = {
+            "status": "cached",
+            "source": "cache",
+            "cached": True,
+            "cachedAt": cached_at,
+            "refreshedAt": refreshed_at,
+            "fallback": True,
+            "count": len(timetable.get("grid", [])),
+            "mappingsCount": len(timetable.get("mappings", [])),
+            "duration_seconds": round(tt_dur, 3)
+        }
+        print(f"[erp:sync] Timetable source: CACHE (FALLBACK) | Cached at: {cached_at} | Rows: {feature_statuses['timetable']['count']} | Mappings: {feature_statuses['timetable']['mappingsCount']}", flush=True)
+    elif tt_err:
+        feature_statuses["timetable"] = {
+            "status": "failed",
+            "source": "live",
+            "cached": False,
+            "error": tt_err,
+            "duration_seconds": round(tt_dur, 3)
+        }
+    else:
+        feature_statuses["timetable"] = {
+            "status": "empty",
+            "source": "live",
+            "cached": False,
+            "refreshedAt": now_iso,
+            "count": 0,
+            "mappingsCount": 0,
+            "duration_seconds": round(tt_dur, 3)
+        }
+
+    # Seating Plan
+    seating_plan, seat_err, seat_dur = await safe_sync("seating-plan", lambda: sync_seating_plan(payload, session=session), None)
+    if seat_err:
+        feature_statuses["seatingPlan"] = {
+            "status": "failed",
+            "source": "live",
+            "error": seat_err,
+            "duration_seconds": round(seat_dur, 3)
+        }
+    elif seating_plan and len(seating_plan) > 0:
+        feature_statuses["seatingPlan"] = {
+            "status": "success",
+            "source": "live",
+            "refreshedAt": now_iso,
+            "count": len(seating_plan),
+            "duration_seconds": round(seat_dur, 3)
+        }
+    elif seating_plan is not None and len(seating_plan) == 0:
+        feature_statuses["seatingPlan"] = {
+            "status": "empty",
+            "source": "live",
+            "refreshedAt": now_iso,
+            "count": 0,
+            "duration_seconds": round(seat_dur, 3)
+        }
+    else:
+        feature_statuses["seatingPlan"] = {
+            "status": "unknown",
+            "source": "live",
+            "duration_seconds": round(seat_dur, 3)
+        }
+
+    # CGPA
+    cgpa, cgpa_err, cgpa_dur = await safe_sync("cgpa", lambda: sync_cgpa(payload, session=session), None)
+    if cgpa_err:
+        feature_statuses["cgpa"] = {
+            "status": "failed",
+            "source": "live",
+            "error": cgpa_err,
+            "duration_seconds": round(cgpa_dur, 3)
+        }
+    elif cgpa and (cgpa.get("value") is not None or cgpa.get("subjects") or cgpa.get("semesters")):
+        cgpa_count = len(cgpa.get("subjects", []))
+        feature_statuses["cgpa"] = {
+            "status": "success",
+            "source": "live",
+            "refreshedAt": now_iso,
+            "count": cgpa_count,
+            "duration_seconds": round(cgpa_dur, 3),
+            "value": cgpa.get("value")
+        }
+    elif cgpa is not None:
+        feature_statuses["cgpa"] = {
+            "status": "empty",
+            "source": "live",
+            "refreshedAt": now_iso,
+            "count": 0,
+            "duration_seconds": round(cgpa_dur, 3)
+        }
+    else:
+        feature_statuses["cgpa"] = {
+            "status": "unknown",
+            "source": "live",
+            "duration_seconds": round(cgpa_dur, 3)
+        }
+
+    total_dur = time.time() - total_start
+    features_sum_dur = round(att_dur + tt_dur + seat_dur + cgpa_dur, 3)
+
+    feature_statuses["auth"] = {
+        "status": "success",
+        "duration_seconds": round(login_dur, 3)
+    }
+    feature_statuses["total"] = {
+        "duration_seconds": round(total_dur, 3),
+        "features_duration_seconds": features_sum_dur,
+        "overhead_seconds": round(max(0.0, total_dur - login_dur - features_sum_dur), 3)
+    }
+
+    tt_src = feature_statuses["timetable"].get("source", "unknown").upper()
+    print(
+        f"[erp:sync] Total end-to-end sync duration: {total_dur:.3f}s "
+        f"[Auth: {login_dur:.3f}s | Attendance: {att_dur:.3f}s | Timetable ({tt_src}): {tt_dur:.3f}s | "
+        f"Seating: {seat_dur:.3f}s | CGPA: {cgpa_dur:.3f}s | Sum: {features_sum_dur:.3f}s]",
+        flush=True
+    )
 
     return {
+        "status": feature_statuses,
+        "featureStatus": feature_statuses,
         "attendance": attendance,
         "timetable": timetable,
         "marks": [],
         "seatingPlan": seating_plan,
         "cgpa": cgpa,
-        "syncedAt": f"{datetime.utcnow().isoformat()}Z"
+        "syncedAt": now_iso,
+        "totalDurationSeconds": round(total_dur, 3),
+        "authDurationSeconds": round(login_dur, 3)
     }
 
 
@@ -431,6 +667,8 @@ class SyncRequest(BaseModel):
     academicYear: str
     semesterId: str
     captchaSessionId: str = ""
+    forceRefresh: Optional[bool] = False
+    refreshTimetable: Optional[bool] = False
 
 
 @app.exception_handler(AppError)
@@ -734,13 +972,13 @@ def get_portal_status():
 
 
 @app.get("/api/captcha")
-def get_captcha():
-    result = create_captcha_session()
+async def get_captcha():
+    result = await create_captcha_session()
     return JSONResponse(content=result, headers={"Cache-Control": "no-store"})
 
 
 @app.post("/api/sync")
-def sync_attendance_route(body: SyncRequest):
+async def sync_attendance_route(body: SyncRequest):
     if not all([body.erpId, body.password, body.academicYear, body.semesterId]):
         raise AppError(
             "ERP ID, password, academic year, and semester are required.",
@@ -750,7 +988,7 @@ def sync_attendance_route(body: SyncRequest):
     session_id = body.captchaSessionId
     if not session_id:
         try:
-            captcha_res = create_captcha_session()
+            captcha_res = await create_captcha_session()
             session_id = captcha_res["sessionId"]
         except Exception as exc:
             raise AppError(f"Failed to initialize CAPTCHA session: {str(exc)}", 502)
@@ -758,7 +996,7 @@ def sync_attendance_route(body: SyncRequest):
     captcha_session = get_captcha_session(session_id)
     if not captcha_session:
         try:
-            captcha_res = create_captcha_session()
+            captcha_res = await create_captcha_session()
             session_id = captcha_res["sessionId"]
         except Exception as exc:
             raise AppError(f"Failed to re-initialize CAPTCHA session: {str(exc)}", 502)
@@ -766,9 +1004,55 @@ def sync_attendance_route(body: SyncRequest):
     payload = body.model_dump()
     payload["captchaSessionId"] = session_id
     
-    result = run_full_sync(payload)
+    result = await run_full_sync(payload)
     result["captchaSessionId"] = session_id
     return result
+
+
+@app.get("/api/timetable")
+async def get_timetable_route(erpId: str, academicYear: str, semesterId: str):
+    if not erpId or not academicYear or not semesterId:
+        raise HTTPException(status_code=400, detail="erpId, academicYear, and semesterId are required.")
+    cached = get_cached_timetable(erpId, academicYear, semesterId)
+    if cached:
+        return cached
+    return {
+        "grid": [],
+        "mappings": [],
+        "academicYear": academicYear,
+        "semesterId": semesterId,
+        "status": "empty",
+        "message": "No cached timetable found. Please sync."
+    }
+
+
+@app.post("/api/timetable/sync")
+async def sync_timetable_only_route(body: SyncRequest):
+    if not all([body.erpId, body.password, body.academicYear, body.semesterId]):
+        raise AppError("ERP ID, password, academic year, and semester are required.", 400)
+
+    # Check cache first if not forced
+    if not (body.forceRefresh or body.refreshTimetable):
+        cached = get_cached_timetable(body.erpId, body.academicYear, body.semesterId)
+        if cached and cached.get("grid"):
+            return cached
+
+    session_id = body.captchaSessionId
+    if not session_id:
+        try:
+            captcha_res = await create_captcha_session()
+            session_id = captcha_res["sessionId"]
+        except Exception as exc:
+            raise AppError(f"Failed to initialize CAPTCHA session: {str(exc)}", 502)
+
+    payload = body.model_dump()
+    payload["captchaSessionId"] = session_id
+
+    session = await perform_login(payload)
+    timetable = await sync_timetable(payload, session=session)
+    if timetable and timetable.get("grid"):
+        set_cached_timetable(body.erpId, body.academicYear, body.semesterId, timetable)
+    return timetable
 
 
 @app.get("/api/faculty")

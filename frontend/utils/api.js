@@ -24,13 +24,13 @@ export async function fetchCaptcha() {
   return payload;
 }
 
-export async function syncAttendance({ erpId, password, captcha, academicYear, semesterId, captchaSessionId }) {
+export async function syncAttendance({ erpId, password, captcha, academicYear, semesterId, captchaSessionId, forceRefresh = false, refreshTimetable = false }) {
   const response = await fetch(`${API_BASE}/api/sync`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ erpId, password, captcha, academicYear, semesterId, captchaSessionId })
+    body: JSON.stringify({ erpId, password, captcha, academicYear, semesterId, captchaSessionId, forceRefresh, refreshTimetable })
   });
 
   let payload;
@@ -42,6 +42,29 @@ export async function syncAttendance({ erpId, password, captcha, academicYear, s
 
   if (!response.ok) {
     throw new ApiError(payload?.error || "Sync failed", response.status);
+  }
+
+  return payload;
+}
+
+export async function syncTimetableOnly({ erpId, password, captcha = "", academicYear, semesterId, captchaSessionId = "", forceRefresh = false }) {
+  const response = await fetch(`${API_BASE}/api/timetable/sync`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ erpId, password, captcha, academicYear, semesterId, captchaSessionId, forceRefresh })
+  });
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (e) {
+    throw new ApiError("Failed to parse timetable response from server", response.status);
+  }
+
+  if (!response.ok) {
+    throw new ApiError(payload?.error || "Timetable sync failed", response.status);
   }
 
   return payload;

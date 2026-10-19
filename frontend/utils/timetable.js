@@ -87,7 +87,7 @@ export function normalizeSubjectKey(value = "") {
 
 export function extractCourseCodesFromText(value = "") {
   const text = normalizeSubjectKey(value);
-  const matches = text.match(/\b\d{2}[A-Z]{2,8}\d{2,4}[A-Z]?\b/g) || [];
+  const matches = text.match(/\b\d{2}[A-Z]{2,6}[0-9A-Z]{3,6}\b|\b\d{2}[A-Z]{2,8}\d{2,4}[A-Z]?\b/g) || [];
   return Array.from(new Set(matches));
 }
 
@@ -169,23 +169,42 @@ export function parseCellValue(value = "") {
   // Match KL-specific "-RoomNo-" format first
   const roomNoMatch = text.match(/^(.*?)\s*-RoomNo-?\s*(.+)$/i);
   if (roomNoMatch) {
-    return { courseCode: roomNoMatch[1].trim(), classroom: roomNoMatch[2].trim() };
+    const rawCourse = roomNoMatch[1].trim();
+    const codeMatch = rawCourse.match(/\b(\d{2}[A-Z]{2,6}[0-9A-Z]{3,6}|\d{2}[A-Z]{2,8}\d{2,4}[A-Z]?)\b/);
+    return {
+      courseCode: codeMatch ? codeMatch[0] : rawCourse,
+      classroom: roomNoMatch[2].trim(),
+      rawCourse
+    };
   }
 
   // Match patterns like "20CS3101 / 301" or "20CS3101/Room 301" or "20CS3101 301" or "20CS3101\n301"
   const match = text.match(/^([^/\n]+?)\s*[/\n]\s*(.+)$/);
   if (match) {
-    return { courseCode: match[1].trim(), classroom: match[2].trim() };
+    const rawCourse = match[1].trim();
+    const codeMatch = rawCourse.match(/\b(\d{2}[A-Z]{2,6}[0-9A-Z]{3,6}|\d{2}[A-Z]{2,8}\d{2,4}[A-Z]?)\b/);
+    return {
+      courseCode: codeMatch ? codeMatch[0] : rawCourse,
+      classroom: match[2].trim(),
+      rawCourse
+    };
   }
   // Try splitting on whitespace if last token looks like a room (short alphanumeric)
   const parts = text.split(/\s+/);
   if (parts.length >= 2) {
     const last = parts[parts.length - 1];
     if (/^[A-Z0-9]{2,8}$/i.test(last) && last !== text) {
-      return { courseCode: parts.slice(0, -1).join(" "), classroom: last };
+      const rawCourse = parts.slice(0, -1).join(" ");
+      const codeMatch = rawCourse.match(/\b(\d{2}[A-Z]{2,6}[0-9A-Z]{3,6}|\d{2}[A-Z]{2,8}\d{2,4}[A-Z]?)\b/);
+      return {
+        courseCode: codeMatch ? codeMatch[0] : rawCourse,
+        classroom: last,
+        rawCourse
+      };
     }
   }
-  return { courseCode: text, classroom: "" };
+  const codeMatch = text.match(/\b(\d{2}[A-Z]{2,6}[0-9A-Z]{3,6}|\d{2}[A-Z]{2,8}\d{2,4}[A-Z]?)\b/);
+  return { courseCode: codeMatch ? codeMatch[0] : text, classroom: "", rawCourse: text };
 }
 
 export function getShortSubjectName(value, subjectMap = {}) {
@@ -529,17 +548,24 @@ export function buildWeekSchedule(grid) {
   }
 
   const dayRows = grid
-    .map((row, index) => ({ day: findDay(row?.[0]), index }))
-    .filter((entry) => entry.day);
+    .map((row, index) => {
+      const dayInCol0 = findDay(row?.[0]);
+      const dayInCol1 = findDay(row?.[1]);
+      if (dayInCol0) return { day: dayInCol0, index, dayCol: 0 };
+      if (dayInCol1) return { day: dayInCol1, index, dayCol: 1 };
+      return null;
+    })
+    .filter(Boolean);
 
   if (dayRows.length >= 3) {
-    const slots = headerRow.slice(1).map((cell, index) => cell || `Slot ${index + 1}`);
+    const dayCol = dayRows[0].dayCol;
+    const slots = headerRow.slice(dayCol + 1).map((cell, index) => cell || `Slot ${index + 1}`);
     dayRows.forEach(({ day, index }) => {
       const row = grid[index] || [];
-      for (let col = 1; col < row.length; col += 1) {
+      for (let col = dayCol + 1; col < row.length; col += 1) {
         const value = row[col];
         if (isSlotValue(value)) {
-          schedule[day].push({ slot: slots[col - 1] || `Slot ${col}`, value });
+          schedule[day].push({ slot: slots[col - (dayCol + 1)] || `Slot ${col}`, value });
         }
       }
     });

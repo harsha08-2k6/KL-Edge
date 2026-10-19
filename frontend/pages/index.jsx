@@ -202,6 +202,10 @@ export default function Home() {
         writeLocal(STORAGE_KEYS.timetable, timetableToSave);
         writeLocal(STORAGE_KEYS.timetableStatus, {
           status: payload.timetable.status || "ok",
+          source: payload.timetable.source || (payload.timetable.cached ? "cache" : "live"),
+          refreshedAt: payload.timetable.refreshedAt || payload.syncedAt,
+          cachedAt: payload.timetable.cachedAt || null,
+          mappingsCount: (payload.timetable.mappings || []).length,
           message: payload.timetable.message || ""
         });
       }
@@ -1043,7 +1047,7 @@ export default function Home() {
       
       <div className="mt-6 pb-20 text-center text-[10px] md:text-xs text-ink/60">
         <p className="font-bold text-ink/70">
-          Built by SHVR - <a href="https://sivaharshavardhanreddy-portfolio.netlify.app/" target="_blank" rel="noreferrer" className="text-mint hover:underline">View Portfolio</a>
+          Built by SHVR - <a href="https://sivaharshavardhanreddys-portfolio.vercel.app/" target="_blank" rel="noreferrer" className="text-mint hover:underline">View Portfolio</a>
         </p>
       </div>
       <MovingEyes />

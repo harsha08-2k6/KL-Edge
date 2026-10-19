@@ -16,3 +16,5 @@ frontend/dist
 backend/last_*_failure.html
 backend/last_*.html
 backend/file.tmp
+scratch/
+backend/scratch_*.py

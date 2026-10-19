@@ -4,6 +4,12 @@
   justify-content: center;
 }
 
+@media (max-width: 767px) {
+  .creature-container {
+    display: none !important;
+  }
+}
+
 .creature {
   position: relative;
   width: 116px;
