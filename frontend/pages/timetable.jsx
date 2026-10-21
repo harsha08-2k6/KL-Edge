@@ -15,8 +15,7 @@ import {
   mergeConsecutiveClasses
 } from "../utils/timetable.js";
 import { 
-  getWeekHolidayMap, 
-  getTodayHoliday 
+  getWeekHolidayMap 
 } from "../utils/holidays.js";
 
 function getTodayName() {
@@ -32,7 +31,6 @@ export default function Timetable() {
 
   const today = getTodayName();
   const weekMap = useMemo(() => getWeekHolidayMap(), []);
-  const todayHoliday = useMemo(() => getTodayHoliday(), []);
 
   const { schedule } = useMemo(() => buildWeekSchedule(grid), [grid]);
   const daysWithData = dayOrder.filter((day) => schedule[day]?.length);
@@ -88,22 +86,6 @@ export default function Timetable() {
         </Link>
       }
     >
-      {/* Today's Holiday Quick Notice */}
-      {todayHoliday && (
-        <div className="mb-3 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 shadow-soft flex items-center gap-2.5">
-          <span className="text-2xl">🌴</span>
-          <div>
-            <p className="text-xs font-black text-ink">
-              Today is a holiday due to {todayHoliday.name}
-            </p>
-            {todayHoliday.subEvent && (
-              <p className="text-[10px] font-bold text-amber-700">
-                ✨ {todayHoliday.subEvent}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
 
       {grid.length > 0 ? (
         <div className="rounded-xl border border-ink/10 bg-white p-3 shadow-soft">
