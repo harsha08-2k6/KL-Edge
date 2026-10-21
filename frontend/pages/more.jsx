@@ -1,8 +1,9 @@
-import { Armchair, BookMarked, ChevronRight, Flame, Gamepad2, GraduationCap, MapPin, Settings } from "lucide-react";
+import { Armchair, BookMarked, Calendar, ChevronRight, Flame, Gamepad2, GraduationCap, MapPin, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
 
 const moreLinks = [
+  { href: "/calendar", label: "Academic Calendar", description: "View university general holidays, festivals, and mandatory activities for 2026.", icon: Calendar },
   { href: "/map", label: "Campus Map", description: "Interactive map navigation with AI Assistant support.", icon: MapPin },
   { href: "/streak", label: "Streak", description: "View your active days and streak calendar.", icon: Flame },
   { href: "/cgpa", label: "CGPA", description: "Check your semester-wise CGPA.", icon: GraduationCap },

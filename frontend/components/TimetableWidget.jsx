@@ -11,6 +11,7 @@ import {
   parseSlotStartTime,
   parseCellValue
 } from "../utils/timetable.js";
+import { getTodayHoliday } from "../utils/holidays.js";
 
 // Day order mapping
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -164,9 +165,11 @@ export function TimetableWidget({ grid, attendance }) {
   );
 
   const today = getTodayName();
+  const todayHoliday = useMemo(() => getTodayHoliday(), [now]);
+  const isHoliday = !!todayHoliday;
   const { schedule } = useMemo(() => buildWeekSchedule(grid), [grid]);
   const daysWithData = dayOrder.filter((day) => schedule[day]?.length);
-  const todayRows = daysWithData.length ? schedule[today] || [] : getTodayRows(grid, today);
+  const todayRows = isHoliday ? [] : (daysWithData.length ? schedule[today] || [] : getTodayRows(grid, today));
 
   const classesWithTimes = useMemo(() => {
     return todayRows.map(item => {
@@ -281,7 +284,21 @@ export function TimetableWidget({ grid, attendance }) {
             </span>
           </div>
 
-          {classesWithTimes.length > 0 ? (
+          {isHoliday ? (
+            <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-center">
+              <span className="text-xl">🌴</span>
+              <p className="mt-1 text-xs font-black text-ink">Holiday due to {todayHoliday.name}</p>
+              {todayHoliday.subEvent && (
+                <p className="mt-0.5 text-[11px] font-bold text-amber-700">✨ {todayHoliday.subEvent}</p>
+              )}
+              {todayHoliday.activityNotes && (
+                <p className="mt-1.5 text-[10px] text-ink/75 bg-white/70 rounded p-1.5 border border-amber-500/10 text-left font-medium">
+                  📌 {todayHoliday.activityNotes}
+                </p>
+              )}
+              <p className="mt-2 text-[10px] font-semibold text-ink/50">Timetable suspended today</p>
+            </div>
+          ) : classesWithTimes.length > 0 ? (
             <div className="mt-3 space-y-2">
               {classesWithTimes.map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between rounded-lg bg-surface/50 p-2 text-xs font-bold text-ink">
@@ -311,7 +328,14 @@ export function TimetableWidget({ grid, attendance }) {
             <span className="inline-flex h-2 w-2 rounded-full bg-mint animate-pulse" />
           </div>
 
-          {nextClassInfo ? (
+          {isHoliday ? (
+            <div className="mt-6 text-center py-4">
+              <span className="text-2xl">🎉</span>
+              <h4 className="mt-1 text-sm font-black text-ink">Holiday Today!</h4>
+              <p className="text-xs font-bold text-ink/60 mt-0.5">Holiday due to {todayHoliday.name}</p>
+              <p className="text-[10px] font-semibold text-ink/40 mt-1">Enjoy your day off!</p>
+            </div>
+          ) : nextClassInfo ? (
             <div className="mt-4 text-center space-y-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-wider text-ink/40">Next Class</p>

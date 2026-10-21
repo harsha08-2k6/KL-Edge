@@ -18,6 +18,7 @@ const Assignments = lazy(() => import("./pages/assignments.jsx"));
 const Games = lazy(() => import("./pages/games/index.jsx"));
 const TicTacToe = lazy(() => import("./pages/games/tic-tac-toe.jsx"));
 const Snake = lazy(() => import("./pages/games/snake.jsx"));
+const CalendarPage = lazy(() => import("./pages/calendar.jsx"));
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/documentation" element={<Documentation />} />
           <Route path="/map" element={<Map />} />
           <Route path="/assignments" element={<Assignments />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/more/games" element={<Games />} />
           <Route path="/more/games/tic-tac-toe" element={<TicTacToe />} />
           <Route path="/more/games/snake" element={<Snake />} />

@@ -605,8 +605,21 @@ export function getTodayRows(grid, today) {
   return [];
 }
 
-export function getCurrentAndNextClass(grid, attendance = [], customSubjectNames = {}) {
-  const now = new Date();
+import { getHolidayForDate } from "./holidays.js";
+
+export function getCurrentAndNextClass(grid, attendance = [], customSubjectNames = {}, targetDate = new Date()) {
+  const now = targetDate instanceof Date ? targetDate : new Date(targetDate);
+  const todayHoliday = getHolidayForDate(now);
+  if (todayHoliday) {
+    return {
+      isHoliday: true,
+      holiday: todayHoliday,
+      present: null,
+      next: null,
+      remaining: 0
+    };
+  }
+
   const today = dayNames[now.getDay()];
   
   const { schedule } = buildWeekSchedule(grid);
