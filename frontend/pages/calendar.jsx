@@ -17,6 +17,8 @@ import {
 import { Layout } from "../components/Layout.jsx";
 import { 
   HOLIDAYS_2026, 
+  OPTIONAL_HOLIDAYS_2026,
+  ALL_ACADEMIC_CALENDAR_ITEMS_2026,
   HOLIDAY_CATEGORIES, 
   formatDateKey, 
   getHolidayForDate,
@@ -42,7 +44,7 @@ export default function CalendarPage() {
 
   // Filtered holidays
   const filteredHolidays = useMemo(() => {
-    return HOLIDAYS_2026.filter((h) => {
+    return ALL_ACADEMIC_CALENDAR_ITEMS_2026.filter((h) => {
       // Category filter
       if (selectedCategory !== "ALL" && h.category !== selectedCategory) {
         return false;
@@ -95,6 +97,7 @@ export default function CalendarPage() {
   const generalCount = HOLIDAYS_2026.filter(h => h.category === HOLIDAY_CATEGORIES.GENERAL).length;
   const sundayCount = HOLIDAYS_2026.filter(h => h.category === HOLIDAY_CATEGORIES.SUNDAY_FESTIVAL).length;
   const socialCount = HOLIDAYS_2026.filter(h => h.category === HOLIDAY_CATEGORIES.SOCIAL_SERVICE).length;
+  const optionalCount = OPTIONAL_HOLIDAYS_2026.length;
 
   return (
     <Layout
@@ -192,7 +195,7 @@ export default function CalendarPage() {
                   : "bg-surface text-ink/60 hover:text-ink"
               }`}
             >
-              All ({HOLIDAYS_2026.length})
+              All ({ALL_ACADEMIC_CALENDAR_ITEMS_2026.length})
             </button>
             <button
               type="button"
@@ -227,6 +230,26 @@ export default function CalendarPage() {
             >
               🤝 Social Service ({socialCount})
             </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(HOLIDAY_CATEGORIES.OPTIONAL)}
+              className={`tap rounded-full px-3 py-1 text-xs font-black transition-colors ${
+                selectedCategory === HOLIDAY_CATEGORIES.OPTIONAL
+                  ? "bg-purple-600 text-white"
+                  : "bg-surface text-ink/60 hover:text-ink"
+              }`}
+            >
+              🎗️ Optional Holidays ({optionalCount})
+            </button>
+          </div>
+        </div>
+
+        {/* Optional Holidays Exclusion Notice */}
+        <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3.5 text-xs text-ink/75 flex items-start gap-2.5">
+          <Info size={16} className="text-purple-600 shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <span className="font-bold text-purple-950">Optional Holidays Notice: </span>
+            <span>Optional holidays, Good Friday (3 April 2026) and Eid al-Adha/Bakrid (27 May 2026), have been excluded as requested. Regular classes and timetable remain active on these days.</span>
           </div>
         </div>
 
@@ -361,13 +384,16 @@ export default function CalendarPage() {
                 const isGeneral = holiday.category === HOLIDAY_CATEGORIES.GENERAL;
                 const isSunday = holiday.category === HOLIDAY_CATEGORIES.SUNDAY_FESTIVAL;
                 const isSocial = holiday.category === HOLIDAY_CATEGORIES.SOCIAL_SERVICE;
+                const isOptional = holiday.category === HOLIDAY_CATEGORIES.OPTIONAL;
 
-                const categoryIcon = isSocial ? "🤝" : (isSunday ? "🪔" : "🌴");
-                const categoryColor = isSocial
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                  : (isSunday
-                    ? "bg-indigo-50 border-indigo-200 text-indigo-800"
-                    : "bg-amber-50 border-amber-200 text-amber-800");
+                const categoryIcon = isOptional ? "🎗️" : (isSocial ? "🤝" : (isSunday ? "🪔" : "🌴"));
+                const categoryColor = isOptional
+                  ? "bg-purple-50 border-purple-200 text-purple-800"
+                  : (isSocial
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                    : (isSunday
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-800"
+                      : "bg-amber-50 border-amber-200 text-amber-800"));
 
                 return (
                   <article
@@ -444,10 +470,23 @@ export default function CalendarPage() {
                     {/* Holiday Due To banner footer */}
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-ink/5 text-xs">
                       <span className="font-bold text-ink/60">
-                        Status on this day: <span className="text-amber-700 font-black">Holiday due to {holiday.name}</span>
+                        Status on this day:{" "}
+                        {isOptional ? (
+                          <span className="text-purple-700 font-black">
+                            Optional Holiday (Regular Classes Continue)
+                          </span>
+                        ) : (
+                          <span className="text-amber-700 font-black">
+                            Holiday due to {holiday.name}
+                          </span>
+                        )}
                       </span>
-                      <span className="rounded-md bg-surface px-2 py-0.5 text-[10px] font-bold text-ink/45">
-                        Timetable Suspended
+                      <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                        isOptional
+                          ? "bg-purple-100 text-purple-800"
+                          : "bg-surface text-ink/45"
+                      }`}>
+                        {isOptional ? "Timetable Active" : "Timetable Suspended"}
                       </span>
                     </div>
                   </article>

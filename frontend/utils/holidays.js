@@ -5,7 +5,8 @@
 export const HOLIDAY_CATEGORIES = {
   GENERAL: "General Holidays",
   SUNDAY_FESTIVAL: "Festivals Falling on Sunday",
-  SOCIAL_SERVICE: "Social Service Activities"
+  SOCIAL_SERVICE: "Social Service Activities",
+  OPTIONAL: "Optional Holidays"
 };
 
 export const HOLIDAYS_2026 = [
@@ -207,7 +208,41 @@ export const HOLIDAYS_2026 = [
   }
 ];
 
-// Precompute date map for O(1) lookups: "YYYY-MM-DD" -> holiday details
+export const OPTIONAL_HOLIDAYS_2026 = [
+  {
+    id: "good-friday-2026",
+    number: "O1",
+    name: "Good Friday",
+    category: HOLIDAY_CATEGORIES.OPTIONAL,
+    startDate: "2026-04-03",
+    endDate: "2026-04-03",
+    dayDescription: "Friday",
+    dates: ["2026-04-03"],
+    isOptional: true,
+    suspendsTimetable: false,
+    notes: "Optional holidays, Good Friday (3 April 2026) and Eid al-Adha/Bakrid (27 May 2026), have been excluded as requested."
+  },
+  {
+    id: "bakrid-2026",
+    number: "O2",
+    name: "Eid al-Adha / Bakrid",
+    category: HOLIDAY_CATEGORIES.OPTIONAL,
+    startDate: "2026-05-27",
+    endDate: "2026-05-27",
+    dayDescription: "Wednesday",
+    dates: ["2026-05-27"],
+    isOptional: true,
+    suspendsTimetable: false,
+    notes: "Optional holidays, Good Friday (3 April 2026) and Eid al-Adha/Bakrid (27 May 2026), have been excluded as requested."
+  }
+];
+
+export const ALL_ACADEMIC_CALENDAR_ITEMS_2026 = [
+  ...HOLIDAYS_2026,
+  ...OPTIONAL_HOLIDAYS_2026
+];
+
+// Precompute date map for O(1) lookups: "YYYY-MM-DD" -> holiday details (Only mandatory holidays that suspend timetable)
 const DATE_TO_HOLIDAY_MAP = {};
 
 HOLIDAYS_2026.forEach((holiday) => {
