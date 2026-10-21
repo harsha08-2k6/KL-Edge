@@ -273,6 +273,33 @@ HOLIDAYS_2026.forEach((holiday) => {
   });
 });
 
+// Also register confirmed 2027 holidays occurring during the 2026-2027 academic year
+const CONFIRMED_2027_HOLIDAYS = [
+  { date: "2027-01-14", name: "Sankranthi / Pongal", baseName: "Pongal", dayDescription: "Thursday" },
+  { date: "2027-01-15", name: "Sankranthi / Pongal", baseName: "Pongal", dayDescription: "Friday" },
+  { date: "2027-01-16", name: "Kanuma (Pongal)", baseName: "Pongal", dayDescription: "Saturday" },
+  { date: "2027-01-26", name: "Republic Day", baseName: "Republic Day", dayDescription: "Tuesday" },
+  { date: "2027-04-14", name: "Dr. B. R. Ambedkar Jayanthi", baseName: "Dr. B. R. Ambedkar Jayanthi", dayDescription: "Wednesday" }
+];
+
+CONFIRMED_2027_HOLIDAYS.forEach(item => {
+  if (!DATE_TO_HOLIDAY_MAP[item.date]) {
+    DATE_TO_HOLIDAY_MAP[item.date] = {
+      isHoliday: true,
+      id: `hol_${item.date}`,
+      name: item.name,
+      baseName: item.baseName,
+      category: HOLIDAY_CATEGORIES.GENERAL,
+      date: item.date,
+      dayDescription: item.dayDescription,
+      holidayDueTo: item.name,
+      reason: `Holiday due to ${item.name}`,
+      isSocialService: item.name.includes("Republic"),
+      isSundayFestival: false
+    };
+  }
+});
+
 /**
  * Format a Date object to "YYYY-MM-DD" in local time.
  */

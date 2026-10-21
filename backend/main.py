@@ -27,6 +27,8 @@ from erp_scraper import (
 )
 import json
 from routes.map import router as map_router
+from routes.calendar import router as calendar_router
+from services.calendar_service import init_calendar_db, run_scheduled_calendar_job
 from services.lms_scraper import authenticate_lms, get_lms_assignments
 from fastapi import Header
 from supabase_client import get_supabase
@@ -430,11 +432,24 @@ app = FastAPI()
 
 STEPS_TO_POINTS_RATE = 100
 
+async def calendar_background_scheduler():
+    while True:
+        try:
+            run_scheduled_calendar_job()
+        except Exception as e:
+            print(f"[calendar:scheduler] error: {e}", flush=True)
+        await asyncio.sleep(900)
+
 @app.on_event("startup")
 async def startup_event():
     from services.map_db import init_db
     init_db()
     init_leaderboard_db()
+    try:
+        init_calendar_db()
+        asyncio.create_task(calendar_background_scheduler())
+    except Exception as e:
+        print(f"[calendar:init] error: {e}", flush=True)
 
 raw_origins = os.getenv("FRONTEND_ORIGIN", "*")
 origin_allow_list = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
@@ -448,6 +463,7 @@ app.add_middleware(
 )
 
 app.include_router(map_router)
+app.include_router(calendar_router)
 
 @app.get("/api/portal-status")
 def portal_status():

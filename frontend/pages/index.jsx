@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
 import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
-import { SocialLinks } from "../components/SocialLinks.jsx";
+import { GitHubLogo, LinkedInLogo, SOCIAL_LINKS } from "../components/SocialLinks.jsx";
 import { Toast } from "../components/Toast.jsx";
 import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal, removeLocal } from "../utils/storage.js";
@@ -465,7 +465,6 @@ export default function Home() {
               🔥 {streakStats.streak}
             </Link>
           )}
-          <SocialLinks showLinkedIn={false} />
 
           <Link
             to="/settings"
@@ -1082,10 +1081,45 @@ export default function Home() {
         </div>
       )}
       
-      <div className="mt-6 pb-20 text-center text-[10px] md:text-xs text-ink/60">
-        <p className="font-bold text-ink/70">
-          Built by SHVR - <a href="https://sivaharshavardhanreddys-portfolio.vercel.app/" target="_blank" rel="noreferrer" className="text-mint hover:underline">View Portfolio</a>
+      <div className="mt-8 pb-20 text-center text-xs text-ink/60 flex flex-col items-center gap-2.5">
+        <p className="font-bold text-ink/75 text-xs md:text-sm">
+          Developed by Siva Harsha Vardhan Reddy Tamalampudi •{" "}
+          <a
+            href={SOCIAL_LINKS.portfolio}
+            target="_blank"
+            rel="noreferrer"
+            className="text-mint font-bold hover:underline"
+          >
+            View Portfolio
+          </a>
         </p>
+
+        {/* GitHub & LinkedIn Profile Redirects */}
+        <div className="flex items-center justify-center gap-2.5 pt-0.5">
+          <a
+            href={SOCIAL_LINKS.github}
+            target="_blank"
+            rel="noreferrer"
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 py-1.5 text-xs font-bold text-ink/80 shadow-soft transition-all hover:bg-surface hover:text-ink hover:border-ink/25"
+            title="Siva Harsha Vardhan Reddy's GitHub"
+            aria-label="GitHub Profile"
+          >
+            <GitHubLogo className="h-4 w-4 text-ink" />
+            <span>GitHub</span>
+          </a>
+
+          <a
+            href={SOCIAL_LINKS.linkedin}
+            target="_blank"
+            rel="noreferrer"
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-[#0a66c2]/20 bg-white px-3 py-1.5 text-xs font-bold text-[#0a66c2] shadow-soft transition-all hover:bg-[#0a66c2]/10 hover:border-[#0a66c2]/40"
+            title="Siva Harsha Vardhan Reddy's LinkedIn"
+            aria-label="LinkedIn Profile"
+          >
+            <LinkedInLogo className="h-4 w-4 text-[#0a66c2]" />
+            <span>LinkedIn</span>
+          </a>
+        </div>
       </div>
       <MovingEyes />
     </Layout>

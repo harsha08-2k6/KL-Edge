@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 import animate from "tailwindcss-animate";
+import colors from "tailwindcss/colors";
 
 export default {
   content: [
@@ -14,10 +15,14 @@ export default {
       colors: {
         ink: "#12151f",
         paper: "#f7f4ee",
+        surface: "#ede8dd",
         mint: "#2f9d83",
         lime: "#b9d957",
         coral: "#ef6f61",
-        amber: "#e3a72f",
+        amber: {
+          ...colors.amber,
+          DEFAULT: "#e3a72f",
+        },
         violet: "#7867d8",
       },
       boxShadow: {
