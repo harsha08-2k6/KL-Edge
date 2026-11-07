@@ -72,6 +72,18 @@ export async function syncTimetableOnly({ erpId, password, captcha = "", academi
 
 
 
+export async function fetchSeatingPlan({ erpId, academicYear, semesterId }) {
+  if (!erpId || !academicYear || !semesterId) return null;
+  const params = new URLSearchParams({ erpId, academicYear, semesterId });
+  try {
+    const response = await fetch(`${API_BASE}/api/seating-plan?${params.toString()}`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchFaculty() {
   // Try to get from localStorage cache first for instant load
   const cached = localStorage.getItem("faculty_cache");

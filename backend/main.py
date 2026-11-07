@@ -23,7 +23,8 @@ from erp_scraper import (
     sync_cgpa,
     sync_marks,
     sync_seating_plan,
-    sync_timetable
+    sync_timetable,
+    filter_seating_plan
 )
 import json
 from routes.map import router as map_router
@@ -161,6 +162,30 @@ def set_cached_timetable(erp_id: str, academic_year: str, semester_id: str, data
     set_cached_json(key, to_store)
 
 
+def make_seating_cache_key(erp_id: str, academic_year: str, semester_id: str) -> str:
+    c_id = (erp_id or "").strip().lower()
+    c_year = (academic_year or "").strip().lower().replace(" ", "")
+    c_sem = (semester_id or "").strip().lower().replace(" ", "")
+    return f"seating:{c_id}:{c_year}:{c_sem}"
+
+
+def get_cached_seating_plan(erp_id: str, academic_year: str, semester_id: str) -> Optional[list]:
+    if not erp_id or not academic_year or not semester_id:
+        return None
+    key = make_seating_cache_key(erp_id, academic_year, semester_id)
+    cached = get_cached_json(key)
+    if cached and isinstance(cached, list):
+        return cached
+    return None
+
+
+def set_cached_seating_plan(erp_id: str, academic_year: str, semester_id: str, data: list):
+    if not erp_id or not academic_year or not semester_id or data is None:
+        return
+    key = make_seating_cache_key(erp_id, academic_year, semester_id)
+    set_cached_json(key, data)
+
+
 async def run_full_sync(payload: dict) -> dict:
     total_start = time.time()
 
@@ -291,6 +316,7 @@ async def run_full_sync(payload: dict) -> dict:
             "duration_seconds": round(seat_dur, 3)
         }
     elif seating_plan and len(seating_plan) > 0:
+        set_cached_seating_plan(erp_id, academic_year, semester_id, seating_plan)
         feature_statuses["seatingPlan"] = {
             "status": "success",
             "source": "live",
@@ -299,6 +325,7 @@ async def run_full_sync(payload: dict) -> dict:
             "duration_seconds": round(seat_dur, 3)
         }
     elif seating_plan is not None and len(seating_plan) == 0:
+        set_cached_seating_plan(erp_id, academic_year, semester_id, [])
         feature_statuses["seatingPlan"] = {
             "status": "empty",
             "source": "live",
@@ -1039,6 +1066,30 @@ async def get_timetable_route(erpId: str, academicYear: str, semesterId: str):
         "semesterId": semesterId,
         "status": "empty",
         "message": "No cached timetable found. Please sync."
+    }
+
+
+@app.get("/api/seating-plan")
+async def get_seating_plan_route(erpId: str, academicYear: str, semesterId: str):
+    if not erpId or not academicYear or not semesterId:
+        raise HTTPException(status_code=400, detail="erpId, academicYear, and semesterId are required.")
+    cached = get_cached_seating_plan(erpId, academicYear, semesterId)
+    if cached is not None and len(cached) > 0:
+        filtered = filter_seating_plan(cached, academicYear, semesterId, erpId)
+        if filtered:
+            return {
+                "seatingPlan": filtered,
+                "academicYear": academicYear,
+                "semesterId": semesterId,
+                "status": "ok",
+                "count": len(filtered)
+            }
+    return {
+        "seatingPlan": [],
+        "academicYear": academicYear,
+        "semesterId": semesterId,
+        "status": "empty",
+        "message": "No seating plan available for the selected academic year and semester."
     }
 
 

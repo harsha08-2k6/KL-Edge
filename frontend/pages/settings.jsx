@@ -5,7 +5,7 @@ import { SocialLinks } from "../components/SocialLinks.jsx";
 import { Footer } from "../components/Footer.jsx";
 import { Toast } from "../components/Toast.jsx";
 import { fetchCaptcha, syncAttendance } from "../utils/api.js";
-import { readLocal, removeLocal, STORAGE_KEYS, writeLocal } from "../utils/storage.js";
+import { readLocal, removeLocal, STORAGE_KEYS, writeLocal, mergeSeatingPlans } from "../utils/storage.js";
 import { processSyncUpdates } from "../utils/notifications.js";
 
 const academicYears = [
@@ -129,7 +129,10 @@ export default function Settings() {
       writeLocal(STORAGE_KEYS.attendance, payload.attendance);
       writeLocal(STORAGE_KEYS.timetable, timetable);
       // if (payload.marks) writeLocal(STORAGE_KEYS.marks, payload.marks);
-      if (payload.seatingPlan) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
+      if (payload.seatingPlan && payload.seatingPlan.length > 0) {
+        const existingPlans = readLocal(STORAGE_KEYS.seatingPlan, []);
+        writeLocal(STORAGE_KEYS.seatingPlan, mergeSeatingPlans(existingPlans, payload.seatingPlan));
+      }
       if (payload.cgpa) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
       writeLocal(STORAGE_KEYS.timetableStatus, {
         status: timetable?.status || (timetable?.grid?.length ? "ok" : "empty"),

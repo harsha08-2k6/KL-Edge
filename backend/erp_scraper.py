@@ -1963,6 +1963,13 @@ async def sync_seating_plan(payload: Dict[str, str], session: Optional[httpx.Asy
     duration = time.time() - start_time
     if all_entries:
         print(f"[erp:seating] Fetch success: {len(all_entries)} seating plan records retrieved across {pages_fetched} page(s) in {duration:.3f}s", flush=True)
+        target_year = payload.get("academicYear")
+        target_sem = payload.get("semesterId")
+        student_id = payload.get("erpId")
+        if target_year or target_sem or student_id:
+            filtered = filter_seating_plan(all_entries, target_year, target_sem, student_id)
+            print(f"[erp:seating] Filtered {len(all_entries)} records down to {len(filtered)} for {target_year} {target_sem}", flush=True)
+            return filtered
         return all_entries
 
     if DEBUG_ENABLED and last_html:
@@ -2520,14 +2527,25 @@ def parse_seating_rows(headers: List[str], rows: List[List[str]], payload: Dict[
     date_index = find_index(headers, ["date", "examdate"])
     time_index = find_index(headers, ["time", "slot", "examtime"])
     created_index = find_index(headers, ["creation", "created", "created at", "created on"])
-    year_index = find_index(headers, ["year", "academicyear", "academic year"])
-    semester_index = find_index(headers, ["semester", "term"])
+    year_index = find_index(headers, ["year", "academicyear", "academic year", "acad year", "ay"])
+    semester_index = find_index(headers, ["semester", "term", "sem", "sem no", "semester no", "semid", "semesterid"])
 
     results: List[Dict[str, object]] = []
     for row in rows:
+        date_val = row_value(row, date_index)
+        derived_year, derived_sem = derive_academic_session_from_date(date_val)
+
+        row_year = row_value(row, year_index)
+        row_sem = row_value(row, semester_index)
+
+        # Explicit table column first; then derive strictly from exam date via academic calendar;
+        # only if date is also missing, fall back to payload.
+        actual_year = row_year or derived_year or payload.get("academicYear")
+        actual_sem = row_sem or derived_sem or payload.get("semesterId")
+
         entry = {
             "refId": row_value(row, ref_index),
-            "studentId": row_value(row, student_id_index),
+            "studentId": row_value(row, student_id_index) or payload.get("erpId"),
             "courseCode": row_value(row, code_index),
             "subject": row_value(row, subject_index) or row_value(row, 0),
             "examType": row_value(row, exam_type_index),
@@ -2535,11 +2553,11 @@ def parse_seating_rows(headers: List[str], rows: List[List[str]], payload: Dict[
             "room": row_value(row, room_index),
             "seat": row_value(row, seat_index),
             "block": row_value(row, block_index),
-            "date": row_value(row, date_index),
+            "date": date_val,
             "time": row_value(row, time_index),
             "createdAt": row_value(row, created_index),
-            "academicYear": row_value(row, year_index) or payload.get("academicYear"),
-            "semester": row_value(row, semester_index) or payload.get("semesterId")
+            "academicYear": actual_year,
+            "semester": actual_sem
         }
 
         if not any([entry["courseCode"], entry["subject"], entry["room"], entry["seat"], entry["date"], entry["time"]]):
@@ -2990,6 +3008,70 @@ def filter_rows_by_term(rows: List[List[str]], headers: List[str], payload: Dict
     return filtered
 
 
+def derive_academic_session_from_date(date_text: str) -> tuple[Optional[str], Optional[str]]:
+    """
+    Derives (academic_year, semester) from exam date using official KL University academic calendar:
+    Academic Year begins in July (month 7) and ends in June (month 6).
+    - July - December (months 7-12): Start year is current calendar year -> YYYY-(YYYY+1), Odd Sem
+    - January - June (months 1-6): Start year is previous calendar year -> (YYYY-1)-YYYY, Even Sem
+    """
+    d_year = parse_year_from_date(date_text)
+    d_month = parse_month_from_date(date_text)
+    if d_year is None or d_month is None:
+        return None, None
+    if d_month >= 7:
+        return f"{d_year}-{d_year + 1}", "Odd Sem"
+    else:
+        return f"{d_year - 1}-{d_year}", "Even Sem"
+
+
+def filter_seating_plan(
+    entries: List[Dict[str, object]],
+    academic_year: Optional[str] = None,
+    semester_id: Optional[str] = None,
+    student_id: Optional[str] = None
+) -> List[Dict[str, object]]:
+    if not entries:
+        return []
+    filtered: List[Dict[str, object]] = []
+    for entry in entries:
+        # 1. Student association check (if student_id present on entry and target given)
+        entry_student = str(entry.get("studentId") or "").strip()
+        if student_id and entry_student and entry_student.lower() != student_id.strip().lower():
+            continue
+
+        date_val = str(entry.get("date") or "").strip()
+
+        # 2. Academic year match: if date is available, date-based academic calendar is authoritative
+        if academic_year:
+            if date_val and parse_year_from_date(date_val) is not None and parse_month_from_date(date_val) is not None:
+                if not matches_academic_year_by_date(date_val, academic_year):
+                    continue
+            else:
+                entry_year = entry.get("academicYear")
+                if entry_year:
+                    if not matches_year(str(entry_year), academic_year):
+                        continue
+                else:
+                    continue
+
+        # 3. Semester match: if date is available, date-based academic calendar is authoritative
+        if semester_id:
+            if date_val and parse_month_from_date(date_val) is not None:
+                if not matches_semester_by_date(date_val, semester_id):
+                    continue
+            else:
+                entry_sem = entry.get("semester")
+                if entry_sem:
+                    if not matches_semester(str(entry_sem), semester_id):
+                        continue
+                else:
+                    continue
+
+        filtered.append(entry)
+    return filtered
+
+
 def find_mark_index(headers: List[str], patterns: List[str]) -> int:
     for index, header in enumerate(headers):
         for pattern in patterns:
@@ -3043,17 +3125,17 @@ def matches_semester(value: str, target: Optional[str]) -> bool:
 def matches_academic_year_by_date(date_text: str, academic_year: Optional[str]) -> bool:
     if not academic_year:
         return True
-    year = parse_year_from_date(date_text)
-    if year is None:
+    d_year = parse_year_from_date(date_text)
+    d_month = parse_month_from_date(date_text)
+    if d_year is None or d_month is None:
         return False
-    years = re.findall(r"\d{4}", academic_year)
-    if len(years) >= 2:
-        start_year = int(years[0])
-        end_year = int(years[1])
-        return year in {start_year, end_year}
-    if years:
-        return year == int(years[0])
-    return False
+    # July-December (months 7-12) starts in d_year; January-June (months 1-6) starts in d_year - 1
+    acad_start = d_year if d_month >= 7 else d_year - 1
+
+    target_nums = re.findall(r"\d{4}", academic_year) or re.findall(r"\d+", academic_year)
+    if target_nums:
+        return acad_start == int(target_nums[0])
+    return str(acad_start) in academic_year
 
 
 def matches_semester_by_date(date_text: str, semester: Optional[str]) -> bool:
@@ -3062,13 +3144,16 @@ def matches_semester_by_date(date_text: str, semester: Optional[str]) -> bool:
     month = parse_month_from_date(date_text)
     if month is None:
         return False
-    lowered = semester.lower()
-    # Heuristic mapping: odd -> Jul-Dec, even -> Jan-Jun, summer/term3 -> May-Jul.
-    if "odd" in lowered:
+    lowered = semester.lower().strip()
+    is_odd = "odd" in lowered or bool(re.search(r"(?:sem|semester)[\s\-_]*(?:0?1\b|i\b)", lowered)) or lowered in ("1", "01")
+    is_even = "even" in lowered or bool(re.search(r"(?:sem|semester)[\s\-_]*(?:0?2\b|ii\b)", lowered)) or lowered in ("2", "02")
+    is_summer = "summer" in lowered or "term" in lowered
+
+    if is_odd:
         return month >= 7
-    if "even" in lowered:
+    if is_even:
         return month <= 6
-    if "summer" in lowered or "term" in lowered:
+    if is_summer:
         return 5 <= month <= 7
     return True
 
@@ -3724,14 +3809,16 @@ def find_timetable_table(soup: BeautifulSoup):
 
 
 def find_index(headers: List[str], candidates: List[str]) -> int:
-    for index, header in enumerate(headers):
-        if any(header == candidate for candidate in candidates):
+    lowered_candidates = [c.lower() for c in candidates]
+    lowered_headers = [(h or "").lower() for h in headers]
+    for index, header in enumerate(lowered_headers):
+        if any(header == candidate for candidate in lowered_candidates):
             return index
 
-    for index, header in enumerate(headers):
+    for index, header in enumerate(lowered_headers):
         normalized = re.sub(r"[^a-z0-9%]+", " ", header).strip()
         tokens = normalized.split()
-        if any(any(candidate in token for token in tokens) for candidate in candidates if len(candidate) > 1):
+        if any(any(candidate in token for token in tokens) for candidate in lowered_candidates if len(candidate) > 1):
             return index
 
     return -1

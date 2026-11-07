@@ -1,24 +1,55 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Suspense, lazy } from "react";
 
-const Home = lazy(() => import("./pages/index.jsx"));
-const Subjects = lazy(() => import("./pages/subjects.jsx"));
-const SubjectNames = lazy(() => import("./pages/subject-names.jsx"));
-const Timetable = lazy(() => import("./pages/timetable.jsx"));
-const Streak = lazy(() => import("./pages/streak.jsx"));
-const More = lazy(() => import("./pages/more.jsx"));
-const SeatingPlan = lazy(() => import("./pages/seating-plan.jsx"));
-const Cgpa = lazy(() => import("./pages/cgpa.jsx"));
-const Faculty = lazy(() => import("./pages/faculty.jsx"));
-const Settings = lazy(() => import("./pages/settings.jsx"));
-const Privacy = lazy(() => import("./pages/privacy.jsx"));
-const Documentation = lazy(() => import("./pages/documentation.jsx"));
-const Map = lazy(() => import("./pages/map.jsx"));
-const Assignments = lazy(() => import("./pages/assignments.jsx"));
-const Games = lazy(() => import("./pages/games/index.jsx"));
-const TicTacToe = lazy(() => import("./pages/games/tic-tac-toe.jsx"));
-const Snake = lazy(() => import("./pages/games/snake.jsx"));
-const CalendarPage = lazy(() => import("./pages/calendar.jsx"));
+function lazyWithRetry(importer) {
+  return lazy(async () => {
+    try {
+      const res = await importer();
+      try {
+        sessionStorage.removeItem("chunk_retry_" + window.location.pathname);
+      } catch {}
+      return res;
+    } catch (err) {
+      const isChunkError =
+        err?.name === "ChunkLoadError" ||
+        /failed to (fetch|load)/i.test(err?.message || "") ||
+        /loading chunk/i.test(err?.message || "");
+
+      let hasReloaded = false;
+      try {
+        hasReloaded = !!sessionStorage.getItem("chunk_retry_" + window.location.pathname);
+      } catch {}
+
+      if (isChunkError && !hasReloaded) {
+        try {
+          sessionStorage.setItem("chunk_retry_" + window.location.pathname, "true");
+        } catch {}
+        window.location.reload();
+        return { default: () => null };
+      }
+      throw err;
+    }
+  });
+}
+
+const Home = lazyWithRetry(() => import("./pages/index.jsx"));
+const Subjects = lazyWithRetry(() => import("./pages/subjects.jsx"));
+const SubjectNames = lazyWithRetry(() => import("./pages/subject-names.jsx"));
+const Timetable = lazyWithRetry(() => import("./pages/timetable.jsx"));
+const Streak = lazyWithRetry(() => import("./pages/streak.jsx"));
+const More = lazyWithRetry(() => import("./pages/more.jsx"));
+const SeatingPlan = lazyWithRetry(() => import("./pages/seating-plan.jsx"));
+const Cgpa = lazyWithRetry(() => import("./pages/cgpa.jsx"));
+const Faculty = lazyWithRetry(() => import("./pages/faculty.jsx"));
+const Settings = lazyWithRetry(() => import("./pages/settings.jsx"));
+const Privacy = lazyWithRetry(() => import("./pages/privacy.jsx"));
+const Documentation = lazyWithRetry(() => import("./pages/documentation.jsx"));
+const Map = lazyWithRetry(() => import("./pages/map.jsx"));
+const Assignments = lazyWithRetry(() => import("./pages/assignments.jsx"));
+const Games = lazyWithRetry(() => import("./pages/games/index.jsx"));
+const TicTacToe = lazyWithRetry(() => import("./pages/games/tic-tac-toe.jsx"));
+const Snake = lazyWithRetry(() => import("./pages/games/snake.jsx"));
+const CalendarPage = lazyWithRetry(() => import("./pages/calendar.jsx"));
 
 export default function App() {
   return (

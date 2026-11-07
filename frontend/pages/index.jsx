@@ -6,7 +6,7 @@ import { MetricCard } from "../components/MetricCard.jsx";
 import { GitHubLogo, LinkedInLogo, SOCIAL_LINKS } from "../components/SocialLinks.jsx";
 import { Toast } from "../components/Toast.jsx";
 import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS } from "../utils/api.js";
-import { readLocal, STORAGE_KEYS, writeLocal, removeLocal } from "../utils/storage.js";
+import { readLocal, STORAGE_KEYS, writeLocal, removeLocal, mergeSeatingPlans } from "../utils/storage.js";
 import { processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
 import { logVisit, getStreakStats, fetchVisits, syncLeaderboard } from "../utils/streak.js";
@@ -209,7 +209,10 @@ export default function Home() {
           message: payload.timetable.message || ""
         });
       }
-      if (payload.seatingPlan && payload.seatingPlan.length > 0) writeLocal(STORAGE_KEYS.seatingPlan, payload.seatingPlan);
+      if (payload.seatingPlan && payload.seatingPlan.length > 0) {
+        const existingPlans = readLocal(STORAGE_KEYS.seatingPlan, []);
+        writeLocal(STORAGE_KEYS.seatingPlan, mergeSeatingPlans(existingPlans, payload.seatingPlan));
+      }
       if (payload.cgpa && (payload.cgpa.value || (payload.cgpa.semesters && payload.cgpa.semesters.length > 0))) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
       writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);
 
