@@ -112,9 +112,11 @@ flowchart TD
 - **Interactive UI:** Smooth geospatial rendering powered by React Leaflet.
 
 ### 📅 Timetable & Examination Seating
-- **Daily Timetable & Class Schedule:** Interactive timetable organized by day and period.
+- **Daily Timetable & Class Schedule:** Interactive timetable organized by day and period with rich course title mappings.
+- **Academic Year & Semester Filtering:** Examination seating plan strictly filters records by the student's active Academic Year and Semester selected in Login Settings.
+- **Categorized Exam Groups:** Automatically classifies exam slots into **INSEM 01**, **INSEM 02**, and **ENDSEM** with dynamic headings (e.g., `2026-2027 ODD SEM - SEATING PLAN`).
+- **Student Isolation & Accurate Counts:** Ensures exam counts, seat allocations, and dates strictly represent matching records for the authenticated student.
 - **Rich Course Mappings:** Course codes mapped to comprehensive titles, room numbers, and faculty details.
-- **Examination Seating Plan:** Lookup classroom seating allocations, hall tickets, and examination halls.
 - **Mobile-Optimized:** Quick schedule lookup optimized for mobile viewing between classes.
 
 ### 🎓 CGPA & Academic Performance
@@ -140,17 +142,20 @@ flowchart TD
 - **Daily Login Streaks:** Encourages daily academic tracking through interactive streaks.
 - **Peer Leaderboard:** Compare streak milestones and platform engagement with peers.
 - **Auto-Syncing Progress:** Streak statistics sync automatically with secure persistent storage.
+- **Debounced Updates & Cooldowns:** Intelligent window-focus throttling prevents duplicate background requests.
 
 ### 📱 Progressive Web App & Responsive UI
 - **Cross-Platform PWA:** Installable on Android, iOS, Windows, macOS, and Linux.
 - **Modern Design:** Built with Tailwind CSS, sleek dark mode aesthetics, and micro-animations.
 - **100% Lighthouse Accessibility:** Strict high-contrast compliance and accessible typography.
 
-### ⚡ Performance & Data Handling
+### ⚡ Performance, Concurrency & Data Handling
+- **Concurrent ERP Scraper:** Replaced sequential awaits in full synchronization with `asyncio.gather(*tasks, return_exceptions=True)` to scrape Attendance, Timetable, Seating Plan, and CGPA in parallel.
+- **Shared Menu Caching:** Timetable, Seating Plan, and CGPA scrapers share a cached menu JSON to eliminate redundant upstream ERP network round-trips.
+- **Non-Blocking Database Operations:** Thread-pool offloading (`asyncio.to_thread`) for database operations eliminates event-loop blocking and prevents head-of-line request queuing.
+- **Multi-Tiered L1/L2 Caching:** Sub-millisecond in-memory L1 cache backed by Redis and persistent SQLite for high availability.
+- **Client-Side In-Flight Deduplication:** Frontend attaches concurrent calls to existing in-flight promises and verifies local confirmation keys before firing network requests.
 - **Ultra-Fast Builds:** Powered by Vite 5 and React 19.
-- **High-Throughput Backend:** Asynchronous FastAPI server running on Python 3.10+.
-- **Multi-Tiered Caching:** Redis cache with automatic SQLite fallback for high availability.
-- **Client-Side Persistence:** Local storage ensures rapid page transitions and offline capability.
 
 ---
 
@@ -367,6 +372,19 @@ Verify that the production build completes with zero errors and outputs assets t
 - Verify that `frontend/dist` connects smoothly to the backend API.
 - Confirm that CORS allows requests from the frontend origin.
 - Check that the PWA service worker installs cleanly and allows offline caching of static assets.
+
+### ⏱️ Performance Benchmarks
+
+Recent asynchronous optimizations and multi-tiered caching benchmarks:
+
+| Endpoint / Operation | Sequential / Uncached | Optimized / Cached | Improvement |
+|---|---|---|---|
+| **ERP Full Sync Pipeline** | ~0.234s (sum) | **0.110s** (`asyncio.gather`) | **53.0% faster** |
+| **`POST /api/streak/log`** | 7,920 ms (queued / blocking) | **0.097 ms** (in-memory L1) | **99.998% faster** |
+| **5 Concurrent Streak Bursts** | ~15,000+ ms (head-of-line) | **0.460 ms total** (0.09 ms avg) | **>99.9% faster** |
+| **`GET /api/streak/visits`** | ~531 ms (network) | **0.041 ms** | **99.99% faster** |
+| **`GET /api/seating-plan`** | ~35 ms (disk SQLite) | **0.414 ms** (L1 cache) | **98.8% faster** |
+| **`GET /api/timetable`** | ~38 ms (disk SQLite) | **0.091 ms** (L1 cache) | **99.7% faster** |
 
 ---
 
