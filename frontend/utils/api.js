@@ -191,6 +191,34 @@ export async function connectLMS(username, password) {
   return payload;
 }
 
+export async function syncLMS(lmsToken, { username = "", password = "" } = {}) {
+  const headers = {
+    "Content-Type": "application/json"
+  };
+  if (lmsToken) {
+    headers["Authorization"] = `Bearer ${lmsToken}`;
+  }
+
+  const response = await fetch(`${API_BASE}/api/lms/sync`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ username, password })
+  });
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (e) {
+    throw new ApiError("Failed to parse LMS sync response", response.status);
+  }
+
+  if (!response.ok) {
+    throw new ApiError(payload?.error || "Failed to sync LMS assignments", response.status);
+  }
+
+  return payload;
+}
+
 export async function fetchAssignments(lmsToken) {
   const response = await fetch(`${API_BASE}/api/lms/assignments`, {
     method: "GET",

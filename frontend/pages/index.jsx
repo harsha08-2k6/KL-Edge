@@ -5,7 +5,7 @@ import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
 import { GitHubLogo, LinkedInLogo, SOCIAL_LINKS } from "../components/SocialLinks.jsx";
 import { Toast } from "../components/Toast.jsx";
-import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS } from "../utils/api.js";
+import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS, syncLMS } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal, removeLocal, mergeSeatingPlans } from "../utils/storage.js";
 import { processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
@@ -277,10 +277,9 @@ export default function Home() {
     try {
       const res = await connectLMS(lmsUsername, lmsPassword);
       writeLocal(STORAGE_KEYS.lmsToken, res.lmsToken);
+      writeLocal(STORAGE_KEYS.lmsCredentials, { username: lmsUsername, password: lmsPassword });
       setLmsToken(res.lmsToken);
       setShowLmsModal(false);
-      setLmsUsername("");
-      setLmsPassword("");
       await handleLmsSync(res.lmsToken);
     } catch (err) {
       setLmsError(err.message || "Failed to connect to LMS");
@@ -290,21 +289,29 @@ export default function Home() {
   };
 
   const handleLmsSync = useCallback(async (token = lmsToken) => {
-    if (!token) return;
     setLmsBusy(true);
+    const lmsCreds = readLocal(STORAGE_KEYS.lmsCredentials, {});
+    const credentials = readLocal(STORAGE_KEYS.credentials, {});
+    const username = lmsCreds.username || credentials.erpId || "";
+    const password = lmsCreds.password || "";
+
     try {
-      const res = await fetchAssignments(token);
-      writeLocal(STORAGE_KEYS.lmsAssignments, res.assignments);
+      const res = await syncLMS(token, { username, password });
+      if (res.lmsToken && res.lmsToken !== token) {
+        writeLocal(STORAGE_KEYS.lmsToken, res.lmsToken);
+        setLmsToken(res.lmsToken);
+      }
+      writeLocal(STORAGE_KEYS.lmsAssignments, res.assignments || []);
       writeLocal(STORAGE_KEYS.lmsLastSynced, res.syncedAt);
-      setLmsAssignments(res.assignments);
+      setLmsAssignments(res.assignments || []);
       setLmsLastSynced(res.syncedAt);
-      setLmsError(""); // Clear any previous errors on success
+      setLmsError("");
     } catch (err) {
       const errMsg = err.message || "Failed to sync assignments. The LMS might be down.";
       setLmsError(errMsg);
       setMessage(errMsg);
-      if (err.status === 401) {
-          handleLmsDisconnect();
+      if (err.status === 401 && (!username || !password)) {
+        handleLmsDisconnect();
       }
     } finally {
       setLmsBusy(false);
@@ -316,6 +323,7 @@ export default function Home() {
       try { await disconnectLMS(lmsToken); } catch(e) {}
     }
     removeLocal(STORAGE_KEYS.lmsToken);
+    removeLocal(STORAGE_KEYS.lmsCredentials);
     removeLocal(STORAGE_KEYS.lmsAssignments);
     removeLocal(STORAGE_KEYS.lmsLastSynced);
     setLmsToken(null);

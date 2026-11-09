@@ -1415,6 +1415,49 @@ def disconnect_lms(authorization: str = Header(None)):
     
     return {"message": "Disconnected successfully"}
 
+class LmsSyncRequest(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+@app.post("/api/lms/sync")
+def sync_lms(body: LmsSyncRequest, authorization: Optional[str] = Header(None)):
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        parts = authorization.split(" ", 1)
+        if len(parts) == 2 and parts[1].strip():
+            token = parts[1].strip()
+
+    # 1. If valid token is available, attempt to retrieve assignments
+    if token:
+        try:
+            assignments = get_lms_assignments(token)
+            return {
+                "assignments": assignments,
+                "lmsToken": token,
+                "syncedAt": f"{datetime.utcnow().isoformat()}Z"
+            }
+        except Exception as e:
+            error_msg = str(e)
+            is_session_err = "expired" in error_msg.lower() or "session" in error_msg.lower()
+            if not is_session_err or not (body.username and body.password):
+                raise AppError(error_msg, 401 if is_session_err else 500)
+
+    # 2. If token expired or not provided, re-authenticate using provided credentials
+    if body.username and body.password:
+        try:
+            auth_res = authenticate_lms(body.username, body.password)
+            new_token = auth_res["lmsToken"]
+            assignments = get_lms_assignments(new_token)
+            return {
+                "assignments": assignments,
+                "lmsToken": new_token,
+                "syncedAt": f"{datetime.utcnow().isoformat()}Z"
+            }
+        except Exception as e:
+            raise AppError(str(e), 401)
+
+    raise AppError("Missing LMS session token or credentials. Please connect your LMS account.", 401)
+
 if __name__ == "__main__":
     import uvicorn
     # Use reload=True for development, which might be causing the issue on Windows.

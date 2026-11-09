@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   marks: "kl-edge.marks",
   seatingPlan: "kl-edge.seatingPlan",
   cgpa: "kl-edge.cgpa",
+  lmsCredentials: "kl-edge.lmsCredentials",
   lmsToken: "kl-edge.lmsToken",
   lmsAssignments: "kl-edge.lmsAssignments",
   lmsLastSynced: "kl-edge.lmsLastSynced"

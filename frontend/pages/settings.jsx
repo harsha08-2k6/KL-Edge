@@ -4,7 +4,7 @@ import { Layout } from "../components/Layout.jsx";
 import { SocialLinks } from "../components/SocialLinks.jsx";
 import { Footer } from "../components/Footer.jsx";
 import { Toast } from "../components/Toast.jsx";
-import { fetchCaptcha, syncAttendance } from "../utils/api.js";
+import { fetchCaptcha, syncAttendance, syncLMS, disconnectLMS } from "../utils/api.js";
 import { readLocal, removeLocal, STORAGE_KEYS, writeLocal, mergeSeatingPlans } from "../utils/storage.js";
 import { processSyncUpdates } from "../utils/notifications.js";
 
@@ -58,6 +58,15 @@ export default function Settings() {
   const [message, setMessage] = useState("");
   const [toast, setToast] = useState(null);
 
+  // LMS state
+  const [lmsUsername, setLmsUsername] = useState("");
+  const [lmsPassword, setLmsPassword] = useState("");
+  const [showLmsPassword, setShowLmsPassword] = useState(false);
+  const [lmsToken, setLmsToken] = useState(() => readLocal(STORAGE_KEYS.lmsToken, null));
+  const [lmsLastSynced, setLmsLastSynced] = useState(() => readLocal(STORAGE_KEYS.lmsLastSynced, null));
+  const [lmsBusy, setLmsBusy] = useState(false);
+  const [lmsMessage, setLmsMessage] = useState("");
+
 
 
 
@@ -102,6 +111,10 @@ export default function Settings() {
     setPassword(credentials.password || "");
     setAcademicYear(syncOptions.academicYear || defaults.academicYear);
     setSemesterId(syncOptions.semesterId || defaults.semesterId);
+
+    const lmsCreds = readLocal(STORAGE_KEYS.lmsCredentials, { username: "", password: "" });
+    setLmsUsername(lmsCreds.username || credentials.erpId || "");
+    setLmsPassword(lmsCreds.password || "");
     if (!initialCaptchaLoaded.current) {
       initialCaptchaLoaded.current = true;
       loadCaptcha();
@@ -186,6 +199,14 @@ export default function Settings() {
     removeLocal(STORAGE_KEYS.marks);
     removeLocal(STORAGE_KEYS.lastUpdated);
     removeLocal(STORAGE_KEYS.captchaSessionId);
+    removeLocal(STORAGE_KEYS.lmsToken);
+    removeLocal(STORAGE_KEYS.lmsCredentials);
+    removeLocal(STORAGE_KEYS.lmsAssignments);
+    removeLocal(STORAGE_KEYS.lmsLastSynced);
+    setLmsToken(null);
+    setLmsLastSynced(null);
+    setLmsUsername("");
+    setLmsPassword("");
     setErpId("");
     setPassword("");
     setCaptcha("");
@@ -194,6 +215,48 @@ export default function Settings() {
     setAcademicYear("");
     setSemesterId("");
     setMessage("Local data cleared.");
+  }
+
+  async function handleLmsSync() {
+    if (!lmsUsername || !lmsPassword) {
+      setLmsMessage("Please enter your LMS Username and Password.");
+      return;
+    }
+    setLmsBusy(true);
+    setLmsMessage("");
+    writeLocal(STORAGE_KEYS.lmsCredentials, { username: lmsUsername, password: lmsPassword });
+
+    try {
+      const res = await syncLMS(lmsToken, { username: lmsUsername, password: lmsPassword });
+      writeLocal(STORAGE_KEYS.lmsToken, res.lmsToken);
+      writeLocal(STORAGE_KEYS.lmsAssignments, res.assignments || []);
+      writeLocal(STORAGE_KEYS.lmsLastSynced, res.syncedAt);
+      setLmsToken(res.lmsToken);
+      setLmsLastSynced(res.syncedAt);
+      setLmsMessage("");
+      setToast({ message: `LMS synced successfully! (${(res.assignments || []).length} assignments) ✅`, type: "success" });
+    } catch (err) {
+      setLmsMessage(err.message || "Failed to sync LMS assignments");
+      if (err.status === 401) {
+        removeLocal(STORAGE_KEYS.lmsToken);
+        setLmsToken(null);
+      }
+    } finally {
+      setLmsBusy(false);
+    }
+  }
+
+  async function handleLmsDisconnect() {
+    if (lmsToken) {
+      try { await disconnectLMS(lmsToken); } catch(e) {}
+    }
+    removeLocal(STORAGE_KEYS.lmsToken);
+    removeLocal(STORAGE_KEYS.lmsAssignments);
+    removeLocal(STORAGE_KEYS.lmsLastSynced);
+    setLmsToken(null);
+    setLmsLastSynced(null);
+    setLmsMessage("LMS disconnected.");
+    setToast({ message: "LMS account disconnected", type: "info" });
   }
 
   return (
@@ -323,6 +386,92 @@ export default function Settings() {
         </button>
 
         {message ? <p className="rounded-lg bg-paper px-3 py-2 text-sm font-bold text-ink/70">{message}</p> : null}
+      </section>
+
+      {/* LMS Settings Section */}
+      <section className="space-y-2.5 rounded-lg border border-ink/10 bg-white p-2.5 shadow-soft">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-black text-ink">KL University LMS Settings</h3>
+            <p className="text-xs font-bold text-ink/60">Configure your LMS credentials to sync deadlines & assignments</p>
+          </div>
+          {lmsToken ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-mint/10 px-2 py-0.5 text-[11px] font-black text-mint">
+              ✓ Connected
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-ink/5 px-2 py-0.5 text-[11px] font-bold text-ink/50">
+              Not Connected
+            </span>
+          )}
+        </div>
+
+        <label className="block">
+          <span className="text-sm font-black text-ink/70">LMS Username</span>
+          <input
+            value={lmsUsername}
+            onChange={(event) => {
+              setLmsUsername(event.target.value);
+              writeLocal(STORAGE_KEYS.lmsCredentials, { username: event.target.value, password: lmsPassword });
+            }}
+            placeholder="e.g. 2400030361"
+            className="mt-1 h-9 w-full rounded-lg border border-ink/15 bg-white px-3 text-sm font-bold focus:border-mint focus:ring-1 focus:ring-mint"
+            autoComplete="username"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-black text-ink/70">LMS Password</span>
+          <div className="mt-1 flex overflow-hidden rounded-lg border border-ink/15 focus-within:border-mint focus-within:ring-1 focus-within:ring-mint">
+            <input
+              value={lmsPassword}
+              onChange={(event) => {
+                setLmsPassword(event.target.value);
+                writeLocal(STORAGE_KEYS.lmsCredentials, { username: lmsUsername, password: event.target.value });
+              }}
+              type={showLmsPassword ? "text" : "password"}
+              placeholder="Enter LMS password"
+              className="h-9 min-w-0 flex-1 border-0 px-3 text-sm font-bold focus:ring-0"
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowLmsPassword((v) => !v)}
+              className="tap inline-flex items-center justify-center px-3 text-ink/62"
+              title={showLmsPassword ? "Hide password" : "Show password"}
+            >
+              {showLmsPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+        </label>
+
+        {lmsLastSynced && (
+          <p className="text-[11px] font-semibold text-ink/50">
+            Last synced: {new Date(lmsLastSynced).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={handleLmsSync}
+          disabled={lmsBusy || !lmsUsername || !lmsPassword}
+          className="tap inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-paper disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          <RefreshCw size={18} className={lmsBusy ? "animate-spin" : ""} />
+          {lmsBusy ? "Syncing LMS..." : "Sync LMS"}
+        </button>
+
+        {lmsToken && (
+          <button
+            type="button"
+            onClick={handleLmsDisconnect}
+            className="tap inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-coral/12 px-3 text-sm font-black text-coral"
+          >
+            Disconnect LMS
+          </button>
+        )}
+
+        {lmsMessage ? <p className="rounded-lg bg-paper px-3 py-2 text-sm font-bold text-coral">{lmsMessage}</p> : null}
       </section>
 
 
