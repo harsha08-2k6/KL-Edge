@@ -527,7 +527,29 @@ export function buildWeekSchedule(grid) {
     return { schedule, slots: [], mode: "empty" };
   }
 
-  const headerRow = grid[0] || [];
+  // Handle case where grid is an array of objects: [{ day, slot, value/courseCode/subject }, ...]
+  const firstItem = grid[0];
+  if (!Array.isArray(firstItem)) {
+    if (firstItem && typeof firstItem === "object") {
+      const slotsSet = new Set();
+      grid.forEach((item) => {
+        if (!item || typeof item !== "object") return;
+        const matchedDay = findDay(item.day || item.dayName || item.day_name || "");
+        if (matchedDay && schedule[matchedDay]) {
+          const slot = item.slot || item.time || item.slotName || "Slot";
+          slotsSet.add(slot);
+          const value = item.value || item.subject || item.courseCode || item.code || "";
+          if (isSlotValue(value)) {
+            schedule[matchedDay].push({ slot, value });
+          }
+        }
+      });
+      return { schedule, slots: Array.from(slotsSet), mode: "objects" };
+    }
+    return { schedule, slots: [], mode: "unknown" };
+  }
+
+  const headerRow = Array.isArray(firstItem) ? firstItem : [];
   const headerDays = headerRow
     .map((cell, index) => ({ day: findDay(cell), index }))
     .filter((entry) => entry.day);
@@ -535,6 +557,7 @@ export function buildWeekSchedule(grid) {
   if (headerDays.length >= 3) {
     const slots = [];
     grid.slice(1).forEach((row, rowIndex) => {
+      if (!Array.isArray(row)) return;
       const slot = row?.[0] || `Slot ${rowIndex + 1}`;
       slots.push(slot);
       headerDays.forEach(({ day, index }) => {
@@ -549,6 +572,7 @@ export function buildWeekSchedule(grid) {
 
   const dayRows = grid
     .map((row, index) => {
+      if (!Array.isArray(row)) return null;
       const dayInCol0 = findDay(row?.[0]);
       const dayInCol1 = findDay(row?.[1]);
       if (dayInCol0) return { day: dayInCol0, index, dayCol: 0 };
@@ -561,7 +585,7 @@ export function buildWeekSchedule(grid) {
     const dayCol = dayRows[0].dayCol;
     const slots = headerRow.slice(dayCol + 1).map((cell, index) => cell || `Slot ${index + 1}`);
     dayRows.forEach(({ day, index }) => {
-      const row = grid[index] || [];
+      const row = Array.isArray(grid[index]) ? grid[index] : [];
       for (let col = dayCol + 1; col < row.length; col += 1) {
         const value = row[col];
         if (isSlotValue(value)) {
@@ -578,10 +602,21 @@ export function buildWeekSchedule(grid) {
 export function getTodayRows(grid, today) {
   if (!Array.isArray(grid) || !grid.length) return [];
 
-  const rowIndex = grid.findIndex((row) => row.some((cell) => cellHasDay(cell, today)));
+  // If grid is an array of objects
+  if (!Array.isArray(grid[0]) && typeof grid[0] === "object" && grid[0] !== null) {
+    return grid
+      .filter((item) => item && typeof item === "object" && cellHasDay(item.day || item.dayName || "", today))
+      .map((item) => ({
+        slot: item.slot || item.time || "Slot",
+        value: item.value || item.subject || item.courseCode || ""
+      }))
+      .filter((item) => normalize(item.value) && normalize(item.value) !== "-");
+  }
+
+  const rowIndex = grid.findIndex((row) => Array.isArray(row) && row.some((cell) => cellHasDay(cell, today)));
   if (rowIndex > 0) {
-    const headers = grid[0] || [];
-    const row = grid[rowIndex] || [];
+    const headers = Array.isArray(grid[0]) ? grid[0] : [];
+    const row = Array.isArray(grid[rowIndex]) ? grid[rowIndex] : [];
     return row
       .map((cell, index) => ({
         slot: headers[index] || (index === 0 ? "Day" : `Slot ${index}`),
@@ -590,11 +625,12 @@ export function getTodayRows(grid, today) {
       .filter((item, index) => index > 0 && normalize(item.value) && normalize(item.value) !== "-");
   }
 
-  const headerRow = grid[0] || [];
+  const headerRow = Array.isArray(grid[0]) ? grid[0] : [];
   const dayColumnIndex = headerRow.findIndex((cell) => cellHasDay(cell, today));
   if (dayColumnIndex > 0) {
     return grid
       .slice(1)
+      .filter((row) => Array.isArray(row))
       .map((row) => ({
         slot: row[0] || "Slot",
         value: row[dayColumnIndex]

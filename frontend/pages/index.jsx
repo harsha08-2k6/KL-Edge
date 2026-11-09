@@ -196,7 +196,12 @@ export default function Home() {
         writeLocal(STORAGE_KEYS.captchaSessionId, payload.captchaSessionId);
       }
 
-      const changes = processSyncUpdates(payload);
+      let changes = [];
+      try {
+        changes = processSyncUpdates(payload);
+      } catch (err) {
+        console.warn("[sync:updates] Failed to detect changes:", err);
+      }
       if (changes && changes.length > 0) {
         setSyncChanges(changes);
         setShowChangesPopup(true);

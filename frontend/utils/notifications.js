@@ -21,24 +21,25 @@ export function getSlotTimeText(slotName) {
 }
 
 export function processSyncUpdates(payload) {
-  if (!payload) return;
+  if (!payload) return [];
 
-  const oldTimetable = readLocal("kl-edge.timetable", {});
-  const oldSeatingPlan = readLocal("kl-edge.seatingPlan", []);
+  try {
+    const oldTimetable = readLocal("kl-edge.timetable", {});
+    const oldSeatingPlan = readLocal("kl-edge.seatingPlan", []);
 
-  const newTimetable = payload.timetable || {};
-  const newSeatingPlan = payload.seatingPlan || [];
+    const newTimetable = payload.timetable || {};
+    const newSeatingPlan = payload.seatingPlan || [];
 
-  const attendance = readLocal("kl-edge.attendance", []);
-  const customSubjectNames = readLocal("kl-edge.subjectNames", {});
-  const subjectMap = buildSubjectNameMap(attendance, customSubjectNames);
+    const attendance = readLocal("kl-edge.attendance", []);
+    const customSubjectNames = readLocal("kl-edge.subjectNames", {});
+    const subjectMap = buildSubjectNameMap(attendance, customSubjectNames);
 
-  const timetableChanges = detectTimetableChanges(oldTimetable, newTimetable, subjectMap);
-  const seatingChanges = detectSeatingChanges(oldSeatingPlan, newSeatingPlan);
+    const timetableChanges = detectTimetableChanges(oldTimetable, newTimetable, subjectMap);
+    const seatingChanges = detectSeatingChanges(oldSeatingPlan, newSeatingPlan);
 
-  if (timetableChanges.length === 0 && seatingChanges.length === 0) {
-    return;
-  }
+    if (timetableChanges.length === 0 && seatingChanges.length === 0) {
+      return [];
+    }
 
   const existingUpdates = readLocal("kl-edge.recentUpdates", []);
   const newNotifications = [];
@@ -116,7 +117,9 @@ export function processSyncUpdates(payload) {
   const merged = [...newNotifications, ...existingUpdates].slice(0, 20);
   writeLocal("kl-edge.recentUpdates", merged);
 
-
-
   return timetableChanges;
+  } catch (err) {
+    console.warn("[sync:updates] Failed to process sync notifications:", err);
+    return [];
+  }
 }
