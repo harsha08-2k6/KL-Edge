@@ -140,38 +140,40 @@ export default function Subjects() {
 
   return (
     <Layout title="Subjects">
-      <div className="mb-2.5 flex gap-1.5">
-        {[75, 85].map((t) => (
-          <button
-            key={t}
-            onClick={() => selectTarget(t)}
-            className={`h-9 flex-1 rounded-lg px-2.5 text-xs font-black transition-colors ${
-              target === t ? "bg-ink text-paper" : "bg-white border border-ink/10 text-ink/50"
-            }`}
-          >
-            {t}% Target
-          </button>
-        ))}
-      </div>
-
-      {subjects.length ? (
-        <div className="mb-2.5 flex gap-2">
-          <button
-            onClick={exportCSV}
-            className="tap flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-bold text-ink/70 shadow-soft transition-colors hover:text-ink"
-          >
-            <Download size={14} />
-            Export CSV
-          </button>
-          <button
-            onClick={exportPDF}
-            className="tap flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-bold text-ink/70 shadow-soft transition-colors hover:text-ink"
-          >
-            <FileText size={14} />
-            Download PDF
-          </button>
+      <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex items-center gap-1.5 sm:w-64 w-full">
+          {[75, 85].map((t) => (
+            <button
+              key={t}
+              onClick={() => selectTarget(t)}
+              className={`h-9 flex-1 rounded-lg px-2.5 text-xs font-black transition-colors ${
+                target === t ? "bg-ink text-paper" : "bg-white border border-ink/10 text-ink/50"
+              }`}
+            >
+              {t}% Target
+            </button>
+          ))}
         </div>
-      ) : null}
+
+        {subjects.length ? (
+          <div className="flex items-center gap-2 sm:w-auto w-full">
+            <button
+              onClick={exportCSV}
+              className="tap flex-1 sm:flex-none inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-bold text-ink/70 shadow-soft transition-colors hover:text-ink"
+            >
+              <Download size={14} />
+              Export CSV
+            </button>
+            <button
+              onClick={exportPDF}
+              className="tap flex-1 sm:flex-none inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-bold text-ink/70 shadow-soft transition-colors hover:text-ink"
+            >
+              <FileText size={14} />
+              Download PDF
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       {subjects.length ? (
         <SubjectTable subjects={subjects} />
