@@ -24,7 +24,9 @@ from erp_scraper import (
     sync_marks,
     sync_seating_plan,
     sync_timetable,
-    filter_seating_plan
+    filter_seating_plan,
+    clone_session,
+    get_menu_data
 )
 import json
 from routes.map import router as map_router
@@ -77,29 +79,64 @@ def get_db_connection():
 
 
 
-def get_cached_json(key: str):
-    if redis_client is not None:
-        try:
-            cached = redis_client.get(key)
-            if cached:
-                return json.loads(cached)
-        except Exception:
-            pass
+# In-memory L1 cache for KV caching (Timetable, Seating Plan, etc.)
+_l1_kv_cache: dict[str, tuple[float, any]] = {}
+L1_CACHE_TTL_SECONDS = 300.0  # 5 minutes in-memory cache
+
+
+def init_kv_cache():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("CREATE TABLE IF NOT EXISTS kv_cache (key TEXT PRIMARY KEY, value TEXT)")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[cache:init] SQLite error: {e}", flush=True)
+
+
+init_kv_cache()
+
+
+def get_cached_json(key: str):
+    # 1. Fast in-memory L1 cache check (<0.01ms)
+    now = time.time()
+    if key in _l1_kv_cache:
+        cached_ts, val = _l1_kv_cache[key]
+        if now - cached_ts < L1_CACHE_TTL_SECONDS:
+            return val
+
+    # 2. Redis cache check
+    if redis_client is not None:
+        try:
+            cached = redis_client.get(key)
+            if cached:
+                val = json.loads(cached)
+                _l1_kv_cache[key] = (now, val)
+                return val
+        except Exception:
+            pass
+
+    # 3. SQLite persistent cache check
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         cursor.execute("SELECT value FROM kv_cache WHERE key = ?", (key,))
         row = cursor.fetchone()
         conn.close()
         if row:
-            return json.loads(row["value"])
+            val = json.loads(row["value"])
+            _l1_kv_cache[key] = (now, val)
+            return val
     except Exception as e:
         print(f"[cache:get] SQLite error: {e}", flush=True)
     return None
 
 
 def set_cached_json(key: str, value):
+    now = time.time()
+    _l1_kv_cache[key] = (now, value)
+
     if redis_client is not None:
         try:
             redis_client.set(key, json.dumps(value))
@@ -109,7 +146,6 @@ def set_cached_json(key: str, value):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS kv_cache (key TEXT PRIMARY KEY, value TEXT)")
         cursor.execute("INSERT OR REPLACE INTO kv_cache (key, value) VALUES (?, ?)", (key, json.dumps(value)))
         conn.commit()
         conn.close()
@@ -223,8 +259,37 @@ async def run_full_sync(payload: dict) -> dict:
     # Check cache first for timetable (for fallback only if force_refresh is False)
     cached_tt = get_cached_timetable(erp_id, academic_year, semester_id) if not force_refresh else None
 
-    # Fetch attendance using the authenticated session
-    attendance, att_err, att_dur = await safe_sync("attendance", lambda: sync_attendance(payload, session=session), [])
+    # Pre-cache menu-student.json once on session so all modules share the cached menu
+    try:
+        await get_menu_data(session)
+    except Exception:
+        pass
+
+    # Execute all 4 independent sync operations concurrently using asyncio.gather
+    sync_results = await asyncio.gather(
+        safe_sync("attendance", lambda: sync_attendance(payload, session=session), []),
+        safe_sync("timetable", lambda: sync_timetable(payload, session=session), None),
+        safe_sync("seating-plan", lambda: sync_seating_plan(payload, session=session), None),
+        safe_sync("cgpa", lambda: sync_cgpa(payload, session=session), None),
+        return_exceptions=True
+    )
+
+    # Unpack attendance result safely
+    att_res = sync_results[0]
+    attendance, att_err, att_dur = ([], str(att_res), 0.0) if isinstance(att_res, Exception) else att_res
+
+    # Unpack timetable result safely
+    tt_res = sync_results[1]
+    timetable, tt_err, tt_dur = (None, str(tt_res), 0.0) if isinstance(tt_res, Exception) else tt_res
+
+    # Unpack seating plan result safely
+    seat_res = sync_results[2]
+    seating_plan, seat_err, seat_dur = (None, str(seat_res), 0.0) if isinstance(seat_res, Exception) else seat_res
+
+    # Unpack cgpa result safely
+    cgpa_res = sync_results[3]
+    cgpa, cgpa_err, cgpa_dur = (None, str(cgpa_res), 0.0) if isinstance(cgpa_res, Exception) else cgpa_res
+
     if att_err:
         feature_statuses["attendance"] = {
             "status": "failed",
@@ -249,8 +314,7 @@ async def run_full_sync(payload: dict) -> dict:
             "duration_seconds": round(att_dur, 3)
         }
 
-    # Timetable: Always attempt live fetch from ERP first using the authenticated session
-    timetable, tt_err, tt_dur = await safe_sync("timetable", lambda: sync_timetable(payload, session=session), None)
+    # Timetable processing
     if timetable and timetable.get("grid"):
         refreshed_at = timetable.get("refreshedAt") or f"{datetime.utcnow().isoformat()}Z"
         timetable["source"] = "live"
@@ -306,8 +370,7 @@ async def run_full_sync(payload: dict) -> dict:
             "duration_seconds": round(tt_dur, 3)
         }
 
-    # Seating Plan
-    seating_plan, seat_err, seat_dur = await safe_sync("seating-plan", lambda: sync_seating_plan(payload, session=session), None)
+    # Seating Plan processing
     if seat_err:
         feature_statuses["seatingPlan"] = {
             "status": "failed",
@@ -340,8 +403,7 @@ async def run_full_sync(payload: dict) -> dict:
             "duration_seconds": round(seat_dur, 3)
         }
 
-    # CGPA
-    cgpa, cgpa_err, cgpa_dur = await safe_sync("cgpa", lambda: sync_cgpa(payload, session=session), None)
+    # CGPA processing
     if cgpa_err:
         feature_statuses["cgpa"] = {
             "status": "failed",
@@ -504,11 +566,31 @@ def portal_status():
             pass
     return {"status": status}
 
+# In-memory caches for streak, leaderboard, and visits to eliminate Supabase latency
+_logged_visits_cache: set[tuple[str, str]] = set()  # (erp_id, date_str)
+_known_user_streaks: set[str] = set()               # erp_id set
+_user_visits_cache: dict[str, tuple[float, list[str]]] = {}  # erp_id -> (timestamp, [visit_dates])
+_leaderboard_cache: dict[str, tuple[float, list[dict]]] = {}  # cache_key -> (timestamp, [users])
+_last_leaderboard_update: dict[str, tuple[tuple, float]] = {}  # erp_id -> (payload_tuple, timestamp)
+
+VISITS_CACHE_TTL = 180.0       # 3 minutes
+LEADERBOARD_CACHE_TTL = 60.0  # 1 minute
+
+
 @app.post("/api/leaderboard/update")
 async def update_leaderboard(payload: StreakUpdate):
+    t_start = time.perf_counter()
     supabase = get_supabase()
     if not supabase:
         return {"status": "error", "message": "Supabase not configured"}
+
+    # Avoid duplicate writes if values have not changed within 5 minutes
+    last_update = _last_leaderboard_update.get(payload.erpId)
+    now_ts = time.time()
+    payload_tuple = (payload.streak, payload.longestStreak, payload.activeDays, payload.isPublic)
+    if last_update and last_update[0] == payload_tuple and (now_ts - last_update[1]) < 300:
+        elapsed_ms = (time.perf_counter() - t_start) * 1000
+        return {"status": "ok", "skipped": True, "elapsedMs": round(elapsed_ms, 2)}
 
     import datetime as dt
     # Force IST timezone (UTC+5:30) for the timestamp
@@ -524,38 +606,56 @@ async def update_leaderboard(payload: StreakUpdate):
         "is_public": payload.isPublic
     }
     
+    def _execute_upsert():
+        supabase.table("user_streaks").upsert(data, on_conflict="user_id").execute()
+        _leaderboard_cache.clear()  # Invalidate cached leaderboard
+        _known_user_streaks.add(payload.erpId)
+        _last_leaderboard_update[payload.erpId] = (payload_tuple, time.time())
+
     try:
-        supabase.table("user_streaks").upsert(data).execute()
+        await asyncio.to_thread(_execute_upsert)
+        elapsed_ms = (time.perf_counter() - t_start) * 1000
+        print(f"[api:leaderboard:update] user={payload.erpId} updated in {elapsed_ms:.2f}ms", flush=True)
+        return {"status": "ok", "elapsedMs": round(elapsed_ms, 2)}
     except Exception as e:
-        print(f"Failed to update leaderboard in Supabase: {e}")
+        print(f"Failed to update leaderboard in Supabase: {e}", flush=True)
         return {"status": "error", "message": str(e)}
-        
-    return {"status": "ok"}
+
 
 @app.get("/api/leaderboard")
 async def get_leaderboard(erpId: str, group: str = "overall"):
+    t_start = time.perf_counter()
     supabase = get_supabase()
     if not supabase:
         return {"leaderboard": [], "userRank": None, "userData": None}
     
-    try:
-        res = supabase.table("user_streaks").select("*").gt("current_streak", 0).order("current_streak", desc=True).order("active_days", desc=True).execute()
-        all_users = res.data
-    except Exception as e:
-        print(f"Failed to fetch leaderboard from Supabase: {e}")
-        all_users = []
+    now = time.time()
+    cache_entry = _leaderboard_cache.get("all")
+    if cache_entry and (now - cache_entry[0] < LEADERBOARD_CACHE_TTL):
+        all_users = cache_entry[1]
+    else:
+        def _fetch_all_streaks():
+            res = supabase.table("user_streaks").select("*").gt("current_streak", 0).order("current_streak", desc=True).order("active_days", desc=True).execute()
+            return res.data or []
+
+        try:
+            all_users = await asyncio.to_thread(_fetch_all_streaks)
+            _leaderboard_cache["all"] = (now, all_users)
+        except Exception as e:
+            print(f"Failed to fetch leaderboard from Supabase: {e}", flush=True)
+            all_users = []
 
     if group != "overall":
         # Filter by batch year (e.g. "23")
         batch_prefix = erpId[:2] if len(erpId) >= 2 else erpId
-        filtered_users = [u for u in all_users if u["user_id"].startswith(batch_prefix)]
+        filtered_users = [u for u in all_users if str(u.get("user_id", "")).startswith(batch_prefix)]
     else:
         filtered_users = all_users
 
     user_rank = None
     user_data = None
     for idx, u in enumerate(filtered_users):
-        if u["user_id"] == erpId:
+        if u.get("user_id") == erpId:
             user_rank = idx + 1
             user_data = {
                 "erp_id": u["user_id"],
@@ -577,18 +677,19 @@ async def get_leaderboard(erpId: str, group: str = "overall"):
             top_public.append(mapped_u)
         if len(top_public) >= 50:
             break
-            
-    # Mask ERP IDs only if they wanted to be private (but they are not in this list if they are private)
-    # So we can just show the full ID since they opted in.
 
+    elapsed_ms = (time.perf_counter() - t_start) * 1000
     return {
         "leaderboard": top_public,
         "userRank": user_rank,
-        "userData": user_data
+        "userData": user_data,
+        "elapsedMs": round(elapsed_ms, 2)
     }
+
 
 @app.post("/api/streak/log")
 async def log_streak_visit(payload: VisitLog):
+    t_start = time.perf_counter()
     from supabase_client import get_supabase, get_init_error
     supabase = get_supabase()
     if not supabase:
@@ -601,36 +702,80 @@ async def log_streak_visit(payload: VisitLog):
     
     # Use the date provided by frontend to avoid timezone issues, fallback to IST server today
     today = payload.date if payload.date else ist_now.date().isoformat()
+    cache_key = (payload.erpId, today)
     
-    try:
+    # 1. Fast in-memory check (<0.01ms) - completely avoids Supabase and network
+    if cache_key in _logged_visits_cache:
+        elapsed_ms = (time.perf_counter() - t_start) * 1000
+        print(f"[api:streak:log] user={payload.erpId} date={today} cached=True elapsed={elapsed_ms:.2f}ms", flush=True)
+        return {"status": "ok", "cached": True, "elapsedMs": round(elapsed_ms, 2)}
+    
+    # 2. Execute database operations in a background worker thread to NEVER block the event loop
+    def _execute_streak_log():
+        t_db_start = time.perf_counter()
         # Ensure user_streaks record exists first to satisfy foreign key
-        streak_res = supabase.table("user_streaks").select("user_id").eq("user_id", payload.erpId).execute()
-        if not streak_res.data:
-            supabase.table("user_streaks").insert({"user_id": payload.erpId}).execute()
+        if payload.erpId not in _known_user_streaks:
+            supabase.table("user_streaks").upsert({"user_id": payload.erpId}, on_conflict="user_id").execute()
+            _known_user_streaks.add(payload.erpId)
             
-        res = supabase.table("user_visits").select("*").eq("user_id", payload.erpId).eq("visit_date", today).execute()
-        if not res.data:
-            supabase.table("user_visits").insert({
-                "user_id": payload.erpId,
-                "visit_date": today
-            }).execute()
-        return {"status": "ok"}
+        # Upsert visit in a single database round trip
+        supabase.table("user_visits").upsert(
+            {"user_id": payload.erpId, "visit_date": today},
+            on_conflict="user_id,visit_date"
+        ).execute()
+        
+        # Populate in-memory caches
+        _logged_visits_cache.add(cache_key)
+        if payload.erpId in _user_visits_cache:
+            ts, visits_list = _user_visits_cache[payload.erpId]
+            if today not in visits_list:
+                visits_list.append(today)
+                _user_visits_cache[payload.erpId] = (time.time(), visits_list)
+        return time.perf_counter() - t_db_start
+
+    try:
+        db_duration = await asyncio.to_thread(_execute_streak_log)
+        elapsed_ms = (time.perf_counter() - t_start) * 1000
+        print(f"[api:streak:log] user={payload.erpId} date={today} db_time={db_duration:.3f}s total_elapsed={elapsed_ms:.2f}ms", flush=True)
+        return {
+            "status": "ok",
+            "cached": False,
+            "elapsedMs": round(elapsed_ms, 2),
+            "dbTimeSeconds": round(db_duration, 3)
+        }
     except Exception as e:
-        print(f"Failed to log visit in Supabase: {e}")
-        return {"status": "error", "message": str(e)}
+        elapsed_ms = (time.perf_counter() - t_start) * 1000
+        print(f"Failed to log visit in Supabase: {e} (elapsed={elapsed_ms:.2f}ms)", flush=True)
+        return {"status": "error", "message": str(e), "elapsedMs": round(elapsed_ms, 2)}
+
 
 @app.get("/api/streak/visits")
 async def get_streak_visits(erpId: str):
+    t_start = time.perf_counter()
     supabase = get_supabase()
     if not supabase:
         return {"visits": []}
     
-    try:
+    now = time.time()
+    if erpId in _user_visits_cache:
+        cached_ts, cached_visits = _user_visits_cache[erpId]
+        if now - cached_ts < VISITS_CACHE_TTL:
+            elapsed_ms = (time.perf_counter() - t_start) * 1000
+            print(f"[api:streak:visits] user={erpId} cached=True count={len(cached_visits)} elapsed={elapsed_ms:.2f}ms", flush=True)
+            return {"visits": cached_visits, "cached": True, "elapsedMs": round(elapsed_ms, 2)}
+    
+    def _fetch_visits():
         res = supabase.table("user_visits").select("visit_date").eq("user_id", erpId).execute()
-        visits = [row["visit_date"] for row in res.data]
-        return {"visits": visits}
+        return [row["visit_date"] for row in res.data]
+
+    try:
+        visits = await asyncio.to_thread(_fetch_visits)
+        _user_visits_cache[erpId] = (time.time(), visits)
+        elapsed_ms = (time.perf_counter() - t_start) * 1000
+        print(f"[api:streak:visits] user={erpId} db_fetch count={len(visits)} elapsed={elapsed_ms:.2f}ms", flush=True)
+        return {"visits": visits, "cached": False, "elapsedMs": round(elapsed_ms, 2)}
     except Exception as e:
-        print(f"Failed to fetch visits from Supabase: {e}")
+        print(f"Failed to fetch visits from Supabase: {e}", flush=True)
         return {"visits": []}
 
 @app.post("/api/steps/sync")
@@ -1054,42 +1199,56 @@ async def sync_attendance_route(body: SyncRequest):
 
 @app.get("/api/timetable")
 async def get_timetable_route(erpId: str, academicYear: str, semesterId: str):
+    t_start = time.perf_counter()
     if not erpId or not academicYear or not semesterId:
         raise HTTPException(status_code=400, detail="erpId, academicYear, and semesterId are required.")
     cached = get_cached_timetable(erpId, academicYear, semesterId)
+    elapsed_ms = (time.perf_counter() - t_start) * 1000
     if cached:
-        return cached
+        print(f"[api:timetable] user={erpId} cached=True elapsed={elapsed_ms:.2f}ms", flush=True)
+        cached_resp = dict(cached)
+        cached_resp["elapsedMs"] = round(elapsed_ms, 2)
+        return cached_resp
+    print(f"[api:timetable] user={erpId} cached=False elapsed={elapsed_ms:.2f}ms", flush=True)
     return {
         "grid": [],
         "mappings": [],
         "academicYear": academicYear,
         "semesterId": semesterId,
         "status": "empty",
-        "message": "No cached timetable found. Please sync."
+        "message": "No cached timetable found. Please sync.",
+        "elapsedMs": round(elapsed_ms, 2)
     }
 
 
 @app.get("/api/seating-plan")
 async def get_seating_plan_route(erpId: str, academicYear: str, semesterId: str):
+    t_start = time.perf_counter()
     if not erpId or not academicYear or not semesterId:
         raise HTTPException(status_code=400, detail="erpId, academicYear, and semesterId are required.")
     cached = get_cached_seating_plan(erpId, academicYear, semesterId)
     if cached is not None and len(cached) > 0:
         filtered = filter_seating_plan(cached, academicYear, semesterId, erpId)
         if filtered:
+            elapsed_ms = (time.perf_counter() - t_start) * 1000
+            print(f"[api:seating-plan] user={erpId} count={len(filtered)} elapsed={elapsed_ms:.2f}ms", flush=True)
             return {
                 "seatingPlan": filtered,
                 "academicYear": academicYear,
                 "semesterId": semesterId,
                 "status": "ok",
-                "count": len(filtered)
+                "count": len(filtered),
+                "elapsedMs": round(elapsed_ms, 2)
             }
+    elapsed_ms = (time.perf_counter() - t_start) * 1000
+    print(f"[api:seating-plan] user={erpId} count=0 elapsed={elapsed_ms:.2f}ms", flush=True)
     return {
         "seatingPlan": [],
         "academicYear": academicYear,
         "semesterId": semesterId,
         "status": "empty",
-        "message": "No seating plan available for the selected academic year and semester."
+        "message": "No seating plan available for the selected academic year and semester.",
+        "elapsedMs": round(elapsed_ms, 2)
     }
 
 

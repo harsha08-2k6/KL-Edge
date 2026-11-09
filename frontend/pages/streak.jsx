@@ -27,15 +27,21 @@ export default function Streak() {
     const currentStats = getStreakStats(visits);
     setStats(currentStats);
     
-    syncLeaderboard(erpId, currentStats, isPublic).then(() => fetchLeaderboard());
+    await syncLeaderboard(erpId, currentStats, isPublic);
+    fetchLeaderboard();
   }, [isPublic, erpId, activeTab]);
 
   useEffect(() => {
     updateStreak();
     
+    let lastUpdateTs = Date.now();
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        updateStreak();
+        const now = Date.now();
+        if (now - lastUpdateTs > 15000) {
+          lastUpdateTs = now;
+          updateStreak();
+        }
       }
     };
     

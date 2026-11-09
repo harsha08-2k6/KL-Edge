@@ -14,33 +14,90 @@ export function getTodayStr() {
     return formatDateStr(new Date());
 }
 
+const inFlightLogVisits = new Map();
+const inFlightVisits = new Map();
+const cachedVisitsMemory = new Map();
+
 export async function fetchVisits(erpId) {
     if (!erpId) return [];
-    try {
-        const API_BASE = import.meta.env.VITE_API_BASE || "";
-        const res = await fetch(`${API_BASE}/api/streak/visits?erpId=${erpId}`);
-        const data = await res.json();
-        return data.visits || [];
-    } catch (e) {
-        console.error("Failed to fetch visits", e);
-        return [];
+    
+    // Check in-memory cache with 60-second TTL
+    const now = Date.now();
+    if (cachedVisitsMemory.has(erpId)) {
+        const { timestamp, visits } = cachedVisitsMemory.get(erpId);
+        if (now - timestamp < 60000) {
+            return visits;
+        }
     }
+
+    // Deduplicate in-flight fetch
+    if (inFlightVisits.has(erpId)) {
+        return inFlightVisits.get(erpId);
+    }
+
+    const t0 = performance.now();
+    const fetchPromise = (async () => {
+        try {
+            const API_BASE = import.meta.env.VITE_API_BASE || "";
+            const res = await fetch(`${API_BASE}/api/streak/visits?erpId=${erpId}`);
+            const data = await res.json();
+            const visits = data.visits || [];
+            cachedVisitsMemory.set(erpId, { timestamp: Date.now(), visits });
+            const dur = performance.now() - t0;
+            console.log(`[streak:timing] fetchVisits(${erpId}) took ${dur.toFixed(2)}ms (count: ${visits.length})`);
+            return visits;
+        } catch (e) {
+            console.error("Failed to fetch visits", e);
+            return [];
+        } finally {
+            inFlightVisits.delete(erpId);
+        }
+    })();
+
+    inFlightVisits.set(erpId, fetchPromise);
+    return fetchPromise;
 }
 
-// Function to log today's visit
+// Function to log today's visit with duplicate prevention & timing metrics
 export async function logVisit(erpId) {
-    if (!erpId) return;
-    try {
-        const todayStr = getTodayStr(); // Using local time from device
-        const API_BASE = import.meta.env.VITE_API_BASE || "";
-        await fetch(`${API_BASE}/api/streak/log`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ erpId, date: todayStr })
-        });
-    } catch (e) {
-        console.error("Failed to log visit", e);
+    if (!erpId) return { status: "skipped" };
+    const todayStr = getTodayStr(); // Using local time from device
+    const lastLoggedKey = `kl-edge.lastLoggedVisit_${erpId}`;
+
+    // 1. Skip network request if today's visit is already confirmed in local storage
+    if (readLocal(lastLoggedKey, "") === todayStr) {
+        return { status: "ok", cached: true };
     }
+
+    // 2. Deduplicate in-flight concurrent requests for the same erpId
+    if (inFlightLogVisits.has(erpId)) {
+        return inFlightLogVisits.get(erpId);
+    }
+
+    const t0 = performance.now();
+    const logPromise = (async () => {
+        try {
+            const API_BASE = import.meta.env.VITE_API_BASE || "";
+            const res = await fetch(`${API_BASE}/api/streak/log`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ erpId, date: todayStr })
+            });
+            const data = await res.json();
+            writeLocal(lastLoggedKey, todayStr);
+            const dur = performance.now() - t0;
+            console.log(`[streak:timing] logVisit(${erpId}) took ${dur.toFixed(2)}ms (status: ${data.status})`);
+            return data;
+        } catch (e) {
+            console.error("Failed to log visit", e);
+            return { status: "error", error: e };
+        } finally {
+            inFlightLogVisits.delete(erpId);
+        }
+    })();
+
+    inFlightLogVisits.set(erpId, logPromise);
+    return logPromise;
 }
 
 // Function to calculate current streak
@@ -149,9 +206,10 @@ export function getStreakStats(visitsArray) {
 
 export async function syncLeaderboard(erpId, stats, isPublic = true) {
     if (!erpId) return;
+    const t0 = performance.now();
     try {
         const API_BASE = import.meta.env.VITE_API_BASE || "";
-        await fetch(`${API_BASE}/api/leaderboard/update`, {
+        const res = await fetch(`${API_BASE}/api/leaderboard/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -162,6 +220,10 @@ export async function syncLeaderboard(erpId, stats, isPublic = true) {
                 isPublic
             })
         });
+        const data = await res.json();
+        const dur = performance.now() - t0;
+        console.log(`[streak:timing] syncLeaderboard(${erpId}) took ${dur.toFixed(2)}ms (skipped: ${!!data.skipped})`);
+        return data;
     } catch (e) {
         console.error("Failed to sync leaderboard", e);
     }

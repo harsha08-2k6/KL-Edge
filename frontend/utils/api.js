@@ -74,14 +74,55 @@ export async function syncTimetableOnly({ erpId, password, captcha = "", academi
 
 export async function fetchSeatingPlan({ erpId, academicYear, semesterId }) {
   if (!erpId || !academicYear || !semesterId) return null;
+  const t0 = performance.now();
   const params = new URLSearchParams({ erpId, academicYear, semesterId });
   try {
     const response = await fetch(`${API_BASE}/api/seating-plan?${params.toString()}`);
     if (!response.ok) return null;
-    return await response.json();
+    const data = await response.json();
+    const dur = performance.now() - t0;
+    console.log(`[api:timing] fetchSeatingPlan took ${dur.toFixed(2)}ms (count: ${data?.count ?? 0})`);
+    return data;
   } catch {
     return null;
   }
+}
+
+export async function fetchTimetable({ erpId, academicYear, semesterId }) {
+  if (!erpId || !academicYear || !semesterId) return null;
+  const t0 = performance.now();
+  const params = new URLSearchParams({ erpId, academicYear, semesterId });
+  try {
+    const response = await fetch(`${API_BASE}/api/timetable?${params.toString()}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const dur = performance.now() - t0;
+    console.log(`[api:timing] fetchTimetable took ${dur.toFixed(2)}ms (status: ${data?.status})`);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parallel resource fetcher utilizing Promise.allSettled to load multiple
+ * independent portal, seating, timetable, and faculty resources concurrently.
+ */
+export async function fetchDashboardResources({ erpId, academicYear, semesterId }) {
+  const query = { erpId, academicYear, semesterId };
+  const [portalOutcome, seatingOutcome, timetableOutcome, facultyOutcome] = await Promise.allSettled([
+    fetchPortalStatus(),
+    erpId && academicYear && semesterId ? fetchSeatingPlan(query) : Promise.resolve(null),
+    erpId && academicYear && semesterId ? fetchTimetable(query) : Promise.resolve(null),
+    fetchFaculty()
+  ]);
+
+  return {
+    portalStatus: portalOutcome.status === "fulfilled" ? portalOutcome.value : { status: "offline" },
+    seatingPlan: seatingOutcome.status === "fulfilled" ? seatingOutcome.value?.seatingPlan || [] : [],
+    timetable: timetableOutcome.status === "fulfilled" ? timetableOutcome.value : null,
+    faculty: facultyOutcome.status === "fulfilled" ? facultyOutcome.value : []
+  };
 }
 
 export async function fetchFaculty() {
@@ -184,4 +225,15 @@ export async function disconnectLMS(lmsToken) {
     throw new ApiError("Failed to disconnect LMS", response.status);
   }
   return { success: true };
+}
+
+/**
+ * Fetch assignments for multiple tokens concurrently using Promise.allSettled.
+ */
+export async function fetchMultipleAssignments(tokens = []) {
+  if (!Array.isArray(tokens) || tokens.length === 0) return [];
+  const results = await Promise.allSettled(tokens.map((tok) => fetchAssignments(tok)));
+  return results
+    .filter((r) => r.status === "fulfilled" && r.value)
+    .map((r) => r.value);
 }

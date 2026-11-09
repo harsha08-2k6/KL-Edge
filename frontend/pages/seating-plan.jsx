@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Settings, RefreshCw } from "lucide-react";
 import { Layout } from "../components/Layout.jsx";
 import { readLocal, STORAGE_KEYS, writeLocal, mergeSeatingPlans } from "../utils/storage.js";
-import { fetchSeatingPlan } from "../utils/api.js";
+import { fetchSeatingPlan, fetchTimetable } from "../utils/api.js";
 import {
   buildMeta,
   parseMonth,
@@ -53,21 +53,43 @@ export default function SeatingPlan() {
     };
   }, [reloadSettings]);
 
-  // Fetch backend-filtered seating plan if API has cached data for current session
+  // Fetch backend-filtered seating plan and timetable metadata concurrently using Promise.allSettled
   useEffect(() => {
     if (credentials.erpId && syncOptions.academicYear && syncOptions.semesterId) {
       setIsFetching(true);
-      fetchSeatingPlan({
+      const query = {
         erpId: credentials.erpId,
         academicYear: syncOptions.academicYear,
         semesterId: syncOptions.semesterId
-      })
-        .then((res) => {
-          if (res?.seatingPlan && Array.isArray(res.seatingPlan) && res.seatingPlan.length > 0) {
+      };
+
+      Promise.allSettled([
+        fetchSeatingPlan(query),
+        fetchTimetable(query)
+      ])
+        .then(([seatingOutcome, timetableOutcome]) => {
+          if (
+            seatingOutcome.status === "fulfilled" &&
+            seatingOutcome.value?.seatingPlan &&
+            Array.isArray(seatingOutcome.value.seatingPlan) &&
+            seatingOutcome.value.seatingPlan.length > 0
+          ) {
             const currentStored = readLocal(STORAGE_KEYS.seatingPlan, []);
-            const updated = mergeSeatingPlans(currentStored, res.seatingPlan);
+            const updated = mergeSeatingPlans(currentStored, seatingOutcome.value.seatingPlan);
             writeLocal(STORAGE_KEYS.seatingPlan, updated);
             setRawPlan(updated);
+          }
+
+          if (
+            timetableOutcome.status === "fulfilled" &&
+            timetableOutcome.value?.mappings &&
+            Array.isArray(timetableOutcome.value.mappings) &&
+            timetableOutcome.value.mappings.length > 0
+          ) {
+            const currentTT = readLocal(STORAGE_KEYS.timetable, { grid: [], mappings: [] });
+            if (!currentTT.mappings || currentTT.mappings.length === 0) {
+              writeLocal(STORAGE_KEYS.timetable, { ...currentTT, mappings: timetableOutcome.value.mappings });
+            }
           }
         })
         .finally(() => setIsFetching(false));
@@ -180,6 +202,14 @@ export default function SeatingPlan() {
     attendance.forEach((item) => {
       if (item.courseCode && item.subject) {
         map[item.courseCode.trim().toUpperCase()] = item.subject.trim();
+      }
+    });
+    const tt = readLocal(STORAGE_KEYS.timetable, { mappings: [] });
+    (tt?.mappings || []).forEach((m) => {
+      const code = (m.code || m.courseCode || "").trim().toUpperCase();
+      const title = (m.title || m.courseTitle || m.subject || "").trim();
+      if (code && title && !map[code]) {
+        map[code] = title;
       }
     });
     return map;

@@ -272,12 +272,15 @@ def dedupe_cookies(jar) -> None:
     if not hasattr(raw_jar, "clear") or not hasattr(raw_jar, "set_cookie"):
         return
     try:
+        cookies_list = list(raw_jar)
         seen = {}
-        for cookie in list(raw_jar):
+        for cookie in cookies_list:
             seen[cookie.name] = cookie
-        raw_jar.clear()
-        for cookie in seen.values():
-            raw_jar.set_cookie(cookie)
+        # Only rewrite if there are duplicate cookie names to minimize jar mutations
+        if len(seen) < len(cookies_list):
+            raw_jar.clear()
+            for cookie in seen.values():
+                raw_jar.set_cookie(cookie)
     except Exception:
         pass
 
@@ -410,6 +413,25 @@ def reconstruct_session(cookies: Dict[str, str]) -> httpx.AsyncClient:
     session.cookies = deserialize_cookies(cookies)
     ensure_device_cookie(session)
     return session
+
+
+def clone_session(session: Optional[httpx.AsyncClient]) -> Optional[httpx.AsyncClient]:
+    if session is None:
+        return None
+    if not hasattr(session, "cookies"):
+        return session
+    try:
+        cookies = serialize_cookies(session.cookies)
+        new_session = reconstruct_session(cookies)
+        if hasattr(session, "captcha_session_id"):
+            new_session.captcha_session_id = session.captcha_session_id
+        if hasattr(session, "latest_csrf_token"):
+            new_session.latest_csrf_token = session.latest_csrf_token
+        if hasattr(session, "_menu_data_cache"):
+            new_session._menu_data_cache = session._menu_data_cache
+        return new_session
+    except Exception:
+        return session
 
 
 def build_headers(base_url: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
@@ -1955,6 +1977,44 @@ async def sync_seating_plan(payload: Dict[str, str], session: Optional[httpx.Asy
                     next_full_url = urljoin(current_url, href)
                     if next_full_url not in visited_urls and next_full_url not in to_visit:
                         to_visit.append(next_full_url)
+
+            # Parallelize fetching of any remaining pagination pages
+            pending_pages = [url for url in to_visit if url not in visited_urls]
+            to_visit.clear()
+            if pending_pages:
+                for u in pending_pages:
+                    visited_urls.add(u)
+
+                async def fetch_seating_page(p_url: str) -> str:
+                    try:
+                        p_resp = await request_page(session, p_url, headers=build_headers(p_url))
+                        return p_resp.text or ""
+                    except Exception as err:
+                        if DEBUG_ENABLED:
+                            print(f"[erp:seating] Parallel page fetch error for {p_url}: {err}", flush=True)
+                        return ""
+
+                page_htmls = await asyncio.gather(
+                    *[fetch_seating_page(u) for u in pending_pages],
+                    return_exceptions=True
+                )
+
+                for p_html in page_htmls:
+                    if isinstance(p_html, str) and p_html:
+                        pages_fetched += 1
+                        sub_plans = parse_seating_tables(p_html, payload)
+                        for plan in sub_plans:
+                            key = (
+                                str(plan.get("courseCode") or "").strip().upper(),
+                                str(plan.get("examType") or "").strip().lower(),
+                                str(plan.get("date") or "").strip(),
+                                str(plan.get("examSlot") or plan.get("time") or "").strip().upper(),
+                                str(plan.get("room") or "").strip().upper(),
+                                str(plan.get("seat") or "").strip().upper()
+                            )
+                            if key not in seen_entry_keys:
+                                seen_entry_keys.add(key)
+                                all_entries.append(plan)
         except Exception as exc:
             if DEBUG_ENABLED:
                 print(f"[erp:seating] Page fetch error for {current_url}: {exc}", flush=True)
@@ -2147,12 +2207,29 @@ def collect_feature_urls(dashboard_html: str, keywords: List[str], candidate_pat
     return unique_urls
 
 
-async def find_menu_link_by_keywords(session: httpx.AsyncClient, keywords: List[str]) -> str:
+async def get_menu_data(session: Optional[httpx.AsyncClient]) -> dict:
+    if session is None:
+        return {}
+    if not isinstance(session, httpx.AsyncClient):
+        return getattr(session, "_menu_data_cache", {}) or {}
+    cached = getattr(session, "_menu_data_cache", None)
+    if cached is not None and isinstance(cached, dict) and cached:
+        return cached
     menu_url = urljoin(LOGIN_URL, "menu-student.json")
     try:
         response = await request_page(session, menu_url, headers=build_headers(LOGIN_URL))
         data = response.json()
+        if isinstance(data, dict):
+            setattr(session, "_menu_data_cache", data)
+            return data
     except Exception:
+        pass
+    return {}
+
+
+async def find_menu_link_by_keywords(session: httpx.AsyncClient, keywords: List[str]) -> str:
+    data = await get_menu_data(session)
+    if not data:
         return ""
 
     link = search_menu_for_link(data, keywords)
@@ -2343,7 +2420,10 @@ async def parse_course_internals_page(html: str, payload: Dict[str, str], sessio
         if code_index < 0 and subject_index < 0:
             continue
 
-        results = []
+        # 1. Parse rows and collect link requests to fetch concurrently
+        candidate_rows = []
+        pending_requests = []  # list of (candidate_idx, bucket, full_url)
+
         for row in rows[1:]:
             cells = row.find_all(["td", "th"])
             if not cells:
@@ -2357,54 +2437,72 @@ async def parse_course_internals_page(html: str, payload: Dict[str, str], sessio
 
             course_code = row_value(values, code_index)
             subject = row_value(values, subject_index) or row_value(values, 0)
-
-            insem1 = None
-            insem2 = None
-            
-            # The ERP table has evaluation components in a cell - find Semester in Exam-I and Semester in Exam-II links
             component_cell = cells[component_index] if component_index >= 0 and component_index < len(cells) else None
-            
+
+            cand_idx = len(candidate_rows)
+            candidate_rows.append({
+                "course_code": course_code,
+                "subject": subject,
+                "values": values,
+                "component_cell": component_cell,
+                "insem1": None,
+                "insem2": None
+            })
+
             if component_cell:
-                # Find ALL links in the component cell that contain "semester in exam" or "in sem"
                 links = component_cell.find_all("a")
                 for link in links:
                     label = clean_text(link.get_text(" ")).lower()
                     href = link.get("href", "") or ""
-                    
-                    # Determine if this is insem1 or insem2
-                    is_insem1 = "semester in exam-i" in label or "semester in exam 1" in label or "in sem 1" in label or "in sem-i" in label
-                    is_insem2 = "semester in exam-ii" in label or "semester in exam 2" in label or "in sem 2" in label or "in sem-ii" in label or "exam-ii" in label
-                    is_insem2 = is_insem2 or "exam ii" in label
-                    is_insem1 = is_insem1 or "exam i" in label
-                    
+
+                    is_insem1 = "semester in exam-i" in label or "semester in exam 1" in label or "in sem 1" in label or "in sem-i" in label or "exam i" in label
+                    is_insem2 = "semester in exam-ii" in label or "semester in exam 2" in label or "in sem 2" in label or "in sem-ii" in label or "exam-ii" in label or "exam ii" in label
+
                     bucket = None
                     if is_insem2:
                         bucket = "insem2"
                     elif is_insem1:
                         bucket = "insem1"
-                    
-                    if bucket and href and "javascript" not in href.lower():
-                        try:
-                            # Make request to get the marks
-                            full_url = urljoin(LOGIN_URL, href)
-                            resp = await session.get(full_url, headers=build_headers(full_url, {"X-Requested-With": "XMLHttpRequest"}), timeout=get_timeout())
-                            if resp.status_code == 200:
-                                mark_html = resp.text
-                                # Parse the returned HTML for marks
-                                mark_val = parse_mark_from_component_html(mark_html)
-                                if mark_val:
-                                    if bucket == "insem1" and insem1 is None:
-                                        insem1 = str(mark_val)
-                                    elif bucket == "insem2" and insem2 is None:
-                                        insem2 = str(mark_val)
-                                    if DEBUG_ENABLED:
-                                        print(f"[erp:marks] Got {bucket}={mark_val} for {course_code}", flush=True)
-                        except Exception as e:
-                            if DEBUG_ENABLED:
-                                print(f"[erp:marks] Failed to fetch {bucket}: {e}", flush=True)
-                            pass
 
-            # Also check the component cell text directly for any marks info
+                    if bucket and href and "javascript" not in href.lower():
+                        full_url = urljoin(LOGIN_URL, href)
+                        pending_requests.append((cand_idx, bucket, full_url))
+
+        # 2. Fetch all component mark links concurrently with bounded concurrency
+        if pending_requests:
+            mark_sem = asyncio.Semaphore(4)
+
+            async def fetch_single_mark(full_url: str, bucket: str):
+                async with mark_sem:
+                    try:
+                        resp = await session.get(full_url, headers=build_headers(full_url, {"X-Requested-With": "XMLHttpRequest"}), timeout=get_timeout())
+                        if resp.status_code == 200:
+                            return parse_mark_from_component_html(resp.text)
+                    except Exception as e:
+                        if DEBUG_ENABLED:
+                            print(f"[erp:marks] Failed to fetch {bucket}: {e}", flush=True)
+                    return None
+
+            mark_results = await asyncio.gather(
+                *[fetch_single_mark(req[2], req[1]) for req in pending_requests],
+                return_exceptions=True
+            )
+
+            for req, res in zip(pending_requests, mark_results):
+                if isinstance(res, (int, float, str)) and res:
+                    c_idx, bucket, _ = req
+                    if bucket == "insem1" and candidate_rows[c_idx]["insem1"] is None:
+                        candidate_rows[c_idx]["insem1"] = str(res)
+                    elif bucket == "insem2" and candidate_rows[c_idx]["insem2"] is None:
+                        candidate_rows[c_idx]["insem2"] = str(res)
+
+        # 3. Fallback to cell text if marks still not found
+        results = []
+        for cand in candidate_rows:
+            insem1 = cand["insem1"]
+            insem2 = cand["insem2"]
+            component_cell = cand["component_cell"]
+
             if component_cell and insem1 is None and insem2 is None:
                 cell_text = clean_text(component_cell.get_text(" "))
                 if insem1 is None:
@@ -2420,16 +2518,16 @@ async def parse_course_internals_page(html: str, payload: Dict[str, str], sessio
                 continue
 
             results.append({
-                "courseCode": course_code,
-                "subject": subject,
+                "courseCode": cand["course_code"],
+                "subject": cand["subject"],
                 "insem1": insem1,
                 "insem2": insem2,
-                "academicYear": row_value(values, year_index) or payload.get("academicYear"),
-                "semester": row_value(values, semester_index) or payload.get("semesterId")
+                "academicYear": row_value(cand["values"], year_index) or payload.get("academicYear"),
+                "semester": row_value(cand["values"], semester_index) or payload.get("semesterId")
             })
-            
+
             if DEBUG_ENABLED and (insem1 or insem2):
-                print(f"[erp:marks] Found marks for {course_code}: insem1={insem1}, insem2={insem2}", flush=True)
+                print(f"[erp:marks] Found marks for {cand['course_code']}: insem1={insem1}, insem2={insem2}", flush=True)
 
         if results:
             return results

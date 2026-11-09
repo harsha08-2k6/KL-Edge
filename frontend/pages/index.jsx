@@ -96,9 +96,14 @@ export default function Home() {
       timeoutId = setTimeout(runUpdate, 2000);
     }
     
+    let lastUpdateTs = 0;
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        updateStreak();
+        const now = Date.now();
+        if (now - lastUpdateTs > 15000) {
+          lastUpdateTs = now;
+          updateStreak();
+        }
       }
     };
     
