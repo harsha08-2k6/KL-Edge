@@ -222,6 +222,28 @@ def set_cached_seating_plan(erp_id: str, academic_year: str, semester_id: str, d
     set_cached_json(key, data)
 
 
+def make_cgpa_cache_key(erp_id: str) -> str:
+    c_id = (erp_id or "").strip().lower()
+    return f"cgpa:{c_id}"
+
+
+def get_cached_cgpa(erp_id: str) -> Optional[dict]:
+    if not erp_id:
+        return None
+    key = make_cgpa_cache_key(erp_id)
+    cached = get_cached_json(key)
+    if cached and isinstance(cached, dict):
+        return cached
+    return None
+
+
+def set_cached_cgpa(erp_id: str, data: dict):
+    if not erp_id or not data:
+        return
+    key = make_cgpa_cache_key(erp_id)
+    set_cached_json(key, data)
+
+
 async def run_full_sync(payload: dict) -> dict:
     total_start = time.time()
 
@@ -256,39 +278,78 @@ async def run_full_sync(payload: dict) -> dict:
     feature_statuses = {}
     now_iso = f"{datetime.utcnow().isoformat()}Z"
 
-    # Check cache first for timetable (for fallback only if force_refresh is False)
+    # Smart cache checks for static / infrequently changing modules
     cached_tt = get_cached_timetable(erp_id, academic_year, semester_id) if not force_refresh else None
+    cached_seating = get_cached_seating_plan(erp_id, academic_year, semester_id) if not force_refresh else None
+    cached_cgpa = get_cached_cgpa(erp_id) if not force_refresh else None
 
-    # Pre-cache menu-student.json once on session so all modules share the cached menu
+    # Pre-cache menu-student.json once on session so all live modules share the cached menu
     try:
         await get_menu_data(session)
     except Exception:
         pass
 
-    # Execute all 4 independent sync operations concurrently using asyncio.gather
-    sync_results = await asyncio.gather(
-        safe_sync("attendance", lambda: sync_attendance(payload, session=session), []),
-        safe_sync("timetable", lambda: sync_timetable(payload, session=session), None),
-        safe_sync("seating-plan", lambda: sync_seating_plan(payload, session=session), None),
-        safe_sync("cgpa", lambda: sync_cgpa(payload, session=session), None),
-        return_exceptions=True
-    )
+    # Build active sync tasks dynamically:
+    # 1. Attendance is ALWAYS scraped live (changes dynamically as classes happen)
+    tasks = [
+        safe_sync("attendance", lambda: sync_attendance(payload, session=session), [])
+    ]
+    task_keys = ["attendance"]
+
+    # 2. Timetable: only scrape live if cache is empty or student requested force refresh
+    need_tt_scrape = force_refresh or not (cached_tt and cached_tt.get("grid"))
+    if need_tt_scrape:
+        tasks.append(safe_sync("timetable", lambda: sync_timetable(payload, session=session), None))
+        task_keys.append("timetable")
+    else:
+        print(f"[erp:sync] Timetable served from fast cache for {erp_id} (skipping 15s scrape)", flush=True)
+
+    # 3. Seating Plan: only scrape live if cache is empty or student requested force refresh
+    need_seat_scrape = force_refresh or not (cached_seating is not None and len(cached_seating) > 0)
+    if need_seat_scrape:
+        tasks.append(safe_sync("seating-plan", lambda: sync_seating_plan(payload, session=session), None))
+        task_keys.append("seating-plan")
+    else:
+        print(f"[erp:sync] Seating plan served from fast cache for {erp_id} (skipping 14s scrape)", flush=True)
+
+    # 4. CGPA: only scrape live if cache is empty or student requested force refresh
+    need_cgpa_scrape = force_refresh or not (cached_cgpa and (cached_cgpa.get("value") is not None or cached_cgpa.get("subjects") or cached_cgpa.get("semesters")))
+    if need_cgpa_scrape:
+        tasks.append(safe_sync("cgpa", lambda: sync_cgpa(payload, session=session), None))
+        task_keys.append("cgpa")
+    else:
+        print(f"[erp:sync] CGPA served from fast cache for {erp_id} (skipping 13s scrape)", flush=True)
+
+    # Execute active sync operations concurrently using asyncio.gather
+    raw_sync_results = await asyncio.gather(*tasks, return_exceptions=True)
+    results_map = dict(zip(task_keys, raw_sync_results))
 
     # Unpack attendance result safely
-    att_res = sync_results[0]
-    attendance, att_err, att_dur = ([], str(att_res), 0.0) if isinstance(att_res, Exception) else att_res
+    att_res = results_map.get("attendance")
+    attendance, att_err, att_dur = ([], str(att_res), 0.0) if isinstance(att_res, Exception) else (att_res or ([], None, 0.0))
 
     # Unpack timetable result safely
-    tt_res = sync_results[1]
-    timetable, tt_err, tt_dur = (None, str(tt_res), 0.0) if isinstance(tt_res, Exception) else tt_res
+    if need_tt_scrape:
+        tt_res = results_map.get("timetable")
+        timetable, tt_err, tt_dur = (None, str(tt_res), 0.0) if isinstance(tt_res, Exception) else (tt_res or (None, None, 0.0))
+    else:
+        timetable, tt_err, tt_dur = (cached_tt, None, 0.0)
 
     # Unpack seating plan result safely
-    seat_res = sync_results[2]
-    seating_plan, seat_err, seat_dur = (None, str(seat_res), 0.0) if isinstance(seat_res, Exception) else seat_res
+    if need_seat_scrape:
+        seat_res = results_map.get("seating-plan")
+        seating_plan, seat_err, seat_dur = (None, str(seat_res), 0.0) if isinstance(seat_res, Exception) else (seat_res or (None, None, 0.0))
+    else:
+        seating_plan, seat_err, seat_dur = (cached_seating, None, 0.0)
 
     # Unpack cgpa result safely
-    cgpa_res = sync_results[3]
-    cgpa, cgpa_err, cgpa_dur = (None, str(cgpa_res), 0.0) if isinstance(cgpa_res, Exception) else cgpa_res
+    if need_cgpa_scrape:
+        cgpa_res = results_map.get("cgpa")
+        cgpa, cgpa_err, cgpa_dur = (None, str(cgpa_res), 0.0) if isinstance(cgpa_res, Exception) else (cgpa_res or (None, None, 0.0))
+        if cgpa and (cgpa.get("value") is not None or cgpa.get("subjects") or cgpa.get("semesters")):
+            set_cached_cgpa(erp_id, cgpa)
+    else:
+        cgpa, cgpa_err, cgpa_dur = (cached_cgpa, None, 0.0)
 
     if att_err:
         feature_statuses["attendance"] = {
@@ -371,7 +432,16 @@ async def run_full_sync(payload: dict) -> dict:
         }
 
     # Seating Plan processing
-    if seat_err:
+    if not need_seat_scrape and cached_seating:
+        feature_statuses["seatingPlan"] = {
+            "status": "cached",
+            "source": "cache",
+            "cached": True,
+            "refreshedAt": now_iso,
+            "count": len(cached_seating),
+            "duration_seconds": 0.0
+        }
+    elif seat_err:
         feature_statuses["seatingPlan"] = {
             "status": "failed",
             "source": "live",
@@ -404,7 +474,17 @@ async def run_full_sync(payload: dict) -> dict:
         }
 
     # CGPA processing
-    if cgpa_err:
+    if not need_cgpa_scrape and cached_cgpa:
+        feature_statuses["cgpa"] = {
+            "status": "cached",
+            "source": "cache",
+            "cached": True,
+            "refreshedAt": now_iso,
+            "count": len(cached_cgpa.get("subjects", [])),
+            "duration_seconds": 0.0,
+            "value": cached_cgpa.get("value")
+        }
+    elif cgpa_err:
         feature_statuses["cgpa"] = {
             "status": "failed",
             "source": "live",

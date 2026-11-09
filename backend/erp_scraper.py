@@ -396,6 +396,86 @@ def get_captcha_session(session_id: str) -> Optional[Dict]:
     return captcha_sessions_memory.get(session_id)
 
 
+USER_ERP_SESSION_TTL_SECONDS = 1500  # 25 minutes (ERP sessions remain valid for 20-30 min)
+
+
+def save_user_erp_session(erp_id: str, data: Dict) -> None:
+    if not erp_id:
+        return
+    c_id = erp_id.strip()
+    data_with_time = {**data, "_saved_at": time.time()}
+    key = f"user_erp_session:{c_id}"
+    if redis_client:
+        try:
+            redis_client.setex(key, USER_ERP_SESSION_TTL_SECONDS, json.dumps(data_with_time))
+        except Exception:
+            pass
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO kv_cache (key, value) VALUES (?, ?)", (key, json.dumps(data_with_time)))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    captcha_sessions_memory[key] = data_with_time
+
+
+def get_user_erp_session(erp_id: str) -> Optional[Dict]:
+    if not erp_id:
+        return None
+    c_id = erp_id.strip()
+    key = f"user_erp_session:{c_id}"
+    data = None
+    if redis_client:
+        try:
+            raw = redis_client.get(key)
+            if raw:
+                data = json.loads(raw)
+        except Exception:
+            pass
+    if not data:
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM kv_cache WHERE key = ?", (key,))
+            row = cursor.fetchone()
+            conn.close()
+            if row:
+                data = json.loads(row["value"])
+        except Exception:
+            pass
+    if not data:
+        data = captcha_sessions_memory.get(key)
+
+    if data and isinstance(data, dict):
+        saved_at = data.get("_saved_at") or data.get("created_at") or 0
+        if time.time() - saved_at < USER_ERP_SESSION_TTL_SECONDS:
+            return data
+    return None
+
+
+def clear_user_erp_session(erp_id: str) -> None:
+    if not erp_id:
+        return
+    c_id = erp_id.strip()
+    key = f"user_erp_session:{c_id}"
+    captcha_sessions_memory.pop(key, None)
+    if redis_client:
+        try:
+            redis_client.delete(key)
+        except Exception:
+            pass
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM kv_cache WHERE key = ?", (key,))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
 def touch_captcha_session(session: httpx.AsyncClient) -> None:
     session_id = getattr(session, "captcha_session_id", None)
     if not session_id:
@@ -585,17 +665,38 @@ async def create_captcha_session() -> Dict[str, str]:
 
 
 async def perform_login(payload: Dict[str, str]) -> httpx.AsyncClient:
+    erp_id = (payload.get("erpId") or "").strip()
     session_id = payload.get("captchaSessionId") or ""
+    force_login = bool(payload.get("forceLogin") or payload.get("forceRefreshAuth"))
+
+    # FAST PATH: Check if this student already has an active, authenticated ERP session
+    if erp_id and not force_login:
+        user_sess_data = get_user_erp_session(erp_id)
+        if user_sess_data and user_sess_data.get("is_logged_in") and user_sess_data.get("cookies"):
+            fast_session = reconstruct_session(user_sess_data["cookies"])
+            fast_session.captcha_session_id = session_id
+            fast_session.erp_id = erp_id
+            if await verify_session(fast_session):
+                print(f"[erp:login] Reused active authenticated session for user {erp_id} (0 network auth overhead)", flush=True)
+                return fast_session
+            else:
+                if DEBUG_ENABLED:
+                    print(f"[erp:login] Saved session for {erp_id} expired on ERP, performing fresh login...", flush=True)
+                clear_user_erp_session(erp_id)
+
     captcha_session = get_captcha_session(session_id)
     if not captcha_session:
         raise AppError("Captcha session expired. Refresh captcha and try again.", 410)
 
     session = reconstruct_session(captcha_session.get("cookies", {}))
     session.captcha_session_id = session_id
+    session.erp_id = erp_id
 
     # Check if already logged in to this session
     if captcha_session.get("is_logged_in", False):
         if await verify_session(session):
+            if erp_id:
+                save_user_erp_session(erp_id, captcha_session)
             return session
         else:
             if DEBUG_ENABLED:
@@ -603,6 +704,8 @@ async def perform_login(payload: Dict[str, str]) -> httpx.AsyncClient:
             captcha_session["is_logged_in"] = False
             captcha_session["cookies"] = {}
             save_captcha_session(session_id, captcha_session)
+            if erp_id:
+                clear_user_erp_session(erp_id)
             session.cookies.clear()
             ensure_device_cookie(session)
 
@@ -733,7 +836,10 @@ async def perform_login(payload: Dict[str, str]) -> httpx.AsyncClient:
             captcha_session["is_logged_in"] = True
             captcha_session["dashboard_html"] = res_html
             captcha_session["cookies"] = serialize_cookies(session.cookies)
+            captcha_session["created_at"] = time.time()
             save_captcha_session(session_id, captcha_session)
+            if erp_id:
+                save_user_erp_session(erp_id, captcha_session)
             login_csrf = extract_csrf_token(res_html) or get_csrf_from_session(session)
             if login_csrf:
                 session.latest_csrf_token = login_csrf
@@ -768,6 +874,9 @@ def check_session_expiry(session: httpx.AsyncClient, requested_url: str, respons
         res_url = str(response.url).lower()
         if "site/login" in res_url or "site%2flogin" in res_url or looks_like_login_page(response.text or ""):
             session_id = getattr(session, "captcha_session_id", None)
+            erp_id = getattr(session, "erp_id", None)
+            if erp_id:
+                clear_user_erp_session(erp_id)
             if session_id:
                 captcha_session = get_captcha_session(session_id)
                 if captcha_session:
