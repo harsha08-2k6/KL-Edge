@@ -72,6 +72,26 @@ export async function syncTimetableOnly({ erpId, password, captcha = "", academi
 
 
 
+export async function syncSeatingPlanOnly({ erpId, password, captcha = "", academicYear, semesterId, captchaSessionId = "", forceRefresh = true }) {
+  if (!erpId || !password || !academicYear || !semesterId) return null;
+  const t0 = performance.now();
+  try {
+    const response = await fetch(`${API_BASE}/api/seating-plan/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ erpId, password, captcha, academicYear, semesterId, captchaSessionId, forceRefresh })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const dur = performance.now() - t0;
+    console.log(`[api:timing] syncSeatingPlanOnly took ${dur.toFixed(2)}ms (count: ${data?.count ?? 0})`);
+    return data;
+  } catch (err) {
+    console.error("[api:seating-sync] Error syncing seating plan:", err);
+    return null;
+  }
+}
+
 export async function fetchSeatingPlan({ erpId, academicYear, semesterId }) {
   if (!erpId || !academicYear || !semesterId) return null;
   const t0 = performance.now();

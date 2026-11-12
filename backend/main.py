@@ -339,6 +339,19 @@ async def run_full_sync(payload: dict) -> dict:
     if need_seat_scrape:
         seat_res = results_map.get("seating-plan")
         seating_plan, seat_err, seat_dur = (None, str(seat_res), 0.0) if isinstance(seat_res, Exception) else (seat_res or (None, None, 0.0))
+        if seating_plan is not None:
+            # Merge with existing cache to preserve all exam history (In-Sem 1, In-Sem 2, End-Sem)
+            merged_map = {}
+            for p in (cached_seating or []):
+                if p:
+                    k = (str(p.get("courseCode") or "").strip().upper(), str(p.get("examType") or "").strip().lower(), str(p.get("date") or "").strip(), str(p.get("room") or "").strip().upper(), str(p.get("seat") or "").strip().upper())
+                    merged_map[k] = p
+            for p in seating_plan:
+                if p:
+                    k = (str(p.get("courseCode") or "").strip().upper(), str(p.get("examType") or "").strip().lower(), str(p.get("date") or "").strip(), str(p.get("room") or "").strip().upper(), str(p.get("seat") or "").strip().upper())
+                    merged_map[k] = p
+            seating_plan = list(merged_map.values())
+            set_cached_seating_plan(erp_id, academic_year, semester_id, seating_plan)
     else:
         seating_plan, seat_err, seat_dur = (cached_seating, None, 0.0)
 
@@ -1359,6 +1372,51 @@ async def sync_timetable_only_route(body: SyncRequest):
     if timetable and timetable.get("grid"):
         set_cached_timetable(body.erpId, body.academicYear, body.semesterId, timetable)
     return timetable
+
+
+@app.post("/api/seating-plan/sync")
+async def sync_seating_plan_only_route(body: SyncRequest):
+    if not all([body.erpId, body.password, body.academicYear, body.semesterId]):
+        raise AppError("ERP ID, password, academic year, and semester are required.", 400)
+
+    session_id = body.captchaSessionId
+    if not session_id:
+        try:
+            captcha_res = await create_captcha_session()
+            session_id = captcha_res["sessionId"]
+        except Exception as exc:
+            raise AppError(f"Failed to initialize CAPTCHA session: {str(exc)}", 502)
+
+    payload = body.model_dump()
+    payload["captchaSessionId"] = session_id
+
+    session = await perform_login(payload)
+    plans = await sync_seating_plan(payload, session=session)
+
+    # Merge incoming plans with existing cached plans to ensure all semesters/exams are preserved
+    existing_cached = get_cached_seating_plan(body.erpId, body.academicYear, body.semesterId) or []
+
+    merged_map = {}
+    for p in existing_cached:
+        if p:
+            k = (str(p.get("courseCode") or "").strip().upper(), str(p.get("examType") or "").strip().lower(), str(p.get("date") or "").strip(), str(p.get("room") or "").strip().upper(), str(p.get("seat") or "").strip().upper())
+            merged_map[k] = p
+    for p in (plans or []):
+        if p:
+            k = (str(p.get("courseCode") or "").strip().upper(), str(p.get("examType") or "").strip().lower(), str(p.get("date") or "").strip(), str(p.get("room") or "").strip().upper(), str(p.get("seat") or "").strip().upper())
+            merged_map[k] = p
+
+    merged_plans = list(merged_map.values())
+    set_cached_seating_plan(body.erpId, body.academicYear, body.semesterId, merged_plans)
+
+    return {
+        "seatingPlan": merged_plans,
+        "academicYear": body.academicYear,
+        "semesterId": body.semesterId,
+        "count": len(merged_plans),
+        "status": "ok",
+        "syncedAt": f"{datetime.utcnow().isoformat()}Z"
+    }
 
 
 @app.get("/api/faculty")

@@ -189,7 +189,8 @@ export default function Home() {
         ...credentials,
         ...syncOptions,
         captcha: "",
-        captchaSessionId
+        captchaSessionId,
+        forceRefresh: isManual
       });
 
       if (payload.captchaSessionId) {

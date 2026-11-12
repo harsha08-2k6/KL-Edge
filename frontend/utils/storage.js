@@ -44,14 +44,17 @@ export function mergeSeatingPlans(existing = [], incoming = []) {
   const map = new Map();
   const getKey = (item) => {
     if (!item) return "";
-    if (item.refId) return `REF_${String(item.refId).trim().toUpperCase()}`;
     const code = String(item.courseCode || item.code || "").trim().toUpperCase();
+    const type = String(item.examType || item.type || "").trim().toUpperCase();
     const date = String(item.date || "").trim();
     const slot = String(item.examSlot || item.time || "").trim().toUpperCase();
-    const type = String(item.examType || item.type || "").trim().toUpperCase();
     const room = String(item.room || "").trim().toUpperCase();
     const seat = String(item.seat || "").trim().toUpperCase();
-    return `${code}_${date}_${slot}_${type}_${room}_${seat}`;
+    if (code || date || room || seat) {
+      return `${code}_${type}_${date}_${slot}_${room}_${seat}`;
+    }
+    if (item.refId) return `REF_${String(item.refId).trim().toUpperCase()}`;
+    return "";
   };
 
   listA.forEach((item) => {

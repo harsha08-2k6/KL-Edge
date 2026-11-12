@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Settings, RefreshCw } from "lucide-react";
+import { Settings, RefreshCw, Calendar, MapPin, Armchair, Clock } from "lucide-react";
 import { Layout } from "../components/Layout.jsx";
 import { readLocal, STORAGE_KEYS, writeLocal, mergeSeatingPlans } from "../utils/storage.js";
-import { fetchSeatingPlan, fetchTimetable } from "../utils/api.js";
+import { fetchSeatingPlan, fetchTimetable, syncSeatingPlanOnly } from "../utils/api.js";
 import {
   buildMeta,
   parseMonth,
   parseDateValue,
   parseSlotValue,
+  formatSlotText,
   getExamType,
   matchesAcademicYear,
   matchesSemester,
@@ -22,6 +23,8 @@ export default function SeatingPlan() {
   const [syncOptions, setSyncOptions] = useState({});
   const [credentials, setCredentials] = useState({});
   const [isFetching, setIsFetching] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState("");
 
   const reloadSettings = useCallback(() => {
     setRawPlan(readLocal(STORAGE_KEYS.seatingPlan, []));
@@ -95,6 +98,50 @@ export default function SeatingPlan() {
         .finally(() => setIsFetching(false));
     }
   }, [credentials.erpId, syncOptions.academicYear, syncOptions.semesterId]);
+
+  const handleRefreshSeating = async () => {
+    if (!credentials.erpId || !credentials.password) {
+      setRefreshMessage("Please enter your ERP credentials in Login Settings first.");
+      setTimeout(() => setRefreshMessage(""), 4000);
+      return;
+    }
+    if (!syncOptions.academicYear || !syncOptions.semesterId) {
+      setRefreshMessage("Please choose your academic year and semester in Login Settings.");
+      setTimeout(() => setRefreshMessage(""), 4000);
+      return;
+    }
+
+    setIsRefreshing(true);
+    setRefreshMessage("");
+
+    try {
+      const captchaSessionId = readLocal(STORAGE_KEYS.captchaSessionId, "");
+      const res = await syncSeatingPlanOnly({
+        erpId: credentials.erpId,
+        password: credentials.password,
+        academicYear: syncOptions.academicYear,
+        semesterId: syncOptions.semesterId,
+        captchaSessionId,
+        forceRefresh: true
+      });
+
+      if (res && res.seatingPlan && Array.isArray(res.seatingPlan)) {
+        const currentStored = readLocal(STORAGE_KEYS.seatingPlan, []);
+        const updated = mergeSeatingPlans(currentStored, res.seatingPlan);
+        writeLocal(STORAGE_KEYS.seatingPlan, updated);
+        setRawPlan(updated);
+        setRefreshMessage(`Seating synchronized! Found ${res.count ?? res.seatingPlan.length} exam arrangements. ✅`);
+      } else {
+        setRefreshMessage("Sync completed. No new seating arrangements found on ERP.");
+      }
+    } catch (err) {
+      console.error("[seating:sync] Error:", err);
+      setRefreshMessage("Seating sync failed. Please check ERP credentials or portal status.");
+    } finally {
+      setIsRefreshing(false);
+      setTimeout(() => setRefreshMessage(""), 4000);
+    }
+  };
 
   const entries = useMemo(() => {
     if (Array.isArray(rawPlan)) return rawPlan;
@@ -174,7 +221,6 @@ export default function SeatingPlan() {
     const inSem1 = [];
     const inSem2 = [];
     const endSem = [];
-    const other = [];
 
     sorted.forEach((entry) => {
       const groupType = getExamGroup(entry, splitMonth);
@@ -184,16 +230,13 @@ export default function SeatingPlan() {
         inSem2.push(entry);
       } else if (groupType === "endsem") {
         endSem.push(entry);
-      } else {
-        other.push(entry);
       }
     });
 
     const result = [];
     if (inSem1.length) result.push({ id: "insem1", label: "INSEM 01", items: inSem1 });
     if (inSem2.length) result.push({ id: "insem2", label: "INSEM 02", items: inSem2 });
-    if (endSem.length) result.push({ id: "endsem", label: "ENDSEM", items: endSem });
-    if (other.length) result.push({ id: "other", label: "Other Exams", items: other });
+    if (endSem.length) result.push({ id: "endsem", label: "ENDSEM (Semester End Examination)", items: endSem });
     return result;
   }, [matchingEntries]);
 
@@ -219,17 +262,35 @@ export default function SeatingPlan() {
     <Layout
       title={pageHeading}
       action={
-        <Link
-          to="/settings"
-          className="tap inline-flex h-9 items-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-bold text-ink/70 shadow-soft transition-colors hover:text-ink"
-          title="Configure Academic Year & Semester in Login Settings"
-        >
-          <Settings size={14} />
-          <span className="hidden sm:inline">Login Settings</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefreshSeating}
+            disabled={isRefreshing}
+            className="tap inline-flex h-9 items-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-bold text-ink/70 shadow-soft transition-colors hover:text-ink disabled:opacity-50"
+            title="Sync latest seating arrangements from ERP"
+          >
+            <RefreshCw size={14} className={isRefreshing ? "animate-spin text-mint" : ""} />
+            <span className="hidden sm:inline">{isRefreshing ? "Syncing..." : "Sync Seating"}</span>
+          </button>
+          <Link
+            to="/settings"
+            className="tap inline-flex h-9 items-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-bold text-ink/70 shadow-soft transition-colors hover:text-ink"
+            title="Configure Academic Year & Semester in Login Settings"
+          >
+            <Settings size={14} />
+            <span className="hidden sm:inline">Settings</span>
+          </Link>
+        </div>
       }
     >
       <div className="space-y-4">
+        {/* Refresh feedback toast */}
+        {refreshMessage && (
+          <div className="rounded-xl border border-ink/10 bg-surface p-3 text-xs font-bold text-ink transition-all">
+            {refreshMessage}
+          </div>
+        )}
+
         {/* Active Session Card referencing Login Settings as Single Source of Truth */}
         <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-ink/10 bg-white p-3.5 shadow-soft">
           <div>
@@ -250,33 +311,49 @@ export default function SeatingPlan() {
               )}
             </div>
           </div>
-          <Link
-            to="/settings"
-            className="tap self-start sm:self-auto inline-flex items-center gap-1 rounded-lg border border-ink/10 bg-surface px-3 py-1.5 text-xs font-bold text-ink/70 hover:text-ink hover:bg-surface/80 transition-colors"
-          >
-            <Settings size={13} />
-            <span>Change in Settings</span>
-          </Link>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              onClick={handleRefreshSeating}
+              disabled={isRefreshing}
+              className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink/10 bg-surface px-3 py-1.5 text-xs font-bold text-ink/70 hover:text-ink hover:bg-surface/80 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={13} className={isRefreshing ? "animate-spin text-ink/40" : "text-ink/40"} />
+              <span>{isRefreshing ? "Syncing..." : "Sync Seating"}</span>
+            </button>
+            <Link
+              to="/settings"
+              className="tap inline-flex items-center gap-1 rounded-lg border border-ink/10 bg-surface px-3 py-1.5 text-xs font-bold text-ink/70 hover:text-ink hover:bg-surface/80 transition-colors"
+            >
+              <Settings size={13} className="text-ink/40" />
+              <span>Settings</span>
+            </Link>
+          </div>
         </section>
 
         {/* Content Section or Empty State */}
         {matchingEntries.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-ink/25 bg-white p-8 text-center shadow-soft space-y-2">
+          <div className="rounded-lg border border-dashed border-ink/25 bg-white p-8 text-center shadow-soft space-y-3">
+            <Armchair className="mx-auto text-ink/30" size={36} />
             <p className="font-black text-ink/70 text-base">
               No seating plan available for the selected academic year and semester.
             </p>
             <p className="text-xs text-ink/45 max-w-md mx-auto">
               Currently filtering for <b>{syncOptions.academicYear || "unspecified year"}</b> •{" "}
-              <b>{syncOptions.semesterId || "unspecified semester"}</b>. You can change your selection in{" "}
-              <Link to="/settings" className="font-bold text-mint hover:underline">
-                Login Settings
-              </Link>{" "}
-              or sync your ERP data.
+              <b>{syncOptions.semesterId || "unspecified semester"}</b>. You can synchronize your latest ERP seating
+              arrangements or modify your session in Settings.
             </p>
-            <div className="pt-2">
+            <div className="flex flex-wrap justify-center gap-2 pt-2">
+              <button
+                onClick={handleRefreshSeating}
+                disabled={isRefreshing}
+                className="tap inline-flex items-center gap-1.5 rounded-lg bg-mint px-4 py-2 text-xs font-black text-ink shadow-soft hover:bg-mint/90 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
+                <span>{isRefreshing ? "Syncing ERP..." : "Sync from ERP"}</span>
+              </button>
               <Link
                 to="/settings"
-                className="tap inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-xs font-black text-paper shadow-soft hover:bg-ink/90 transition-colors"
+                className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink/10 bg-surface px-4 py-2 text-xs font-bold text-ink shadow-soft hover:bg-surface/80 transition-colors"
               >
                 <Settings size={14} />
                 <span>Open Login Settings</span>
@@ -287,38 +364,85 @@ export default function SeatingPlan() {
           <section className="space-y-4">
             {groups.map((group) => (
               <div key={group.id} className="space-y-2.5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between border-b border-ink/5 pb-1.5">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-mint" />
-                    <h2 className="text-sm font-black text-ink">{group.label}</h2>
+                    <h2 className="text-sm font-black text-ink tracking-tight">{group.label}</h2>
                   </div>
-                  <span className="rounded-full bg-surface px-2.5 py-1 text-[10px] font-black text-ink/55">
+                  <span className="rounded-full bg-surface px-2.5 py-0.5 text-[10px] font-black text-ink/60">
                     {group.items.length} exam{group.items.length === 1 ? "" : "s"}
                   </span>
                 </div>
-                {group.items.map((entry, index) => {
-                  const code = entry.courseCode || entry.code || entry.subjectCode;
-                  const mappedSubject = code ? courseMap[code.trim().toUpperCase()] : null;
-                  const title = mappedSubject || entry.subject || entry.course || entry.title || "Seating";
-                  const meta = buildMeta(entry);
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {group.items.map((entry, index) => {
+                    const code = entry.courseCode || entry.code || entry.subjectCode;
+                    const mappedSubject = code ? courseMap[code.trim().toUpperCase()] : null;
+                    const title = mappedSubject || entry.subject || entry.course || entry.title || "Seating";
+                    const examTypeLabel = entry.examType || "EXAM";
 
-                  return (
-                    <article
-                      key={`${group.id}-${code || title}-${index}`}
-                      className="rounded-lg border border-ink/10 bg-white p-3 shadow-soft"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-ink/40">
-                            {code || "Course"}
-                          </p>
-                          <p className="mt-0.5 truncate text-sm font-black text-ink">{title}</p>
+                    return (
+                      <article
+                        key={`${group.id}-${code || title}-${index}`}
+                        className="rounded-xl border border-ink/10 bg-white p-3.5 shadow-soft transition-all hover:border-ink/20"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-ink/40">
+                                {code || "Course"}
+                              </span>
+                              {examTypeLabel && (
+                                <span className="rounded bg-surface px-1.5 py-0.5 text-[9px] font-bold uppercase text-ink/60">
+                                  {examTypeLabel}
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 font-black text-sm text-ink leading-tight">{title}</p>
+                          </div>
                         </div>
-                      </div>
-                      {meta ? <p className="mt-2 text-xs font-semibold text-ink/55">{meta}</p> : null}
-                    </article>
-                  );
-                })}
+
+                        {/* Room and Seat Highlights */}
+                        <div className="mt-2.5 flex flex-wrap items-center gap-2 pt-2 border-t border-ink/5 text-xs font-bold text-ink/80">
+                          {entry.room && (
+                            <span className="inline-flex items-center gap-1 rounded bg-surface px-2 py-0.5 font-bold text-ink">
+                              <MapPin size={12} className="text-ink/40" />
+                              <span>Room {entry.room}</span>
+                            </span>
+                          )}
+                          {entry.seat && (
+                            <span className="inline-flex items-center gap-1 rounded bg-surface px-2 py-0.5 font-bold text-ink">
+                              <Armchair size={12} className="text-ink/40" />
+                              <span>Seat {entry.seat}</span>
+                            </span>
+                          )}
+                          {entry.block && (
+                            <span className="inline-flex items-center gap-1 rounded bg-surface px-2 py-0.5 text-xs text-ink/60">
+                              <span>Block {entry.block}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Date & Time Slot */}
+                        {(entry.date || entry.time || entry.examSlot) && (
+                          <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] font-semibold text-ink/55">
+                            {entry.date && (
+                              <span className="inline-flex items-center gap-1">
+                                <Calendar size={11} className="text-ink/40" />
+                                <span>{entry.date}</span>
+                              </span>
+                            )}
+                            {(entry.time || entry.examSlot) && (
+                              <span className="inline-flex items-center gap-1">
+                                <Clock size={11} className="text-ink/40" />
+                                <span>{formatSlotText(entry.time || entry.examSlot)}</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
             ))}
           </section>

@@ -2032,27 +2032,37 @@ async def sync_seating_plan(payload: Dict[str, str], session: Optional[httpx.Asy
     session = session or await perform_login(payload)
     ensure_device_cookie(session)
     captcha_session = get_captcha_session(payload.get("captchaSessionId") or getattr(session, "captcha_session_id", "") or "")
-    dashboard_html = captcha_session.get("dashboard_html", "") if captcha_session else ""
-    
-    # 1. Determine primary seating URL
-    seating_url = await find_menu_link_by_keywords(session, ["seating plan", "exam seating", "seating", "room allotment", "hall ticket"])
-    if not seating_url:
-        seating_url = urljoin(LOGIN_URL, "index.php?r=examsection/exam-invigilator-student-room-allotment-info/stud_my_seating_plan")
-    
-    # Try requesting with per-page=100 first to get all entries in one page if supported
-    target_url = seating_url
-    sep = "&" if "?" in target_url else "?"
-    if "per-page=" not in target_url:
-        target_url = f"{target_url}{sep}per-page=100"
+
+    # 1. Discover all seating-related URLs from menu
+    seating_keywords = ["seating plan", "exam seating", "seating", "room allotment", "hall ticket", "hallticket", "end exam", "end exam seating", "end semester"]
+    discovered_menu_links = await find_all_menu_links_by_keywords(session, seating_keywords)
+
+    candidate_urls = []
+    for link in discovered_menu_links:
+        if link not in candidate_urls:
+            candidate_urls.append(link)
+
+    # 2. Add known candidate paths to ensure all examination types (In-Sem & End-Sem) are covered
+    for path in SEATING_CANDIDATE_PATHS:
+        u = urljoin(LOGIN_URL, path)
+        if u not in candidate_urls:
+            candidate_urls.append(u)
+
+    # Prepare starting URLs with per-page=100
+    to_visit = []
+    for u in candidate_urls:
+        sep = "&" if "?" in u else "?"
+        url_with_page = u if "per-page=" in u else f"{u}{sep}per-page=100"
+        if url_with_page not in to_visit:
+            to_visit.append(url_with_page)
 
     all_entries: List[Dict[str, object]] = []
     seen_entry_keys = set()
     visited_urls = set()
-    to_visit = [target_url]
     pages_fetched = 0
     last_html = ""
 
-    while to_visit and len(visited_urls) < 10:
+    while to_visit and len(visited_urls) < 15:
         current_url = to_visit.pop(0)
         if current_url in visited_urls:
             continue
@@ -2063,7 +2073,7 @@ async def sync_seating_plan(payload: Dict[str, str], session: Optional[httpx.Asy
             html = resp.text or ""
             last_html = html
             pages_fetched += 1
-            
+
             plans = parse_seating_tables(html, payload)
             for plan in plans:
                 key = (
@@ -2078,22 +2088,22 @@ async def sync_seating_plan(payload: Dict[str, str], session: Optional[httpx.Asy
                     seen_entry_keys.add(key)
                     all_entries.append(plan)
 
-            # Check pagination links in html: ul.pagination a[href]
+            # Check pagination and sub-tabs in html
             soup = BeautifulSoup(html, "html.parser")
-            for a in soup.select("ul.pagination a[href]"):
+            for a in soup.select("ul.pagination a[href], a.nav-link[href], .tab-content a[href], a[href*='seating'], a[href*='allotment'], a[href*='hallticket']"):
                 href = a.get("href")
-                if href and "page=" in href:
+                if href and ("page=" in href or "r=examsection" in href or "r=studentexam" in href):
                     next_full_url = urljoin(current_url, href)
                     if next_full_url not in visited_urls and next_full_url not in to_visit:
                         to_visit.append(next_full_url)
 
-            # Parallelize fetching of any remaining pagination pages
-            pending_pages = [url for url in to_visit if url not in visited_urls]
-            to_visit.clear()
-            if pending_pages:
-                for u in pending_pages:
-                    visited_urls.add(u)
+            # Fetch any pending discovered sub-pages
+            pending_pages = [url for url in to_visit if url not in visited_urls][:5]
+            for u in pending_pages:
+                to_visit.remove(u)
+                visited_urls.add(u)
 
+            if pending_pages:
                 async def fetch_seating_page(p_url: str) -> str:
                     try:
                         p_resp = await request_page(session, p_url, headers=build_headers(p_url))
@@ -2143,7 +2153,7 @@ async def sync_seating_plan(payload: Dict[str, str], session: Optional[httpx.Asy
 
     if DEBUG_ENABLED and last_html:
         debug_path = Path(__file__).resolve().parent / "last_seating_failure.html"
-        debug_path.write_text(f"<!-- URL: {target_url} -->\n{last_html}", encoding="utf8")
+        debug_path.write_text(f"<!-- URL: {candidate_urls[0] if candidate_urls else ''} -->\n{last_html}", encoding="utf8")
 
     print(f"[erp:seating] Fetch completed with 0 records in {duration:.3f}s", flush=True)
     return []
@@ -2378,6 +2388,52 @@ def search_menu_for_link(node, keywords: List[str]) -> str:
                 return link
 
     return ""
+
+
+def search_all_menu_links(node, keywords: List[str], found: Optional[List[str]] = None) -> List[str]:
+    if found is None:
+        found = []
+    if node is None:
+        return found
+
+    lowered_keywords = [keyword.lower() for keyword in keywords]
+
+    if isinstance(node, dict):
+        label = ""
+        for key in ["label", "title", "name", "text"]:
+            if key in node and isinstance(node[key], str):
+                label = node[key]
+                break
+
+        url_val = ""
+        for url_key in ["url", "href", "link", "route", "path"]:
+            if url_key in node and isinstance(node[url_key], str) and node[url_key].strip():
+                url_val = node[url_key].strip()
+                break
+
+        if url_val:
+            combined = f"{label} {url_val}".lower()
+            if any(keyword in combined for keyword in lowered_keywords):
+                full_url = urljoin(LOGIN_URL, url_val)
+                if full_url not in found:
+                    found.append(full_url)
+
+        for child_key in ["items", "children", "submenu", "nodes"]:
+            if child_key in node:
+                search_all_menu_links(node[child_key], keywords, found)
+
+    elif isinstance(node, list):
+        for item in node:
+            search_all_menu_links(item, keywords, found)
+
+    return found
+
+
+async def find_all_menu_links_by_keywords(session: httpx.AsyncClient, keywords: List[str]) -> List[str]:
+    data = await get_menu_data(session)
+    if not data:
+        return []
+    return search_all_menu_links(data, keywords)
 
 
 async def fetch_html_with_term_form(
@@ -2714,18 +2770,28 @@ def parse_seating_tables(html: str, payload: Dict[str, str]) -> List[Dict[str, o
         if not looks_like_seating_headers(headers):
             continue
 
-        parsed = parse_seating_rows(headers, rows, payload)
+        # Extract context from caption or preceding headings
+        context_text = ""
+        caption_tag = table.find("caption")
+        if caption_tag:
+            context_text += " " + caption_tag.get_text(" ")
+        prev = table.find_previous(["h1", "h2", "h3", "h4", "h5", "h6", "div", "p"])
+        if prev:
+            context_text += " " + prev.get_text(" ")
+
+        parsed = parse_seating_rows(headers, rows, payload, table_context=context_text)
         if parsed:
             all_results.extend(parsed)
 
     return all_results
 
 
-def parse_seating_rows(headers: List[str], rows: List[List[str]], payload: Dict[str, str]) -> List[Dict[str, object]]:
+def parse_seating_rows(headers: List[str], rows: List[List[str]], payload: Dict[str, str], table_context: str = "") -> List[Dict[str, object]]:
     ref_index = find_index(headers, ["ref", "refid", "ref id", "reference"])
     code_index = find_index(headers, ["coursecode", "course code", "code", "subjectcode", "subject code"])
     subject_index = find_index(headers, ["coursedesc", "course", "subject", "name", "title"])
-    exam_type_index = find_index(headers, ["exam type", "type"])
+    # Broadened candidates for exam type: handles 'Exam', 'Examination', 'Exam Name', 'SEE', 'Category', etc.
+    exam_type_index = find_index(headers, ["exam type", "examtype", "exam", "examination", "exam name", "exam event", "exam category", "exam desc", "type", "category", "assessment", "evaluation", "event"])
     exam_slot_index = find_index(headers, ["exam slot", "slot", "session"])
     student_id_index = find_index(headers, ["student university id", "student id", "university id", "student"])
     room_index = find_index(headers, ["room", "roomno", "room no", "hall", "hall no", "hallno"])
@@ -2745,17 +2811,51 @@ def parse_seating_rows(headers: List[str], rows: List[List[str]], payload: Dict[
         row_year = row_value(row, year_index)
         row_sem = row_value(row, semester_index)
 
-        # Explicit table column first; then derive strictly from exam date via academic calendar;
-        # only if date is also missing, fall back to payload.
         actual_year = row_year or derived_year or payload.get("academicYear")
         actual_sem = row_sem or derived_sem or payload.get("semesterId")
+
+        raw_exam_type = row_value(row, exam_type_index)
+        # Context-based fallback if exam type is missing from row
+        if not raw_exam_type and table_context:
+            ctx_lower = table_context.lower()
+            if any(kw in ctx_lower for kw in ["end sem", "endsem", "end semester", "semester end", "see", "end exam", "regular end", "main exam"]):
+                raw_exam_type = "End-Sem"
+            elif any(kw in ctx_lower for kw in ["insem 2", "in-sem 2", "insem-2", "in-2", "in2", "in sem 2"]):
+                raw_exam_type = "In-Sem 2"
+            elif any(kw in ctx_lower for kw in ["insem 1", "in-sem 1", "insem-1", "in-1", "in1", "in sem 1"]):
+                raw_exam_type = "In-Sem 1"
+            elif any(kw in ctx_lower for kw in ["in sem", "insem", "in-sem", "internal"]):
+                raw_exam_type = "In-Sem"
+
+        # Check subject cell text if exam type still empty
+        subj_val = row_value(row, subject_index) or row_value(row, 0)
+        if not raw_exam_type and subj_val:
+            s_lower = subj_val.lower()
+            if any(kw in s_lower for kw in ["end sem", "endsem", "end semester", "semester end", "see", "end exam"]):
+                raw_exam_type = "End-Sem"
+            elif any(kw in s_lower for kw in ["insem 2", "in-sem 2", "in-2"]):
+                raw_exam_type = "In-Sem 2"
+            elif any(kw in s_lower for kw in ["insem 1", "in-sem 1", "in-1"]):
+                raw_exam_type = "In-Sem 1"
+
+        # Normalize exam type labels for consistency across modules
+        if raw_exam_type:
+            tl = raw_exam_type.strip().lower()
+            if any(kw in tl for kw in ["end sem", "endsem", "end semester", "semester end", "see", "end exam", "regular end", "final exam", "main exam", "theory end", "lab end"]):
+                raw_exam_type = "End-Sem"
+            elif any(kw in tl for kw in ["insem 2", "in-sem 2", "insem-2", "in-2", "in2", "in sem 2", "in-sem ii", "insem ii"]):
+                raw_exam_type = "In-Sem 2"
+            elif any(kw in tl for kw in ["insem 1", "in-sem 1", "insem-1", "in-1", "in1", "in sem 1", "in-sem i", "insem i"]):
+                raw_exam_type = "In-Sem 1"
+            elif any(kw in tl for kw in ["in sem", "insem", "in-sem", "internal"]):
+                raw_exam_type = "In-Sem"
 
         entry = {
             "refId": row_value(row, ref_index),
             "studentId": row_value(row, student_id_index) or payload.get("erpId"),
             "courseCode": row_value(row, code_index),
             "subject": row_value(row, subject_index) or row_value(row, 0),
-            "examType": row_value(row, exam_type_index),
+            "examType": raw_exam_type,
             "examSlot": row_value(row, exam_slot_index),
             "room": row_value(row, room_index),
             "seat": row_value(row, seat_index),
@@ -3169,11 +3269,21 @@ def parse_table(table) -> tuple:
     if len(rows) < 2:
         return [], []
 
-    header_cells = rows[0].find_all(["th", "td"])
+    # If first row is a title/banner row (e.g. single cell spanning all columns), check next row
+    header_row_index = 0
+    for idx, r in enumerate(rows[:3]):
+        cells = r.find_all(["th", "td"])
+        if len(cells) == 1 and int(cells[0].get("colspan", 1)) > 1:
+            continue
+        if len(cells) >= 2:
+            header_row_index = idx
+            break
+
+    header_cells = rows[header_row_index].find_all(["th", "td"])
     headers = [clean_text(cell.get_text(" ")).lower() for cell in header_cells]
     data_rows = []
 
-    for row in rows[1:]:
+    for row in rows[header_row_index + 1:]:
         cells = [clean_text(cell.get_text(" ")) for cell in row.find_all(["td", "th"])]
         if not cells:
             continue
@@ -3183,15 +3293,16 @@ def parse_table(table) -> tuple:
 
 
 def looks_like_marks_headers(headers: List[str]) -> bool:
-    header_text = " ".join(headers)
+    header_text = " ".join(headers).lower()
     return any(keyword in header_text for keyword in ["insem", "internal", "sessional", "marks", "mid"])
 
 
 def looks_like_seating_headers(headers: List[str]) -> bool:
-    header_text = " ".join(headers)
-    return any(keyword in header_text for keyword in ["seat", "room", "hall", "exam"]) and any(
-        keyword in header_text for keyword in ["course", "subject"]
-    )
+    header_text = " ".join(headers).lower()
+    has_location = any(k in header_text for k in ["seat", "room", "hall", "bench", "desk", "allotment", "place", "block"])
+    has_subject = any(k in header_text for k in ["course", "subject", "sub", "code", "paper", "title"])
+    has_exam = any(k in header_text for k in ["exam", "session", "slot", "date", "time", "type", "schedule", "test"])
+    return (has_location and (has_subject or has_exam)) or (has_subject and has_exam and any(k in header_text for k in ["seat", "room", "hall", "bench", "desk"]))
 
 
 def filter_rows_by_term(rows: List[List[str]], headers: List[str], payload: Dict[str, str]) -> List[List[str]]:
@@ -3248,32 +3359,35 @@ def filter_seating_plan(
             continue
 
         date_val = str(entry.get("date") or "").strip()
+        exam_type_val = str(entry.get("examType") or entry.get("type") or "").strip()
 
-        # 2. Academic year match: if date is available, date-based academic calendar is authoritative
+        # 2. Academic year match
         if academic_year:
-            if date_val and parse_year_from_date(date_val) is not None and parse_month_from_date(date_val) is not None:
-                if not matches_academic_year_by_date(date_val, academic_year):
-                    continue
-            else:
-                entry_year = entry.get("academicYear")
-                if entry_year:
-                    if not matches_year(str(entry_year), academic_year):
-                        continue
-                else:
-                    continue
+            year_matched = False
+            entry_year = str(entry.get("academicYear") or "").strip()
+            if entry_year and matches_year(entry_year, academic_year):
+                year_matched = True
+            elif date_val and parse_year_from_date(date_val) is not None and parse_month_from_date(date_val) is not None:
+                year_matched = matches_academic_year_by_date(date_val, academic_year)
+            elif not entry_year and not date_val:
+                year_matched = True
 
-        # 3. Semester match: if date is available, date-based academic calendar is authoritative
+            if not year_matched:
+                continue
+
+        # 3. Semester match
         if semester_id:
-            if date_val and parse_month_from_date(date_val) is not None:
-                if not matches_semester_by_date(date_val, semester_id):
-                    continue
-            else:
-                entry_sem = entry.get("semester")
-                if entry_sem:
-                    if not matches_semester(str(entry_sem), semester_id):
-                        continue
-                else:
-                    continue
+            sem_matched = False
+            entry_sem = str(entry.get("semester") or "").strip()
+            if entry_sem and matches_semester(entry_sem, semester_id):
+                sem_matched = True
+            elif date_val and parse_month_from_date(date_val) is not None:
+                sem_matched = matches_semester_by_date(date_val, semester_id, exam_type_val)
+            elif not entry_sem and not date_val:
+                sem_matched = True
+
+            if not sem_matched:
+                continue
 
         filtered.append(entry)
     return filtered
@@ -3345,20 +3459,25 @@ def matches_academic_year_by_date(date_text: str, academic_year: Optional[str]) 
     return str(acad_start) in academic_year
 
 
-def matches_semester_by_date(date_text: str, semester: Optional[str]) -> bool:
+def matches_semester_by_date(date_text: str, semester: Optional[str], exam_type: str = "") -> bool:
     if not semester:
         return True
     month = parse_month_from_date(date_text)
     if month is None:
-        return False
+        return True  # If month cannot be parsed from date, do not reject based on date
     lowered = semester.lower().strip()
     is_odd = "odd" in lowered or bool(re.search(r"(?:sem|semester)[\s\-_]*(?:0?1\b|i\b)", lowered)) or lowered in ("1", "01")
     is_even = "even" in lowered or bool(re.search(r"(?:sem|semester)[\s\-_]*(?:0?2\b|ii\b)", lowered)) or lowered in ("2", "02")
     is_summer = "summer" in lowered or "term" in lowered
 
+    type_lowered = (exam_type or "").lower()
+    is_end_sem = any(kw in type_lowered for kw in ["end", "see", "final", "semester end", "regular end", "main"])
+
     if is_odd:
-        return month >= 7
+        # Odd Semester: July - December. End-Sem regular/lab exams frequently extend into January (month 1)
+        return month >= 7 or (month == 1 and is_end_sem)
     if is_even:
+        # Even Semester: January - June
         return month <= 6
     if is_summer:
         return 5 <= month <= 7
@@ -3374,15 +3493,41 @@ def parse_year_from_date(date_text: str) -> Optional[int]:
     return None
 
 
+MONTH_NAME_MAP = {
+    "jan": 1, "january": 1,
+    "feb": 2, "february": 2,
+    "mar": 3, "march": 3,
+    "apr": 4, "april": 4,
+    "may": 5,
+    "jun": 6, "june": 6,
+    "jul": 7, "july": 7,
+    "aug": 8, "august": 8,
+    "sep": 9, "september": 9, "sept": 9,
+    "oct": 10, "october": 10,
+    "nov": 11, "november": 11,
+    "dec": 12, "december": 12
+}
+
 def parse_month_from_date(date_text: str) -> Optional[int]:
     if not date_text:
         return None
-    match = re.search(r"(\d{4})[-/](\d{2})[-/](\d{2})", date_text)
-    if match:
-        return int(match.group(2))
-    match = re.search(r"(\d{2})[-/](\d{2})[-/](\d{4})", date_text)
-    if match:
-        return int(match.group(2))
+    text = str(date_text).strip().lower()
+    for name, m_num in MONTH_NAME_MAP.items():
+        if re.search(r"\b" + name + r"\b", text):
+            return m_num
+
+    m_iso = re.search(r"\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b", text)
+    if m_iso:
+        val = int(m_iso.group(2))
+        if 1 <= val <= 12:
+            return val
+
+    m_alt = re.search(r"\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b", text)
+    if m_alt:
+        val = int(m_alt.group(2))
+        if 1 <= val <= 12:
+            return val
+
     return None
 
 
