@@ -358,7 +358,6 @@ export default function Home() {
     } catch (err) {
       const errMsg = err.message || "Failed to sync assignments. The LMS might be down.";
       setLmsError(errMsg);
-      setMessage(errMsg);
       if (err.status === 401 && (!username || !password)) {
         handleLmsDisconnect();
       }

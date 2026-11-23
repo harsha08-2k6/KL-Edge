@@ -1604,7 +1604,7 @@ def sync_lms(body: LmsSyncRequest, authorization: Optional[str] = Header(None)):
             }
         except Exception as e:
             error_msg = str(e)
-            is_session_err = "expired" in error_msg.lower() or "session" in error_msg.lower()
+            is_session_err = any(k in error_msg.lower() for k in ["expired", "session", "redirect", "token", "login", "cookie"])
             if not is_session_err or not (body.username and body.password):
                 raise AppError(error_msg, 401 if is_session_err else 500)
 

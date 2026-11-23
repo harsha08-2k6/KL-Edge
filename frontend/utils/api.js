@@ -25,26 +25,37 @@ export async function fetchCaptcha() {
 }
 
 export async function syncAttendanceOnly({ erpId, password, captcha = "", academicYear, semesterId, captchaSessionId = "", forceRefresh = false }) {
-  const response = await fetch(`${API_BASE}/api/attendance/sync`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ erpId, password, captcha, academicYear, semesterId, captchaSessionId, forceRefresh })
-  });
-
-  let payload;
   try {
-    payload = await response.json();
-  } catch (e) {
-    throw new ApiError("Failed to parse attendance response from server", response.status);
-  }
+    const response = await fetch(`${API_BASE}/api/attendance/sync`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ erpId, password, captcha, academicYear, semesterId, captchaSessionId, forceRefresh })
+    });
 
-  if (!response.ok) {
-    throw new ApiError(payload?.error || "Attendance sync failed", response.status);
-  }
+    if (response.status === 404) {
+      return await syncAttendance({ erpId, password, captcha, academicYear, semesterId, captchaSessionId, forceRefresh });
+    }
 
-  return payload;
+    let payload;
+    try {
+      payload = await response.json();
+    } catch (e) {
+      throw new ApiError("Failed to parse attendance response from server", response.status);
+    }
+
+    if (!response.ok) {
+      throw new ApiError(payload?.error || "Attendance sync failed", response.status);
+    }
+
+    return payload;
+  } catch (err) {
+    if (err.status === 404) {
+      return await syncAttendance({ erpId, password, captcha, academicYear, semesterId, captchaSessionId, forceRefresh });
+    }
+    throw err;
+  }
 }
 
 export async function syncCgpaOnly({ erpId, password, captcha = "", captchaSessionId = "", forceRefresh = false }) {

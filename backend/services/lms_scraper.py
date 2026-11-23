@@ -78,16 +78,23 @@ def get_lms_assignments(session_token):
         # Fallback to old format where session_token is just the MoodleSession cookie
         cookies = {'MoodleSession': session_token}
         
+    session = requests.Session()
+    session.max_redirects = 4
     my_url = f"{LMS_BASE_URL}/my/"
 
     try:
-        response = requests.get(my_url, cookies=cookies, timeout=15)
+        response = session.get(my_url, cookies=cookies, timeout=6)
         response.raise_for_status()
+    except requests.exceptions.TooManyRedirects:
+        raise LmsError("LMS Session expired: redirect loop detected.")
     except Exception as e:
+        err_str = str(e).lower()
+        if "redirect" in err_str:
+            raise LmsError("LMS Session expired: redirect loop detected.")
         raise LmsError(f"Failed to fetch LMS dashboard: {str(e)}")
 
     # If we are redirected to login, the token expired
-    if "login/index.php" in response.url:
+    if "login" in response.url.lower():
         raise LmsError("LMS Session expired. Please disconnect and reconnect.")
 
     # Moodle normally loads assignments via AJAX in modern versions.
