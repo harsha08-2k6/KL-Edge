@@ -5,7 +5,7 @@ import { Layout } from "../components/Layout.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
 import { GitHubLogo, LinkedInLogo, SOCIAL_LINKS } from "../components/SocialLinks.jsx";
 import { Toast } from "../components/Toast.jsx";
-import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS, syncLMS } from "../utils/api.js";
+import { syncAttendance, syncAttendanceOnly, syncTimetableOnly, syncSeatingPlanOnly, syncCgpaOnly, connectLMS, fetchAssignments, disconnectLMS, syncLMS } from "../utils/api.js";
 import { readLocal, STORAGE_KEYS, writeLocal, removeLocal, mergeSeatingPlans } from "../utils/storage.js";
 import { processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
@@ -195,47 +195,87 @@ export default function Home() {
     setMessage("");
 
     try {
-      const payload = await syncAttendance({
+      const baseParams = {
         ...credentials,
         ...syncOptions,
         captcha: "",
         captchaSessionId,
         forceRefresh: isManual
-      });
+      };
 
-      if (payload.captchaSessionId) {
-        writeLocal(STORAGE_KEYS.captchaSessionId, payload.captchaSessionId);
-      }
+      // Dispatch all modules concurrently using Promise.allSettled for individual non-blocking loading
+      const attendancePromise = syncAttendanceOnly(baseParams)
+        .then((res) => {
+          if (res?.attendance?.length > 0) {
+            writeLocal(STORAGE_KEYS.attendance, res.attendance);
+            loadLocalData();
+          }
+          if (res?.captchaSessionId) {
+            writeLocal(STORAGE_KEYS.captchaSessionId, res.captchaSessionId);
+          }
+          return res;
+        });
 
-      let changes = [];
+      const timetablePromise = syncTimetableOnly(baseParams)
+        .then((res) => {
+          if (res?.grid?.length > 0) {
+            const timetableToSave = { ...res, academicYear: syncOptions.academicYear, semesterId: syncOptions.semesterId };
+            writeLocal(STORAGE_KEYS.timetable, timetableToSave);
+            writeLocal(STORAGE_KEYS.timetableStatus, {
+              status: res.status || "ok",
+              source: res.source || (res.cached ? "cache" : "live"),
+              refreshedAt: res.refreshedAt || new Date().toISOString(),
+              cachedAt: res.cachedAt || null,
+              mappingsCount: (res.mappings || []).length,
+              message: res.message || ""
+            });
+            loadLocalData();
+          }
+          return res;
+        });
+
+      const seatingPromise = syncSeatingPlanOnly(baseParams)
+        .then((res) => {
+          if (res?.seatingPlan?.length > 0) {
+            const existingPlans = readLocal(STORAGE_KEYS.seatingPlan, []);
+            writeLocal(STORAGE_KEYS.seatingPlan, mergeSeatingPlans(existingPlans, res.seatingPlan));
+          }
+          return res;
+        });
+
+      const cgpaPromise = syncCgpaOnly(baseParams)
+        .then((res) => {
+          if (res?.cgpa && (res.cgpa.value || (res.cgpa.semesters && res.cgpa.semesters.length > 0))) {
+            writeLocal(STORAGE_KEYS.cgpa, res.cgpa);
+          }
+          return res;
+        });
+
+      const [attOutcome, ttOutcome, seatOutcome] = await Promise.allSettled([
+        attendancePromise,
+        timetablePromise,
+        seatingPromise,
+        cgpaPromise
+      ]);
+
+      const nowIso = new Date().toISOString();
+      writeLocal(STORAGE_KEYS.lastUpdated, nowIso);
+
+      // Check changes for notifications safely
       try {
-        changes = processSyncUpdates(payload);
+        const payloadForChanges = {
+          attendance: attOutcome.status === "fulfilled" ? attOutcome.value?.attendance : [],
+          timetable: ttOutcome.status === "fulfilled" ? ttOutcome.value : {},
+          seatingPlan: seatOutcome.status === "fulfilled" ? seatOutcome.value?.seatingPlan : []
+        };
+        const changes = processSyncUpdates(payloadForChanges);
+        if (changes && changes.length > 0) {
+          setSyncChanges(changes);
+          setShowChangesPopup(true);
+        }
       } catch (err) {
         console.warn("[sync:updates] Failed to detect changes:", err);
       }
-      if (changes && changes.length > 0) {
-        setSyncChanges(changes);
-        setShowChangesPopup(true);
-      }
-      if (payload.attendance && payload.attendance.length > 0) writeLocal(STORAGE_KEYS.attendance, payload.attendance);
-      if (payload.timetable && payload.timetable.grid && payload.timetable.grid.length > 0) {
-        const timetableToSave = { ...payload.timetable, academicYear: syncOptions.academicYear, semesterId: syncOptions.semesterId };
-        writeLocal(STORAGE_KEYS.timetable, timetableToSave);
-        writeLocal(STORAGE_KEYS.timetableStatus, {
-          status: payload.timetable.status || "ok",
-          source: payload.timetable.source || (payload.timetable.cached ? "cache" : "live"),
-          refreshedAt: payload.timetable.refreshedAt || payload.syncedAt,
-          cachedAt: payload.timetable.cachedAt || null,
-          mappingsCount: (payload.timetable.mappings || []).length,
-          message: payload.timetable.message || ""
-        });
-      }
-      if (payload.seatingPlan && payload.seatingPlan.length > 0) {
-        const existingPlans = readLocal(STORAGE_KEYS.seatingPlan, []);
-        writeLocal(STORAGE_KEYS.seatingPlan, mergeSeatingPlans(existingPlans, payload.seatingPlan));
-      }
-      if (payload.cgpa && (payload.cgpa.value || (payload.cgpa.semesters && payload.cgpa.semesters.length > 0))) writeLocal(STORAGE_KEYS.cgpa, payload.cgpa);
-      writeLocal(STORAGE_KEYS.lastUpdated, payload.syncedAt);
 
       loadLocalData();
       setSyncStatus("success");
@@ -244,8 +284,6 @@ export default function Home() {
         setSuccessMessage("Resync successful! ✅");
         setTimeout(() => setSuccessMessage(""), 3000);
       }
-
-
     } catch (error) {
       console.error("Sync failed:", error);
       setSyncStatus("failed");

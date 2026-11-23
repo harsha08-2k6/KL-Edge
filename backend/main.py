@@ -1336,6 +1336,78 @@ async def sync_attendance_route(body: SyncRequest):
     return result
 
 
+@app.post("/api/attendance/sync")
+async def sync_attendance_only_route(body: SyncRequest):
+    if not all([body.erpId, body.password, body.academicYear, body.semesterId]):
+        raise AppError("ERP ID, password, academic year, and semester are required.", 400)
+
+    session_id = body.captchaSessionId
+    if not session_id:
+        try:
+            captcha_res = await create_captcha_session()
+            session_id = captcha_res["sessionId"]
+        except Exception as exc:
+            raise AppError(f"Failed to initialize CAPTCHA session: {str(exc)}", 502)
+
+    payload = body.model_dump()
+    payload["captchaSessionId"] = session_id
+
+    session = await perform_login(payload)
+    attendance = await sync_attendance(payload, session=session)
+
+    now_iso = f"{datetime.utcnow().isoformat()}Z"
+    return {
+        "attendance": attendance or [],
+        "academicYear": body.academicYear,
+        "semesterId": body.semesterId,
+        "count": len(attendance or []),
+        "status": "ok",
+        "syncedAt": now_iso,
+        "captchaSessionId": session_id
+    }
+
+
+@app.post("/api/cgpa/sync")
+async def sync_cgpa_only_route(body: SyncRequest):
+    if not all([body.erpId, body.password]):
+        raise AppError("ERP ID and password are required.", 400)
+
+    session_id = body.captchaSessionId
+    if not session_id:
+        try:
+            captcha_res = await create_captcha_session()
+            session_id = captcha_res["sessionId"]
+        except Exception as exc:
+            raise AppError(f"Failed to initialize CAPTCHA session: {str(exc)}", 502)
+
+    payload = body.model_dump()
+    payload["captchaSessionId"] = session_id
+
+    if not body.forceRefresh:
+        cached = get_cached_cgpa(body.erpId)
+        if cached and (cached.get("value") is not None or cached.get("subjects") or cached.get("semesters")):
+            return {"cgpa": cached, "status": "ok", "cached": True}
+
+    session = await perform_login(payload)
+    cgpa = await sync_cgpa(payload, session=session)
+    if cgpa and (cgpa.get("value") is not None or cgpa.get("subjects") or cgpa.get("semesters")):
+        set_cached_cgpa(body.erpId, cgpa)
+
+    return {
+        "cgpa": cgpa or {},
+        "status": "ok",
+        "syncedAt": f"{datetime.utcnow().isoformat()}Z"
+    }
+
+
+@app.get("/api/cgpa")
+async def get_cgpa_route(erpId: str):
+    if not erpId:
+        raise HTTPException(status_code=400, detail="erpId is required.")
+    cached = get_cached_cgpa(erpId)
+    return {"cgpa": cached or {}, "status": "ok"}
+
+
 @app.get("/api/timetable")
 async def get_timetable_route(erpId: str, academicYear: str, semesterId: str):
     t_start = time.perf_counter()

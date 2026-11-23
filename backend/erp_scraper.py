@@ -2103,9 +2103,9 @@ async def sync_seating_plan(payload: Dict[str, str], session: Optional[httpx.Asy
                 elif val and str(prev.get(field)).strip().lower() in ["na", "-", ""]:
                     prev[field] = val
 
-    while to_visit and len(visited_urls) < 30:
+    while to_visit and len(visited_urls) < 6:
         batch = []
-        while to_visit and len(batch) < 4 and (len(visited_urls) + len(batch)) < 30:
+        while to_visit and len(batch) < 4 and (len(visited_urls) + len(batch)) < 6:
             u = to_visit.pop(0)
             if u not in visited_urls and u not in batch:
                 batch.append(u)
@@ -2139,14 +2139,18 @@ async def sync_seating_plan(payload: Dict[str, str], session: Optional[httpx.Asy
                 for plan in plans:
                     record_seating_entry(plan)
 
-                # Check pagination and sub-tabs in html
+                # Check pagination in html
                 soup = BeautifulSoup(page_html, "html.parser")
-                for a in soup.select("ul.pagination a[href], a.nav-link[href], .tab-content a[href], a[href*='seating'], a[href*='allotment'], a[href*='hallticket']"):
+                for a in soup.select("ul.pagination a[href]"):
                     href = a.get("href")
-                    if href and ("page=" in href or "r=examsection" in href or "r=studentexam" in href):
+                    if href and ("page=" in href or "r=examsection" in href):
                         next_full_url = urljoin(page_url, href)
                         if next_full_url not in visited_urls and next_full_url not in to_visit and next_full_url not in batch:
                             to_visit.append(next_full_url)
+
+        # If records have been found, focus strictly on pagination of the working allotment page
+        if entries_map:
+            to_visit = [u for u in to_visit if "page=" in u]
 
     all_entries = list(entries_map.values())
 
