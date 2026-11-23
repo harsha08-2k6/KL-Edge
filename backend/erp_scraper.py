@@ -2056,88 +2056,99 @@ async def sync_seating_plan(payload: Dict[str, str], session: Optional[httpx.Asy
         if url_with_page not in to_visit:
             to_visit.append(url_with_page)
 
-    all_entries: List[Dict[str, object]] = []
-    seen_entry_keys = set()
+    entries_map: Dict[str, Dict[str, object]] = {}
     visited_urls = set()
     pages_fetched = 0
     last_html = ""
 
-    while to_visit and len(visited_urls) < 15:
-        current_url = to_visit.pop(0)
-        if current_url in visited_urls:
-            continue
-        visited_urls.add(current_url)
+    def get_seating_canonical_key(plan: Dict[str, object]) -> str:
+        code = str(plan.get("courseCode") or plan.get("code") or "").strip().upper()
+        raw_type = str(plan.get("examType") or plan.get("type") or "").strip().lower()
+        if any(k in raw_type for k in ["end", "see", "final", "semester exam"]):
+            exam_type = "ENDSEM"
+        elif "in" in raw_type and ("2" in raw_type or "ii" in raw_type):
+            exam_type = "INSEM2"
+        elif "in" in raw_type and ("1" in raw_type or "i" in raw_type):
+            exam_type = "INSEM1"
+        elif "in" in raw_type or "internal" in raw_type:
+            exam_type = "INSEM"
+        else:
+            exam_type = raw_type.upper()
 
-        try:
-            resp = await request_page(session, current_url, headers=build_headers(current_url))
-            html = resp.text or ""
-            last_html = html
-            pages_fetched += 1
+        date_val = str(plan.get("date") or "").strip()
+        raw_slot = str(plan.get("examSlot") or plan.get("time") or "").strip().lower()
+        if raw_slot in ["fn", "forenoon", "am", "morning"]:
+            slot = "FN"
+        elif raw_slot in ["an", "afternoon", "pm", "evening"]:
+            slot = "AN"
+        else:
+            slot = raw_slot.upper()
 
-            plans = parse_seating_tables(html, payload)
-            for plan in plans:
-                key = (
-                    str(plan.get("courseCode") or "").strip().upper(),
-                    str(plan.get("examType") or "").strip().lower(),
-                    str(plan.get("date") or "").strip(),
-                    str(plan.get("examSlot") or plan.get("time") or "").strip().upper(),
-                    str(plan.get("room") or "").strip().upper(),
-                    str(plan.get("seat") or "").strip().upper()
-                )
-                if key not in seen_entry_keys:
-                    seen_entry_keys.add(key)
-                    all_entries.append(plan)
+        if code and date_val:
+            return f"{code}_{exam_type}_{date_val}_{slot}"
+        return f"{code}_{exam_type}_{date_val}_{slot}_{str(plan.get('room') or '').upper()}"
 
-            # Check pagination and sub-tabs in html
-            soup = BeautifulSoup(html, "html.parser")
-            for a in soup.select("ul.pagination a[href], a.nav-link[href], .tab-content a[href], a[href*='seating'], a[href*='allotment'], a[href*='hallticket']"):
-                href = a.get("href")
-                if href and ("page=" in href or "r=examsection" in href or "r=studentexam" in href):
-                    next_full_url = urljoin(current_url, href)
-                    if next_full_url not in visited_urls and next_full_url not in to_visit:
-                        to_visit.append(next_full_url)
+    def record_seating_entry(plan: Dict[str, object]):
+        k = get_seating_canonical_key(plan)
+        if not k:
+            return
+        if k not in entries_map:
+            entries_map[k] = dict(plan)
+        else:
+            prev = entries_map[k]
+            for field in ["room", "seat", "block", "date", "time", "examSlot", "courseCode", "subject", "refId", "academicYear", "semester"]:
+                val = plan.get(field)
+                if val and not prev.get(field):
+                    prev[field] = val
+                elif val and str(prev.get(field)).strip().lower() in ["na", "-", ""]:
+                    prev[field] = val
 
-            # Fetch any pending discovered sub-pages
-            pending_pages = [url for url in to_visit if url not in visited_urls][:5]
-            for u in pending_pages:
-                to_visit.remove(u)
-                visited_urls.add(u)
+    while to_visit and len(visited_urls) < 30:
+        batch = []
+        while to_visit and len(batch) < 4 and (len(visited_urls) + len(batch)) < 30:
+            u = to_visit.pop(0)
+            if u not in visited_urls and u not in batch:
+                batch.append(u)
 
-            if pending_pages:
-                async def fetch_seating_page(p_url: str) -> str:
-                    try:
-                        p_resp = await request_page(session, p_url, headers=build_headers(p_url))
-                        return p_resp.text or ""
-                    except Exception as err:
-                        if DEBUG_ENABLED:
-                            print(f"[erp:seating] Parallel page fetch error for {p_url}: {err}", flush=True)
-                        return ""
+        if not batch:
+            break
 
-                page_htmls = await asyncio.gather(
-                    *[fetch_seating_page(u) for u in pending_pages],
-                    return_exceptions=True
-                )
+        for u in batch:
+            visited_urls.add(u)
 
-                for p_html in page_htmls:
-                    if isinstance(p_html, str) and p_html:
-                        pages_fetched += 1
-                        sub_plans = parse_seating_tables(p_html, payload)
-                        for plan in sub_plans:
-                            key = (
-                                str(plan.get("courseCode") or "").strip().upper(),
-                                str(plan.get("examType") or "").strip().lower(),
-                                str(plan.get("date") or "").strip(),
-                                str(plan.get("examSlot") or plan.get("time") or "").strip().upper(),
-                                str(plan.get("room") or "").strip().upper(),
-                                str(plan.get("seat") or "").strip().upper()
-                            )
-                            if key not in seen_entry_keys:
-                                seen_entry_keys.add(key)
-                                all_entries.append(plan)
-        except Exception as exc:
-            if DEBUG_ENABLED:
-                print(f"[erp:seating] Page fetch error for {current_url}: {exc}", flush=True)
-            continue
+        async def fetch_one(url: str):
+            try:
+                r = await request_page(session, url, headers=build_headers(url))
+                return url, (r.text or "")
+            except Exception as err:
+                if DEBUG_ENABLED:
+                    print(f"[erp:seating] Page fetch error for {url}: {err}", flush=True)
+                return url, ""
+
+        results = await asyncio.gather(*[fetch_one(u) for u in batch], return_exceptions=True)
+
+        for res in results:
+            if isinstance(res, tuple):
+                page_url, page_html = res
+                if not page_html:
+                    continue
+                pages_fetched += 1
+                last_html = page_html
+
+                plans = parse_seating_tables(page_html, payload)
+                for plan in plans:
+                    record_seating_entry(plan)
+
+                # Check pagination and sub-tabs in html
+                soup = BeautifulSoup(page_html, "html.parser")
+                for a in soup.select("ul.pagination a[href], a.nav-link[href], .tab-content a[href], a[href*='seating'], a[href*='allotment'], a[href*='hallticket']"):
+                    href = a.get("href")
+                    if href and ("page=" in href or "r=examsection" in href or "r=studentexam" in href):
+                        next_full_url = urljoin(page_url, href)
+                        if next_full_url not in visited_urls and next_full_url not in to_visit and next_full_url not in batch:
+                            to_visit.append(next_full_url)
+
+    all_entries = list(entries_map.values())
 
     duration = time.time() - start_time
     if all_entries:

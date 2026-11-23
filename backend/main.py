@@ -198,6 +198,61 @@ def set_cached_timetable(erp_id: str, academic_year: str, semester_id: str, data
     set_cached_json(key, to_store)
 
 
+def merge_seating_records(existing_records: list, new_records: list) -> list:
+    def get_key(p):
+        if not p:
+            return ""
+        code = str(p.get("courseCode") or p.get("code") or "").strip().upper()
+        raw_type = str(p.get("examType") or p.get("type") or "").strip().lower()
+        if any(k in raw_type for k in ["end", "see", "final", "semester exam"]):
+            exam_type = "ENDSEM"
+        elif "in" in raw_type and ("2" in raw_type or "ii" in raw_type):
+            exam_type = "INSEM2"
+        elif "in" in raw_type and ("1" in raw_type or "i" in raw_type):
+            exam_type = "INSEM1"
+        elif "in" in raw_type or "internal" in raw_type:
+            exam_type = "INSEM"
+        else:
+            exam_type = raw_type.upper()
+
+        date_val = str(p.get("date") or "").strip()
+        raw_slot = str(p.get("examSlot") or p.get("time") or "").strip().lower()
+        if raw_slot in ["fn", "forenoon", "am", "morning"]:
+            slot = "FN"
+        elif raw_slot in ["an", "afternoon", "pm", "evening"]:
+            slot = "AN"
+        else:
+            slot = raw_slot.upper()
+
+        if code and date_val:
+            return f"{code}_{exam_type}_{date_val}_{slot}"
+        return f"{code}_{exam_type}_{date_val}_{slot}_{str(p.get('room') or '').upper()}"
+
+    merged_map = {}
+    for p in (existing_records or []) + (new_records or []):
+        if not p:
+            continue
+        k = get_key(p)
+        if not k:
+            continue
+        if k in merged_map:
+            prev = merged_map[k]
+            merged_item = dict(prev)
+            for field in ["room", "seat", "block", "date", "time", "examSlot", "courseCode", "subject", "refId", "academicYear", "semester"]:
+                val = p.get(field)
+                if val and not merged_item.get(field):
+                    merged_item[field] = val
+                elif val:
+                    merged_item[field] = val
+            if "end" in str(prev.get("examType", "")).lower() or "end" in str(p.get("examType", "")).lower():
+                merged_item["examType"] = "End-Sem"
+            merged_map[k] = merged_item
+        else:
+            merged_map[k] = dict(p)
+
+    return list(merged_map.values())
+
+
 def make_seating_cache_key(erp_id: str, academic_year: str, semester_id: str) -> str:
     c_id = (erp_id or "").strip().lower()
     c_year = (academic_year or "").strip().lower().replace(" ", "")
@@ -340,17 +395,8 @@ async def run_full_sync(payload: dict) -> dict:
         seat_res = results_map.get("seating-plan")
         seating_plan, seat_err, seat_dur = (None, str(seat_res), 0.0) if isinstance(seat_res, Exception) else (seat_res or (None, None, 0.0))
         if seating_plan is not None:
-            # Merge with existing cache to preserve all exam history (In-Sem 1, In-Sem 2, End-Sem)
-            merged_map = {}
-            for p in (cached_seating or []):
-                if p:
-                    k = (str(p.get("courseCode") or "").strip().upper(), str(p.get("examType") or "").strip().lower(), str(p.get("date") or "").strip(), str(p.get("room") or "").strip().upper(), str(p.get("seat") or "").strip().upper())
-                    merged_map[k] = p
-            for p in seating_plan:
-                if p:
-                    k = (str(p.get("courseCode") or "").strip().upper(), str(p.get("examType") or "").strip().lower(), str(p.get("date") or "").strip(), str(p.get("room") or "").strip().upper(), str(p.get("seat") or "").strip().upper())
-                    merged_map[k] = p
-            seating_plan = list(merged_map.values())
+            # Merge with existing cache cleanly without duplicates
+            seating_plan = merge_seating_records(cached_seating or [], seating_plan)
             set_cached_seating_plan(erp_id, academic_year, semester_id, seating_plan)
     else:
         seating_plan, seat_err, seat_dur = (cached_seating, None, 0.0)
@@ -1396,17 +1442,7 @@ async def sync_seating_plan_only_route(body: SyncRequest):
     # Merge incoming plans with existing cached plans to ensure all semesters/exams are preserved
     existing_cached = get_cached_seating_plan(body.erpId, body.academicYear, body.semesterId) or []
 
-    merged_map = {}
-    for p in existing_cached:
-        if p:
-            k = (str(p.get("courseCode") or "").strip().upper(), str(p.get("examType") or "").strip().lower(), str(p.get("date") or "").strip(), str(p.get("room") or "").strip().upper(), str(p.get("seat") or "").strip().upper())
-            merged_map[k] = p
-    for p in (plans or []):
-        if p:
-            k = (str(p.get("courseCode") or "").strip().upper(), str(p.get("examType") or "").strip().lower(), str(p.get("date") or "").strip(), str(p.get("room") or "").strip().upper(), str(p.get("seat") or "").strip().upper())
-            merged_map[k] = p
-
-    merged_plans = list(merged_map.values())
+    merged_plans = merge_seating_records(existing_cached, plans or [])
     set_cached_seating_plan(body.erpId, body.academicYear, body.semesterId, merged_plans)
 
     return {

@@ -34,8 +34,19 @@ export function processSyncUpdates(payload) {
     const customSubjectNames = readLocal("kl-edge.subjectNames", {});
     const subjectMap = buildSubjectNameMap(attendance, customSubjectNames);
 
-    const timetableChanges = detectTimetableChanges(oldTimetable, newTimetable, subjectMap);
-    const seatingChanges = detectSeatingChanges(oldSeatingPlan, newSeatingPlan);
+    let timetableChanges = [];
+    try {
+      timetableChanges = detectTimetableChanges(oldTimetable, newTimetable, subjectMap);
+    } catch (e) {
+      console.warn("[notifications] detectTimetableChanges error:", e);
+    }
+
+    let seatingChanges = [];
+    try {
+      seatingChanges = detectSeatingChanges(oldSeatingPlan, newSeatingPlan);
+    } catch (e) {
+      console.warn("[notifications] detectSeatingChanges error:", e);
+    }
 
     if (timetableChanges.length === 0 && seatingChanges.length === 0) {
       return [];

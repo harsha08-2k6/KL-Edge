@@ -9,7 +9,7 @@ import { syncAttendance, connectLMS, fetchAssignments, disconnectLMS, syncLMS } 
 import { readLocal, STORAGE_KEYS, writeLocal, removeLocal, mergeSeatingPlans } from "../utils/storage.js";
 import { processSyncUpdates, formatNotificationDay, getSlotTimeText } from "../utils/notifications.js";
 import { getCurrentAndNextClass } from "../utils/timetable.js";
-import { logVisit, getStreakStats, fetchVisits, syncLeaderboard } from "../utils/streak.js";
+import { logVisit, getStreakStats, fetchVisits, syncLeaderboard, getTodayStr } from "../utils/streak.js";
 import MovingEyes from "../components/MovingEyes.jsx";
 
 function getRelativeTimeString(timestamp) {
@@ -53,32 +53,42 @@ export default function Home() {
     
     const prevStreakCount = readLocal("streak_last_count", 0);
     
-    await logVisit(erpId);
-    const visits = await fetchVisits(erpId);
-    
-    const currentStats = getStreakStats(visits);
-    setStreakStats(currentStats);
-    
-    const today = new Date().toDateString();
-    const lastShownDate = readLocal("streak_last_shown_date", "");
-    
-    if (lastShownDate !== today) {
-      if (currentStats.streak === 1 && prevStreakCount > 1) {
-        setStreakMessage(`🧊 Oh no! You lost your ${prevStreakCount}-day streak. Time to start a new one!`);
-        setShowStreakWelcome(true);
-        setTimeout(() => setShowStreakWelcome(false), 4000);
-      } else if (currentStats.streak > 0) {
-        setStreakMessage(`🔥 Welcome back! You are on a ${currentStats.streak} day streak!`);
-        setShowStreakWelcome(true);
-        setTimeout(() => setShowStreakWelcome(false), 2500);
+    try {
+      // Load logVisit and fetchVisits concurrently using Promise.all
+      const [, visits] = await Promise.all([
+        logVisit(erpId),
+        fetchVisits(erpId)
+      ]);
+      
+      const todayStr = getTodayStr();
+      const visitList = Array.isArray(visits) ? visits : [];
+      const combinedVisits = visitList.includes(todayStr) ? visitList : [...visitList, todayStr];
+      const currentStats = getStreakStats(combinedVisits);
+      setStreakStats(currentStats);
+      
+      const today = new Date().toDateString();
+      const lastShownDate = readLocal("streak_last_shown_date", "");
+      
+      if (lastShownDate !== today) {
+        if (currentStats.streak === 1 && prevStreakCount > 1) {
+          setStreakMessage(`🧊 Oh no! You lost your ${prevStreakCount}-day streak. Time to start a new one!`);
+          setShowStreakWelcome(true);
+          setTimeout(() => setShowStreakWelcome(false), 4000);
+        } else if (currentStats.streak > 0) {
+          setStreakMessage(`🔥 Welcome back! You are on a ${currentStats.streak} day streak!`);
+          setShowStreakWelcome(true);
+          setTimeout(() => setShowStreakWelcome(false), 2500);
+        }
+        writeLocal("streak_last_shown_date", today);
       }
-      writeLocal("streak_last_shown_date", today);
+      
+      writeLocal("streak_last_count", currentStats.streak);
+      
+      // Fire-and-forget leaderboard sync in the background so it doesn't block the UI
+      void syncLeaderboard(erpId, currentStats, true).catch(() => {});
+    } catch (err) {
+      console.warn("[streak] updateStreak failed:", err);
     }
-    
-    writeLocal("streak_last_count", currentStats.streak);
-    
-    // Make sure we also sync this to the backend so the DB is updated without visiting the streak page
-    await syncLeaderboard(erpId, currentStats, true);
   }, []);
 
   useEffect(() => {
@@ -365,6 +375,18 @@ export default function Home() {
     }
   }, [performBackgroundSync]);
 
+  const handleFullResync = useCallback(async () => {
+    const lmsTok = readLocal(STORAGE_KEYS.lmsToken, null);
+    const tasks = [
+      performBackgroundSync(true),
+      updateStreak()
+    ];
+    if (lmsTok) {
+      tasks.push(handleLmsSync(lmsTok));
+    }
+    await Promise.allSettled(tasks);
+  }, [performBackgroundSync, updateStreak, handleLmsSync]);
+
   useEffect(() => {
     loadLocalData();
   }, [loadLocalData]);
@@ -373,11 +395,14 @@ export default function Home() {
     let timeout;
     if (hasCredentials) {
       timeout = setTimeout(() => {
-        void checkFreshnessAndSync(true);
+        Promise.allSettled([
+          checkFreshnessAndSync(true),
+          updateStreak()
+        ]).catch(() => {});
       }, 100);
     }
     return () => clearTimeout(timeout);
-  }, [hasCredentials, checkFreshnessAndSync]);
+  }, [hasCredentials, checkFreshnessAndSync, updateStreak]);
 
   useEffect(() => {
     let timeoutId;
@@ -497,9 +522,7 @@ export default function Home() {
             <Settings size={18} className="md:h-5 md:w-5" aria-hidden="true" />
           </Link>
           <button
-            onClick={() => {
-              performBackgroundSync(true);
-            }}
+            onClick={handleFullResync}
             disabled={syncBusy || lmsBusy}
             className="tap inline-flex h-10 md:h-11 items-center gap-1.5 md:gap-2 rounded-lg bg-ink px-3 md:px-5 text-sm md:text-base font-bold text-paper shadow-soft transition-transform hover:-translate-y-0.5 active:translate-y-0"
           >

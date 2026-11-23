@@ -261,7 +261,8 @@ export function parseClassDetails(value = "") {
 }
 
 export function detectTimetableChanges(oldTimetable, newTimetable, subjectMap = {}) {
-  const oldGrid = oldTimetable?.grid;
+  try {
+    const oldGrid = oldTimetable?.grid;
   const newGrid = newTimetable?.grid;
   if (!Array.isArray(oldGrid) || !oldGrid.length || !Array.isArray(newGrid) || !newGrid.length) {
     return [];
@@ -401,7 +402,11 @@ export function detectTimetableChanges(oldTimetable, newTimetable, subjectMap = 
     });
   });
 
-  return allChanges;
+    return allChanges;
+  } catch (err) {
+    console.warn("[timetable:changes] Error detecting timetable changes:", err);
+    return [];
+  }
 }
 
 export function detectRoomChanges(oldTimetable, newTimetable) {
@@ -523,7 +528,8 @@ function isSlotValue(value) {
 
 export function buildWeekSchedule(grid) {
   const schedule = Object.fromEntries(dayOrder.map((day) => [day, []]));
-  if (!Array.isArray(grid) || !grid.length) {
+  try {
+    if (!Array.isArray(grid) || !grid.length) {
     return { schedule, slots: [], mode: "empty" };
   }
 
@@ -596,7 +602,11 @@ export function buildWeekSchedule(grid) {
     return { schedule, slots, mode: "row" };
   }
 
-  return { schedule, slots: [], mode: "unknown" };
+    return { schedule, slots: [], mode: "unknown" };
+  } catch (err) {
+    console.warn("[timetable:build] buildWeekSchedule failed:", err);
+    return { schedule, slots: [], mode: "error" };
+  }
 }
 
 export function getTodayRows(grid, today) {

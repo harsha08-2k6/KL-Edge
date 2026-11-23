@@ -169,7 +169,7 @@ export default function SeatingPlan() {
 
     if (!targetYear || !targetSem) return [];
 
-    return entries.filter((entry) => {
+    const filtered = entries.filter((entry) => {
       // 1. Student association check
       if (!matchesStudent(entry, studentId)) return false;
       // 2. Academic Year filter
@@ -178,6 +178,9 @@ export default function SeatingPlan() {
       if (!matchesSemester(entry, targetSem)) return false;
       return true;
     });
+
+    // Deduplicate matching entries defensively to ensure no duplicate cards appear
+    return mergeSeatingPlans([], filtered);
   }, [entries, syncOptions.academicYear, syncOptions.semesterId, credentials.erpId]);
 
   // Group all available exam seating plans (INSEM 01, INSEM 02, and ENDSEM) within the selected session
@@ -233,10 +236,36 @@ export default function SeatingPlan() {
       }
     });
 
+    const deduplicateGroupItems = (items) => {
+      const map = new Map();
+      items.forEach((item) => {
+        const code = String(item.courseCode || item.code || item.subjectCode || item.subject || "").trim().toUpperCase();
+        const key = code || `${item.date}_${item.room}_${item.seat}`;
+        if (!map.has(key)) {
+          map.set(key, { ...item });
+        } else {
+          const prev = map.get(key);
+          const isValid = (v) => v && String(v).trim().toLowerCase() !== "na" && String(v).trim() !== "-";
+          map.set(key, {
+            ...prev,
+            ...item,
+            room: isValid(item.room) ? item.room : prev.room,
+            seat: isValid(item.seat) ? item.seat : prev.seat,
+            block: isValid(item.block) ? item.block : prev.block,
+            date: item.date || prev.date,
+            time: item.time || prev.time || item.examSlot || prev.examSlot,
+            examSlot: item.examSlot || prev.examSlot || item.time || prev.time,
+            subject: isValid(item.subject) ? item.subject : (prev.subject || item.subject)
+          });
+        }
+      });
+      return Array.from(map.values());
+    };
+
     const result = [];
-    if (inSem1.length) result.push({ id: "insem1", label: "INSEM 01", items: inSem1 });
-    if (inSem2.length) result.push({ id: "insem2", label: "INSEM 02", items: inSem2 });
-    if (endSem.length) result.push({ id: "endsem", label: "ENDSEM (Semester End Examination)", items: endSem });
+    if (inSem1.length) result.push({ id: "insem1", label: "INSEM 01", items: deduplicateGroupItems(inSem1) });
+    if (inSem2.length) result.push({ id: "insem2", label: "INSEM 02", items: deduplicateGroupItems(inSem2) });
+    if (endSem.length) result.push({ id: "endsem", label: "ENDSEM (Semester End Examination)", items: deduplicateGroupItems(endSem) });
     return result;
   }, [matchingEntries]);
 
@@ -375,9 +404,19 @@ export default function SeatingPlan() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {group.items.map((entry, index) => {
-                    const code = entry.courseCode || entry.code || entry.subjectCode;
-                    const mappedSubject = code ? courseMap[code.trim().toUpperCase()] : null;
-                    const title = mappedSubject || entry.subject || entry.course || entry.title || "Seating";
+                    const code = (entry.courseCode || entry.code || entry.subjectCode || "").trim().toUpperCase();
+                    const mappedSubject = code ? courseMap[code] : null;
+                    let title = mappedSubject || entry.subject || entry.course || entry.title || code || "Seating";
+
+                    // Clean duplicate course code prefix from title if present (e.g. "24CS03EF - Enterprise Programming")
+                    if (code && title.toUpperCase().startsWith(code)) {
+                      const stripped = title.slice(code.length).replace(/^[\s\-:–—]+/, "").trim();
+                      if (stripped) {
+                        title = stripped;
+                      }
+                    }
+
+                    const isTitleSameAsCode = code && title.trim().toUpperCase() === code;
                     const examTypeLabel = entry.examType || "EXAM";
 
                     return (
@@ -388,9 +427,11 @@ export default function SeatingPlan() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-ink/40">
-                                {code || "Course"}
-                              </span>
+                              {code && !isTitleSameAsCode && (
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-ink/40">
+                                  {code}
+                                </span>
+                              )}
                               {examTypeLabel && (
                                 <span className="rounded bg-surface px-1.5 py-0.5 text-[9px] font-bold uppercase text-ink/60">
                                   {examTypeLabel}
